@@ -1,0 +1,14 @@
+[package]
+name = "cuicui_layout"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+bevy_mod_sysfail = "2"
+bevy = { version = "0.10", default-features = false, features = ["bevy_render", "bevy_core_pipeline", "bevy_text", "bevy_ui"] }
+
+[dev-dependencies]
+bevy-inspector-egui = "0.18.3"
+bevy = { version = "0.10", features = ["png", "x11", "bevy_asset", "bevy_render" ] }
