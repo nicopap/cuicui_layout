@@ -6,7 +6,7 @@
 
 use super::{Direction, SpaceUse, Spec};
 
-// TODO: const constructors that panic at compile time if not within [0.0 1.0]
+// TODO(feat): const constructors that panic at compile time if not within [0.0 1.0]
 /// The container's size is equal to `.0` times what is containing it.
 /// Must be within the range `[0.0, 1.0]` (inclusive)
 pub struct Parent(pub f32);
@@ -115,7 +115,7 @@ impl IsNotChild for Fixed {}
 /// to it using the `child` method.
 ///
 /// ```rust
-/// # use bevy_mod_cuicui::layout::typed::*;
+/// # use cuicui_layout::typed::*;
 /// # fn main() {
 /// Container::v_stretch(Parent(1.), Parent(1.))
 ///     .child(

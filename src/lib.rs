@@ -7,9 +7,8 @@
 //! Either items are compactly put one after another with [`SpaceUse::Compact`],
 //! or they [`SpaceUse::Stretch`] to the parent's Vertical/Horizontal space.
 //!
-//! If you want some margin, use [`Spacer`].
-//! The [`Spacer::parent_ratio`] is the percent of the containing container's
-//! total size.
+//! If you want some margin, use [`Node::Spacer`].
+//! [`Node::Spacer::0`] is the percent of the containing container's total size.
 //!
 //! All things in a cuicui layout has a known fixed size. This is why
 //! everything needs to live in a root countainer of a fixed size.
