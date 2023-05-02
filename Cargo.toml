@@ -1,5 +1,12 @@
 [package]
 name = "cuicui_layout"
+authors = ["Nicola Papale"]
+description = "A layout algorithm made to be understood by humans"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+keywords = ["bevy", "layout", "ui"]
+categories = ["game-development", "gui"]
+repository = "https://github.com/devildahu/bevy_mod_cuicui"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +14,7 @@ edition = "2021"
 anyhow = "1"
 thiserror = "1"
 bevy_mod_sysfail = "2"
-bevy = { version = "0.10", default-features = false, features = ["bevy_render", "bevy_core_pipeline", "bevy_text", "bevy_ui"] }
+bevy = { version = "0.10", default-features = false }
 
 [dev-dependencies]
 bevy-inspector-egui = "0.18.3"
