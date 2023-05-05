@@ -6,7 +6,7 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 keywords = ["bevy", "layout", "ui"]
 categories = ["game-development", "gui"]
-repository = "https://github.com/devildahu/bevy_mod_cuicui"
+repository = "https://github.com/nicopap/cuicui"
 version = "0.1.0"
 edition = "2021"
 
