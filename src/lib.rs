@@ -28,6 +28,8 @@
 //! * Accumulate errors instead of early exit. (doubt)
 //! * Root expressed as percent of UiCamera
 //! * Write a tool to make and export layouts.
+#![allow(clippy::manual_range_contains)]
+
 use std::fmt;
 
 use bevy::prelude::*;
