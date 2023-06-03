@@ -239,7 +239,7 @@ fn setup(
         ExtraSpawnArgs {
             rng: &mut Rng { seed: Rng::P0 },
             assets: &mut assets,
-            mesh: &meshes.add(Mesh::from(top_left_quad())).into(),
+            mesh: &meshes.add(top_left_quad()).into(),
         },
     );
     cmds.spawn(Camera2dBundle {
