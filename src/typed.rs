@@ -114,9 +114,8 @@ impl IsNotChild for Fixed {}
 /// Use one of the constructor methods to make a container and attach children
 /// to it using the `child` method.
 ///
-/// ```rust
+/// ```
 /// # use cuicui_layout::typed::*;
-/// # fn main() {
 /// Container::v_stretch(Parent(1.), Parent(1.))
 ///     .child(
 ///         Container::h_stretch(Parent(1.0), Parent(0.1))
@@ -130,7 +129,6 @@ impl IsNotChild for Fixed {}
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.)))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.))),
 ///     );
-/// # }
 /// ```
 pub struct Container<W: Constrain, H: Constrain> {
     width: W,
