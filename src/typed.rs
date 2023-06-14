@@ -105,7 +105,7 @@ impl IsNotChild for Fixed {}
 /// ## Limitations
 ///
 /// This doesn't eliminate all classes of errors.
-/// For example, using a [`Container::spacer`] in a container going in a
+/// For example, using a `Container::spacer` in a container going in a
 /// direction which size is unconstrained compiles, but results in a runtime
 /// error.
 ///
