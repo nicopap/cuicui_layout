@@ -10,7 +10,7 @@ use bevy_mod_sysfail::quick_sysfail;
 use super::Root;
 
 #[derive(Component, Clone, Copy, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
 pub struct UiCamera;
 
 #[derive(Bundle)]
@@ -21,7 +21,6 @@ pub struct RootBundle {
 
 #[derive(Bundle)]
 pub struct UiCameraBundle {
-    #[bundle]
     pub camera: Camera2dBundle,
     pub layer: RenderLayers,
     pub ui_camera: UiCamera,

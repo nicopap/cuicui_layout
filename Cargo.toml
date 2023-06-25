@@ -10,6 +10,11 @@ repository = "https://github.com/nicopap/cuicui"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["bevy_render", "reflect"]
+bevy_render = ["bevy/bevy_render", "bevy/bevy_core_pipeline"]
+reflect = []
+
 [dependencies]
 anyhow = "1"
 thiserror = "1"

@@ -38,6 +38,7 @@ use bevy_mod_sysfail::sysfail;
 use self::error::{parent_is_stretch, Why};
 
 mod error;
+#[cfg(feature = "bevy_render")]
 pub mod render;
 pub mod typed;
 
@@ -221,11 +222,18 @@ pub enum SpaceUse {
     Compact,
 }
 #[derive(Component)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
 pub enum Node {
     Container(Container),
     Spacer(f32),
     Known(Size),
+}
+impl Default for Node {
+    /// DO NOT USE THE DEFAULT IMPL OF `Node`, this is only to satisfy `Reflect`
+    /// requirements.
+    fn default() -> Self {
+        Node::Known(Size::default())
+    }
 }
 impl Node {
     pub fn spacer_percent(value: f32) -> Option<Self> {
