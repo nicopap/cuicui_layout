@@ -52,7 +52,16 @@ bevy hierarchy for your Ui.
 - [X] In depth documentation explaining the algorithm
 - [X] Meaningfull error messages when algorithm hits circular constraints
 - [ ] Ergonomic macro to define a UI tree
-- [ ] `ChildDefined(how_much_larger_than_child)`
+- [ ] Alignments
+  - [ ] Cross axis alignment (aka alignment): for Horizontal, should items be aligned to the:
+    - top
+    - bottom
+    - middle
+  - [ ] Main axis alignment (aka distribution/justification): for Horizontal, should items be:
+    - compactly pushed at the start
+    - compactly pushed at the end
+    - spaced evenly so that the first is at the start and last at the end
+- [X] `ChildDefined(how_much_larger_than_child)`
 - [ ] API cleanup
 - [ ] Define a parametrable plugin to add smoothly the layout systems to app
 - [ ] Integrate Change detection
