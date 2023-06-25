@@ -34,7 +34,7 @@ macro_rules! fix {
         UiTree {
             name: $name,
             children: vec![$( $branch, )*],
-            node: layout::Node::Known(layout::Size { width: $width as f32, height: $height as f32 })
+            node: layout::Node::fixed(layout::Size { width: $width as f32, height: $height as f32 })
         }
     };
 }

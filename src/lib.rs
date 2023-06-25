@@ -55,13 +55,15 @@ impl Pos {
             Direction::Horizontal => self.top = cross,
         }
     }
-    fn set_axis(&mut self, direction: Direction, axis: f32) {
+    fn set_main(&mut self, direction: Direction, main: f32) {
         match direction {
-            Direction::Vertical => self.top = axis,
-            Direction::Horizontal => self.left = axis,
+            Direction::Vertical => self.top = main,
+            Direction::Horizontal => self.left = main,
         }
     }
 }
+
+// TODO(clean): replace `Size` and `Bounds` by `AxisRect<f32>` and `AxisRect<Bound>`
 #[derive(Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct Size {
@@ -69,10 +71,10 @@ pub struct Size {
     pub height: f32,
 }
 impl Size {
-    fn with(direction: Direction, axis: f32, cross: f32) -> Self {
+    fn with(direction: Direction, main: f32, cross: f32) -> Self {
         match direction {
-            Direction::Vertical => Self { height: axis, width: cross },
-            Direction::Horizontal => Self { height: cross, width: axis },
+            Direction::Vertical => Self { height: main, width: cross },
+            Direction::Horizontal => Self { height: cross, width: main },
         }
     }
     fn on(&self, direction: Direction) -> f32 {
@@ -97,27 +99,27 @@ impl Bounds {
     fn on(&self, dir: Direction, this: Entity, names: &Query<&Name>) -> Result<f32, Why> {
         let component = dir.of(self.width, self.height);
         let name = dir.of("width", "height");
-        component.map_err(|e| parent_is_stretch(name, this, e, names))
+        or_why(component, name, this, names)
     }
     /// Bounds adapted to container with provided `Spec`.
     fn refine(
         &self,
         dir: Direction,
         this: Entity,
-        axis: Spec,
-        cross: Spec,
+        main: Constraint,
+        cross: Constraint,
         names: &Query<&Name>,
     ) -> Result<Self, Why> {
         let component = |spec, dir| match spec {
-            Spec::ChildDefined => Ok(Err(this)),
-            Spec::ParentRatio(ratio) => Ok(Ok(self.on(dir, this, names)? * ratio)),
-            Spec::Fixed(fixed) => Ok(Ok(fixed)),
+            Constraint::Children(_) => Ok(Err(this)),
+            Constraint::Parent(ratio) => Ok(Ok(self.on(dir, this, names)? * ratio)),
+            Constraint::Fixed(fixed) => Ok(Ok(fixed)),
         };
-        let axis = component(axis, dir)?;
+        let main = component(main, dir)?;
         let cross = component(cross, dir.perp())?;
         Ok(dir.of(
-            Self { width: axis, height: cross },
-            Self { width: cross, height: axis },
+            Self { width: main, height: cross },
+            Self { width: cross, height: main },
         ))
     }
 }
@@ -137,6 +139,14 @@ impl From<Size> for Bounds {
     fn from(value: Size) -> Self {
         Self { width: Ok(value.width), height: Ok(value.height) }
     }
+}
+fn or_why(
+    bound: Bound,
+    name: &'static str,
+    this: Entity,
+    names: &Query<&Name>,
+) -> Result<f32, Why> {
+    bound.map_err(|e| parent_is_stretch(name, this, e, names))
 }
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
@@ -163,55 +173,63 @@ impl PosRect {
 pub struct Container {
     pub direction: Direction,
     pub space_use: SpaceUse,
-    width: Spec,
-    height: Spec,
+    width: Constraint,
+    height: Constraint,
 }
 impl Default for Container {
     fn default() -> Self {
         Container {
             direction: Direction::Horizontal,
             space_use: SpaceUse::Stretch,
-            width: Spec::ParentRatio(1.0),
-            height: Spec::ParentRatio(1.0),
+            width: Constraint::Parent(1.0),
+            height: Constraint::Parent(1.0),
         }
     }
 }
 impl Container {
     pub fn new(direction: Direction, space_use: SpaceUse) -> Self {
         let axis = match space_use {
-            SpaceUse::Stretch => Spec::ParentRatio(1.0),
-            SpaceUse::Compact => Spec::ChildDefined,
+            SpaceUse::Stretch => Constraint::Parent(1.0),
+            SpaceUse::Compact => Constraint::Children(1.0),
         };
-        let cross = Spec::ChildDefined;
+        let cross = Constraint::Children(1.0);
         let (width, height) = direction.real_of(axis, cross);
         Self { direction, space_use, width, height }
     }
 }
+
+/// The layout direction of a [`Container`].
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Direction {
+    /// Children are arranged on the vertical axis.
     Vertical,
+    /// Children are arranged on the horizontal axis.
     Horizontal,
 }
 impl Direction {
-    fn of<T>(self, width: T, height: T) -> T {
+    const fn of<T: Copy>(self, width: T, height: T) -> T {
         match self {
             Direction::Vertical => height,
             Direction::Horizontal => width,
         }
     }
     /// Returns (width, height) according to axis and cross of this direction.
-    fn real_of<T>(self, axis: T, cross: T) -> (T, T) {
+    const fn real_of<T>(self, main: T, cross: T) -> (T, T) {
         match self {
-            Direction::Vertical => (cross, axis),
-            Direction::Horizontal => (axis, cross),
+            Direction::Vertical => (cross, main),
+            Direction::Horizontal => (main, cross),
         }
     }
-    fn perp(self) -> Self {
+    /// Returns (main, cross) according to this direction.
+    const fn size_of(self, bounds: Bounds) -> (Bound, Bound) {
+        self.real_of(bounds.width, bounds.height)
+    }
+    const fn perp(self) -> Self {
         use self::Direction::*;
         self.of(Vertical, Horizontal)
     }
-    fn size_name(&self) -> &'static str {
+    const fn size_name(&self) -> &'static str {
         self.of("width", "height")
     }
 }
@@ -225,31 +243,94 @@ pub enum SpaceUse {
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
 pub enum Node {
     Container(Container),
-    Spacer(f32),
-    Known(Size),
+    /// A terminal node's constraints, dependent on its container's axis.
+    Axis {
+        main: LeafConstraint,
+        cross: LeafConstraint,
+    },
+    /// A terminal node's constraints.
+    Box {
+        width: LeafConstraint,
+        height: LeafConstraint,
+    },
 }
 impl Default for Node {
     /// DO NOT USE THE DEFAULT IMPL OF `Node`, this is only to satisfy `Reflect`
     /// requirements.
     fn default() -> Self {
-        Node::Known(Size::default())
+        Node::Box {
+            width: LeafConstraint::Parent(1.0),
+            height: LeafConstraint::Parent(1.0),
+        }
     }
 }
 impl Node {
+    /// An invisible [`Node`] occupying `value%` of it's parent container
+    /// on the main axis.
     pub fn spacer_percent(value: f32) -> Option<Self> {
         Self::spacer_ratio(value / 100.0)
     }
+    /// An invisible [`Node`] occupying `value` ratio of it's parent container
+    /// on the main axis.
     pub fn spacer_ratio(value: f32) -> Option<Self> {
-        (value <= 1.0 && value >= 0.0).then_some(Node::Spacer(value))
+        let spacer = Node::Axis {
+            main: LeafConstraint::Parent(value),
+            cross: LeafConstraint::Fixed(0.0),
+        };
+        (value <= 1.0 && value >= 0.0).then_some(spacer)
+    }
+
+    pub fn fixed(size: Size) -> Node {
+        Node::Box {
+            width: LeafConstraint::Fixed(size.width),
+            height: LeafConstraint::Fixed(size.height),
+        }
     }
 }
-#[derive(Clone, Copy, PartialEq, Default)]
+
+/// A constraint on an axis of a terminal `Node` (ie: doesn't have a `Children` constraint).
+#[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
-pub enum Spec {
-    #[default]
-    ChildDefined,
-    ParentRatio(f32),
+pub enum LeafConstraint {
+    /// The container's size is equal to its parent's size  times `.0`.
+    /// (may not be above 1)
+    Parent(f32),
+    /// The container's size is equal to precisely `.0` pixels.
     Fixed(f32),
+}
+impl LeafConstraint {
+    /// Compute effective size for given [`Node`] on [`Direction`], given
+    /// a potentially set parent container size.
+    pub fn inside(self, bound: Bound) -> Bound {
+        Ok(match self {
+            LeafConstraint::Parent(ratio) => bound? * ratio,
+            LeafConstraint::Fixed(fixed) => fixed,
+        })
+    }
+}
+impl Default for LeafConstraint {
+    fn default() -> Self {
+        LeafConstraint::Parent(1.0)
+    }
+}
+
+/// A constraint on an axis of containers.
+#[derive(Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+pub enum Constraint {
+    /// The container's size is equal to the total size of all its children
+    /// times `.0`. (may not be below 1)
+    Children(f32),
+    /// The container's size is equal to its parent's size  times `.0`.
+    /// (may not be above 1)
+    Parent(f32),
+    /// The container's size is equal to precisely `.0` pixels.
+    Fixed(f32),
+}
+impl Default for Constraint {
+    fn default() -> Self {
+        Constraint::Children(1.0)
+    }
 }
 
 #[derive(Component)]
@@ -267,7 +348,7 @@ impl Root {
 
 #[derive(Clone, Copy, PartialEq)]
 struct AtOutput {
-    axis: f32,
+    main: f32,
     cross: f32,
 }
 impl Container {
@@ -282,54 +363,54 @@ impl Container {
     ) -> Result<Size, Why> {
         use SpaceUse::*;
         let Self { direction: dir, space_use, width, height } = *self;
-        let axis = dir.of(width, height);
+        let main = dir.of(width, height);
         let cross = dir.perp().of(width, height);
         if children.is_empty() {
             return Ok(Size::default());
         }
-        let mut child_axis = 0.0;
+        let mut child_main = 0.0;
         let mut child_cross = 0.0_f32;
         let mut node_children_count = 0;
-        let bounds = bounds.refine(dir, this, axis, cross, names)?;
+        let bounds = bounds.refine(dir, this, main, cross, names)?;
         for child in nodes.iter_many(children) {
             let result = layout_at(child, dir, bounds, to_update, nodes, names)?;
-            child_axis += result.axis;
+            child_main += result.main;
             child_cross = child_cross.max(result.cross);
             node_children_count += 1;
         }
         let cross = dir.of(bounds.height, bounds.width).unwrap_or(child_cross);
         match space_use {
             Stretch => {
-                let total_space_between = bounds.on(dir, this, names)? - child_axis;
+                let total_space_between = bounds.on(dir, this, names)? - child_main;
                 if total_space_between < 0.0 {
                     return Err(error::Why::ContainerOverflow {
                         this: error::Handle::of(this, names),
                         bounds,
                         node_children_count,
                         dir_name: dir.size_name(),
-                        child_size: child_axis,
+                        child_size: child_main,
                     });
                 }
                 let space_between = total_space_between / (node_children_count - 1) as f32;
                 let mut iter = to_update.iter_many_mut(children);
-                let mut axis_offset = 0.0;
+                let mut main_offset = 0.0;
                 while let Some(mut space) = iter.fetch_next() {
-                    space.pos.set_axis(dir, axis_offset);
+                    space.pos.set_main(dir, main_offset);
                     let offset = (cross - space.size.cross(dir)) / 2.0;
                     space.pos.set_cross(dir, offset);
-                    axis_offset += space.size.on(dir) + space_between;
+                    main_offset += space.size.on(dir) + space_between;
                 }
                 Ok(Size::with(dir, bounds.on(dir, this, names)?, cross))
             }
             Compact => {
-                let mut axis_offset = 0.0;
+                let mut main_offset = 0.0;
                 let mut iter = to_update.iter_many_mut(children);
                 while let Some(mut space) = iter.fetch_next() {
-                    space.pos.set_axis(dir, axis_offset);
+                    space.pos.set_main(dir, main_offset);
                     space.pos.set_cross(dir, 0.0);
-                    axis_offset += space.size.on(dir);
+                    main_offset += space.size.on(dir);
                 }
-                Ok(Size::with(dir, child_axis, cross))
+                Ok(Size::with(dir, child_main, cross))
             }
         }
     }
@@ -349,21 +430,29 @@ fn layout_at(
     nodes: &Query<(Entity, &Node, &Children)>,
     names: &Query<&Name>,
 ) -> Result<AtOutput, Why> {
+    let or_why = |bound, name| or_why(bound, name, this, names);
     let size = match node {
         Node::Container(container) => {
             container.layout(this, children, bounds, to_update, nodes, names)?
         }
-        Node::Spacer(parent_ratio) => {
-            let axis = bounds.on(parent_dir, this, names)? * parent_ratio;
-            Size::with(parent_dir, axis, 0.0)
+        Node::Axis { main, cross } => {
+            let (main_b, cross_b) = parent_dir.size_of(bounds);
+            Size::with(
+                parent_dir,
+                or_why(main.inside(main_b), parent_dir.size_name())?,
+                or_why(cross.inside(cross_b), parent_dir.size_name())?,
+            )
         }
-        Node::Known(size) => *size,
+        Node::Box { width, height } => Size {
+            width: or_why(width.inside(bounds.width), "width")?,
+            height: or_why(height.inside(bounds.height), "height")?,
+        },
     };
     if let Ok(mut to_update) = to_update.get_mut(this) {
         to_update.size = size;
     }
     Ok(AtOutput {
-        axis: size.on(parent_dir),
+        main: size.on(parent_dir),
         cross: size.cross(parent_dir),
     })
 }
@@ -386,8 +475,8 @@ fn compute_layout(
         let container = Container {
             direction,
             space_use,
-            width: Spec::Fixed(bounds.width),
-            height: Spec::Fixed(bounds.height),
+            width: Constraint::Fixed(bounds.width),
+            height: Constraint::Fixed(bounds.height),
         };
         let bounds = Bounds::from(bounds);
         container.layout(entity, children, bounds, &mut to_update, &nodes, &names)?;

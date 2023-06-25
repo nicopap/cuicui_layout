@@ -4,7 +4,7 @@
 //!
 //! Note: this isn't the only way to build a layout, just a quick and dirty way.
 
-use super::{Direction, SpaceUse, Spec};
+use super::{Constraint, Direction, SpaceUse};
 
 // TODO(feat): const constructors that panic at compile time if not within [0.0 1.0]
 /// The container's size is equal to `.0` times what is containing it.
@@ -13,7 +13,7 @@ pub struct Parent(pub f32);
 
 /// The container's size is equal to `.0` times the largest of its child.
 /// Must be greater or equal to 1.
-pub struct Child(pub f32);
+pub struct Children(pub f32);
 
 /// The container has a fixed size `.0` expressed in bevy world length.
 /// (1.0 = 1 pixel in 2d)
@@ -24,22 +24,22 @@ pub struct Fixed(pub f32);
 /// This enables expressing [`Spec`] at the type level and emitting
 /// compile-time failures when a layout expressed in code is invalid.
 pub trait Constrain {
-    /// The [`Spec`] the constraint represents.
-    fn spec(&self) -> Spec;
+    /// The [`Constraint`] the constraint represents.
+    fn spec(&self) -> Constraint;
 }
 impl Constrain for Parent {
-    fn spec(&self) -> Spec {
-        Spec::ParentRatio(self.0)
+    fn spec(&self) -> Constraint {
+        Constraint::Parent(self.0)
     }
 }
-impl Constrain for Child {
-    fn spec(&self) -> Spec {
-        Spec::ChildDefined
+impl Constrain for Children {
+    fn spec(&self) -> Constraint {
+        Constraint::Children(self.0)
     }
 }
 impl Constrain for Fixed {
-    fn spec(&self) -> Spec {
-        Spec::Fixed(self.0)
+    fn spec(&self) -> Constraint {
+        Constraint::Fixed(self.0)
     }
 }
 
@@ -50,7 +50,7 @@ trait MakeNode {
 /// A constraint that doesn't need to know
 pub trait AllowsUnconstrainedParent: Constrain {}
 impl AllowsUnconstrainedParent for Fixed {}
-impl AllowsUnconstrainedParent for Child {}
+impl AllowsUnconstrainedParent for Children {}
 
 /// A constraint that isn't `Child`. It means that its children can
 /// compute their own size based on their parent's size.
@@ -83,7 +83,7 @@ impl IsNotChild for Fixed {}
 ///
 /// - [`Fixed(size)`]: The size of the container is set at the given length,
 ///   it is expressed in pixels in the default bevy setup
-/// - [`Child(multiple)`]: The container's size is equal to `multiple` times
+/// - [`Children(multiple)`]: The container's size is equal to `multiple` times
 ///   the space its children occupies.
 /// - [`Parent(fraction)`]: The size of the container is given `fraction` of
 ///   its parent's size. `fraction` must be within the range `[0.0, 1.0]`
@@ -141,12 +141,12 @@ struct Spacer(f32);
 struct FixedNode(super::Size);
 impl MakeNode for Spacer {
     fn node(&self) -> super::Node {
-        super::Node::Spacer(self.0)
+        super::Node::spacer_ratio(self.0).unwrap()
     }
 }
 impl MakeNode for FixedNode {
     fn node(&self) -> super::Node {
-        super::Node::Known(self.0)
+        super::Node::fixed(self.0)
     }
 }
 impl<W: Constrain, H: Constrain> MakeNode for Container<W, H> {
@@ -176,7 +176,7 @@ impl<W: IsNotChild, H: IsNotChild> Container<W, H> {
         self
     }
 }
-impl<W: IsNotChild> Container<W, Child> {
+impl<W: IsNotChild> Container<W, Children> {
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: Constrain + 'static,
@@ -186,7 +186,7 @@ impl<W: IsNotChild> Container<W, Child> {
         self
     }
 }
-impl<H: IsNotChild> Container<Child, H> {
+impl<H: IsNotChild> Container<Children, H> {
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: AllowsUnconstrainedParent + 'static,
