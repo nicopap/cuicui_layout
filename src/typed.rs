@@ -4,7 +4,7 @@
 //!
 //! Note: this isn't the only way to build a layout, just a quick and dirty way.
 
-use super::{Constraint, Direction, SpaceUse};
+use super::{Constraint, Oriented, SpaceUse};
 
 // TODO(feat): const constructors that panic at compile time if not within [0.0 1.0]
 /// The container's size is equal to `.0` times what is containing it.
@@ -133,7 +133,7 @@ impl IsNotChild for Fixed {}
 pub struct Container<W: Constrain, H: Constrain> {
     width: W,
     height: H,
-    direction: Direction,
+    direction: Oriented,
     space_use: SpaceUse,
     children: Vec<Box<dyn MakeNode>>,
 }
@@ -200,20 +200,20 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
     /// Vertically aligned (bottom to top), children stretch to fill
     /// the whole height of the container.
     pub const fn v_stretch(width: W, height: H) -> Self {
-        Self::new(width, height, Direction::Vertical, SpaceUse::Stretch)
+        Self::new(width, height, Oriented::Vertical, SpaceUse::Stretch)
     }
     /// Horizontally aligned (left to right), children stretch to fill
     /// the whole width of the container.
     pub const fn h_stretch(width: W, height: H) -> Self {
-        Self::new(width, height, Direction::Horizontal, SpaceUse::Stretch)
+        Self::new(width, height, Oriented::Horizontal, SpaceUse::Stretch)
     }
     pub const fn v_compact(width: W, height: H) -> Self {
-        Self::new(width, height, Direction::Vertical, SpaceUse::Compact)
+        Self::new(width, height, Oriented::Vertical, SpaceUse::Compact)
     }
     pub const fn h_compact(width: W, height: H) -> Self {
-        Self::new(width, height, Direction::Horizontal, SpaceUse::Compact)
+        Self::new(width, height, Oriented::Horizontal, SpaceUse::Compact)
     }
-    pub const fn new(width: W, height: H, direction: Direction, space_use: SpaceUse) -> Self {
+    pub const fn new(width: W, height: H, direction: Oriented, space_use: SpaceUse) -> Self {
         Self {
             width,
             height,

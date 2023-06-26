@@ -189,7 +189,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut assets: ResMut<Assets<ColorMaterial>>,
 ) {
-    use layout::{Direction::*, SpaceUse::*};
+    use layout::{Oriented::*, SpaceUse::*};
     let tree = root! { ("root", Vertical, Stretch, 300, 270),
         spacer!("spacer1", 10%),
         cont! { ("horiz_cont1", Horizontal, Stretch),
