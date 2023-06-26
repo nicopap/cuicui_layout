@@ -4,35 +4,20 @@ use bevy::prelude::{Entity, Name, Query};
 use bevy_mod_sysfail::FailureMode;
 use thiserror::Error;
 
-use crate::direction::{Oriented, Rect};
+use crate::direction::{Direction, Size};
+
+pub(crate) type Bound = Result<f32, BadParent>;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct Bounds(pub(crate) Rect<Bound>);
+pub(crate) struct Bounds(pub(crate) Size<Bound>);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct MaybeDirectionalBound {
     name: &'static str,
     bound: Bound,
 }
-impl Bounds {
-    pub(crate) const fn on(&self, direction: Oriented) -> MaybeDirectionalBound {
-        let name = direction.orient("width", "height");
-        MaybeDirectionalBound { bound: self.0.on(direction), name }
-    }
-}
-impl MaybeDirectionalBound {
-    pub(crate) fn map(self, f: impl FnOnce(Bound) -> Bound) -> Self {
-        Self { bound: f(self.bound), name: self.name }
-    }
-    pub(crate) fn why(self, this: Entity, names: &Query<&Name>) -> Result<f32, Why> {
-        self.bound.why(self.name, this, names)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct BadEntity(pub(crate) Entity);
-
-pub(crate) type Bound = Result<f32, BadEntity>;
+pub(crate) struct BadParent(pub(crate) Entity);
 
 impl fmt::Display for Bounds {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -47,15 +32,46 @@ impl fmt::Display for Bounds {
     }
 }
 
-pub(crate) trait ResultBadEntityExt<T> {
-    fn why(self, name: &'static str, this: Entity, names: &Query<&Name>) -> Result<T, Why>;
+fn why(
+    result: Result<f32, BadParent>,
+    name: &'static str,
+    this: Entity,
+    names: &Query<&Name>,
+) -> Result<f32, Why> {
+    result.map_err(|e| Why::ParentIsStretch {
+        this: Handle::of(this, names),
+        parent: Handle::of(e.0, names),
+        axis: name,
+    })
 }
-impl<T> ResultBadEntityExt<T> for Result<T, BadEntity> {
-    fn why(self, name: &'static str, this: Entity, names: &Query<&Name>) -> Result<T, Why> {
-        self.map_err(|e| parent_is_stretch(name, this, e, names))
+
+impl Size<Bound> {
+    pub(crate) fn why(self, this: Entity, names: &Query<&Name>) -> Result<Size<f32>, Why> {
+        let Size { width, height } = self;
+        Ok(Size {
+            width: why(width, "width", this, names)?,
+            height: why(height, "height", this, names)?,
+        })
     }
 }
 
+impl From<Size<f32>> for Bounds {
+    fn from(size: Size<f32>) -> Self {
+        Bounds(size.map(Ok))
+    }
+}
+
+impl Bounds {
+    pub(crate) const fn on(&self, direction: Direction) -> MaybeDirectionalBound {
+        let name = direction.orient(Size::new("width", "height"));
+        MaybeDirectionalBound { bound: self.0.on(direction), name }
+    }
+}
+impl MaybeDirectionalBound {
+    pub(crate) fn why(self, this: Entity, names: &Query<&Name>) -> Result<f32, Why> {
+        why(self.bound, self.name, this, names)
+    }
+}
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 pub(crate) enum Handle {
     Unnamed(Entity),
@@ -118,17 +134,5 @@ impl FailureMode for Why {
     }
     fn display(&self) -> Option<String> {
         Some(self.to_string())
-    }
-}
-pub(crate) fn parent_is_stretch(
-    axis: &'static str,
-    this: Entity,
-    parent: BadEntity,
-    query: &Query<&Name>,
-) -> Why {
-    Why::ParentIsStretch {
-        this: Handle::of(this, query),
-        parent: Handle::of(parent.0, query),
-        axis,
     }
 }

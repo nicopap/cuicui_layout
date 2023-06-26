@@ -39,30 +39,9 @@ pub mod typed;
 use bevy::prelude::*;
 use bevy_mod_sysfail::sysfail;
 
-pub use direction::Oriented;
+pub use direction::{Direction, Oriented, Size};
 use error::{Bounds, Why};
-pub use layout::{Constraint, Container, Node, Root, Size, SpaceUse};
-
-#[derive(Clone, Default, Copy, PartialEq)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
-pub struct Pos {
-    pub left: f32,
-    pub top: f32,
-}
-impl Pos {
-    fn set_cross(&mut self, direction: Oriented, cross: f32) {
-        match direction {
-            Oriented::Vertical => self.left = cross,
-            Oriented::Horizontal => self.top = cross,
-        }
-    }
-    fn set_main(&mut self, direction: Oriented, main: f32) {
-        match direction {
-            Oriented::Vertical => self.top = main,
-            Oriented::Horizontal => self.left = main,
-        }
-    }
-}
+pub use layout::{Constraint, Container, LayoutNode, LeafConstraint, Node, Root, SpaceUse};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -71,14 +50,14 @@ impl Pos {
 #[derive(Component, Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct PosRect {
-    size: Size,
-    pos: Pos,
+    size: Size<f32>,
+    pos: Size<f32>,
 }
 impl PosRect {
-    pub fn pos(&self) -> Pos {
-        self.pos
+    pub fn pos(&self) -> Vec2 {
+        Vec2::new(self.pos.width, self.pos.height)
     }
-    pub fn size(&self) -> Size {
+    pub fn size(&self) -> Size<f32> {
         self.size
     }
 }
@@ -91,7 +70,7 @@ impl PosRect {
 #[sysfail(log(level = "error"))]
 fn compute_layout(
     mut to_update: Query<&mut PosRect>,
-    nodes: Query<(Entity, &Node, &Children)>,
+    nodes: Query<LayoutNode>,
     names: Query<&Name>,
     roots: Query<(Entity, &Root, &Children)>,
 ) -> Result<(), Why> {
@@ -102,8 +81,7 @@ fn compute_layout(
         let container = Container {
             direction,
             space_use,
-            width: Constraint::Fixed(bounds.width),
-            height: Constraint::Fixed(bounds.height),
+            size: bounds.map(Constraint::Fixed),
         };
         let bounds = Bounds::from(bounds);
         container.layout(entity, children, bounds, &mut to_update, &nodes, &names)?;
@@ -113,8 +91,8 @@ fn compute_layout(
 /// Update transform of things that have a `PosRect` component.
 pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Changed<PosRect>>) {
     for (pos, mut transform) in &mut positioned {
-        transform.translation.x = pos.pos.left;
-        transform.translation.y = pos.pos.top;
+        transform.translation.x = pos.pos.width;
+        transform.translation.y = pos.pos.height;
     }
 }
 
@@ -129,13 +107,16 @@ impl Plugin for Plug {
         app.add_system(compute_layout.in_set(Systems::ComputeLayout));
 
         #[cfg(feature = "reflect")]
-        app.register_type::<Container>()
-            .register_type::<Oriented>()
+        app.register_type::<Constraint>()
+            .register_type::<Container>()
+            .register_type::<Direction>()
             .register_type::<Node>()
-            .register_type::<Pos>()
+            .register_type::<Oriented<LeafConstraint>>()
             .register_type::<PosRect>()
             .register_type::<Root>()
-            .register_type::<Size>()
+            .register_type::<Size<Constraint>>()
+            .register_type::<Size<f32>>()
+            .register_type::<Size<LeafConstraint>>()
             .register_type::<SpaceUse>();
     }
 }

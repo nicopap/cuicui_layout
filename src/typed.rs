@@ -4,16 +4,41 @@
 //!
 //! Note: this isn't the only way to build a layout, just a quick and dirty way.
 
-use super::{Constraint, Oriented, SpaceUse};
+use super::{Constraint, Direction, SpaceUse};
 
-// TODO(feat): const constructors that panic at compile time if not within [0.0 1.0]
 /// The container's size is equal to `.0` times what is containing it.
 /// Must be within the range `[0.0, 1.0]` (inclusive)
-pub struct Parent(pub f32);
+pub struct Parent(f32);
+impl Parent {
+    /// Create a new [`Parent`].
+    ///
+    /// # Panics
+    ///
+    /// When `value` is not in the range `[0.0, 1.0]` (inclusive)
+    pub fn new(value: f32) -> Self {
+        if value as i32 != 0 && value != 1.0 {
+            panic!("Invalid `Parent` constraint, it was not between 0 and 1, while it should!");
+        }
+        Parent(value)
+    }
+}
 
 /// The container's size is equal to `.0` times the largest of its child.
 /// Must be greater or equal to 1.
-pub struct Children(pub f32);
+pub struct Children(f32);
+impl Children {
+    /// Create a new [`Children`].
+    ///
+    /// # Panics
+    ///
+    /// When `value` is greater than 1
+    pub const fn new(value: f32) -> Self {
+        if (value as i32) < 1 {
+            panic!("Invalid `Children` constraint, it was not greater than 1, while it should!");
+        }
+        Children(value)
+    }
+}
 
 /// The container has a fixed size `.0` expressed in bevy world length.
 /// (1.0 = 1 pixel in 2d)
@@ -48,15 +73,15 @@ trait MakeNode {
 }
 
 /// A constraint that doesn't need to know
-pub trait AllowsUnconstrainedParent: Constrain {}
-impl AllowsUnconstrainedParent for Fixed {}
-impl AllowsUnconstrainedParent for Children {}
+pub trait FreeParent: Constrain {}
+impl FreeParent for Fixed {}
+impl FreeParent for Children {}
 
 /// A constraint that isn't `Child`. It means that its children can
 /// compute their own size based on their parent's size.
-pub trait IsNotChild: Constrain {}
-impl IsNotChild for Parent {}
-impl IsNotChild for Fixed {}
+pub trait FreeChildren: Constrain {}
+impl FreeChildren for Parent {}
+impl FreeChildren for Fixed {}
 
 /// A typed constructor for [`super::Container`].
 ///
@@ -83,9 +108,9 @@ impl IsNotChild for Fixed {}
 ///
 /// - [`Fixed(size)`]: The size of the container is set at the given length,
 ///   it is expressed in pixels in the default bevy setup
-/// - [`Children(multiple)`]: The container's size is equal to `multiple` times
+/// - [`Children::new(multiple)`]: The container's size is equal to `multiple` times
 ///   the space its children occupies.
-/// - [`Parent(fraction)`]: The size of the container is given `fraction` of
+/// - [`Parent::new(fraction)`]: The size of the container is given `fraction` of
 ///   its parent's size. `fraction` must be within the range `[0.0, 1.0]`
 ///   (inclusive)
 ///
@@ -116,15 +141,15 @@ impl IsNotChild for Fixed {}
 ///
 /// ```
 /// # use cuicui_layout::typed::*;
-/// Container::v_stretch(Parent(1.), Parent(1.))
+/// Container::v_stretch(Parent::new(1.), Parent::new(1.))
 ///     .child(
-///         Container::h_stretch(Parent(1.0), Parent(0.1))
+///         Container::h_stretch(Parent::new(1.0), Parent::new(0.1))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.)))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.)))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.))),
 ///     )
 ///     .child(
-///         Container::h_stretch(Parent(1.0), Parent(0.1))
+///         Container::h_stretch(Parent::new(1.0), Parent::new(0.1))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.)))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.)))
 ///             .child(Container::v_compact(Fixed(10.), Fixed(10.))),
@@ -133,12 +158,12 @@ impl IsNotChild for Fixed {}
 pub struct Container<W: Constrain, H: Constrain> {
     width: W,
     height: H,
-    direction: Oriented,
+    direction: Direction,
     space_use: SpaceUse,
     children: Vec<Box<dyn MakeNode>>,
 }
 struct Spacer(f32);
-struct FixedNode(super::Size);
+struct FixedNode(super::Size<f32>);
 impl MakeNode for Spacer {
     fn node(&self) -> super::Node {
         super::Node::spacer_ratio(self.0).unwrap()
@@ -154,8 +179,10 @@ impl<W: Constrain, H: Constrain> MakeNode for Container<W, H> {
         super::Node::Container(super::Container {
             direction: self.direction,
             space_use: self.space_use,
-            width: self.width.spec(),
-            height: self.height.spec(),
+            size: super::Size {
+                width: self.width.spec(),
+                height: self.height.spec(),
+            },
         })
     }
 }
@@ -166,7 +193,7 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
         self
     }
 }
-impl<W: IsNotChild, H: IsNotChild> Container<W, H> {
+impl<W: FreeChildren, H: FreeChildren> Container<W, H> {
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: Constrain + 'static,
@@ -176,20 +203,20 @@ impl<W: IsNotChild, H: IsNotChild> Container<W, H> {
         self
     }
 }
-impl<W: IsNotChild> Container<W, Children> {
+impl<W: FreeChildren> Container<W, Children> {
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: Constrain + 'static,
-        Height: AllowsUnconstrainedParent + 'static,
+        Height: FreeParent + 'static,
     {
         self.children.push(Box::new(child));
         self
     }
 }
-impl<H: IsNotChild> Container<Children, H> {
+impl<H: FreeChildren> Container<Children, H> {
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
-        Width: AllowsUnconstrainedParent + 'static,
+        Width: FreeParent + 'static,
         Height: Constrain + 'static,
     {
         self.children.push(Box::new(child));
@@ -200,20 +227,20 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
     /// Vertically aligned (bottom to top), children stretch to fill
     /// the whole height of the container.
     pub const fn v_stretch(width: W, height: H) -> Self {
-        Self::new(width, height, Oriented::Vertical, SpaceUse::Stretch)
+        Self::new(width, height, Direction::Vertical, SpaceUse::Stretch)
     }
     /// Horizontally aligned (left to right), children stretch to fill
     /// the whole width of the container.
     pub const fn h_stretch(width: W, height: H) -> Self {
-        Self::new(width, height, Oriented::Horizontal, SpaceUse::Stretch)
+        Self::new(width, height, Direction::Horizontal, SpaceUse::Stretch)
     }
     pub const fn v_compact(width: W, height: H) -> Self {
-        Self::new(width, height, Oriented::Vertical, SpaceUse::Compact)
+        Self::new(width, height, Direction::Vertical, SpaceUse::Compact)
     }
     pub const fn h_compact(width: W, height: H) -> Self {
-        Self::new(width, height, Oriented::Horizontal, SpaceUse::Compact)
+        Self::new(width, height, Direction::Horizontal, SpaceUse::Compact)
     }
-    pub const fn new(width: W, height: H, direction: Oriented, space_use: SpaceUse) -> Self {
+    pub const fn new(width: W, height: H, direction: Direction, space_use: SpaceUse) -> Self {
         Self {
             width,
             height,

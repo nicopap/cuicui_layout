@@ -118,7 +118,7 @@ struct UiRoot {
     name: &'static str,
     children: Vec<UiTree>,
     container: layout::Container,
-    bounds: layout::Size,
+    bounds: layout::Size<f32>,
 }
 impl UiRoot {
     fn spawn(self, cmds: &mut Commands, mut inner: ExtraSpawnArgs) {
@@ -189,7 +189,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut assets: ResMut<Assets<ColorMaterial>>,
 ) {
-    use layout::{Oriented::*, SpaceUse::*};
+    use layout::{Direction::*, SpaceUse::*};
     let tree = root! { ("root", Vertical, Stretch, 300, 270),
         spacer!("spacer1", 10%),
         cont! { ("horiz_cont1", Horizontal, Stretch),
