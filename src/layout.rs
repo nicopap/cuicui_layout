@@ -6,7 +6,7 @@ use bevy::{
 };
 
 use crate::{
-    alignment::{Alignment, Distribution},
+    alignment::{Align, Alignment, Distribution},
     direction::{Direction, Oriented, Size},
     error::{self, BadParent, Bound, Bounds},
     PosRect,
@@ -192,7 +192,7 @@ impl Container {
     pub(crate) fn layout(
         &self,
         this: Entity,
-        children: &Children,
+        children_entities: &Children,
         bounds: Bounds,
         to_update: &mut Query<&mut PosRect>,
         nodes: &Query<LayoutNode>,
@@ -201,24 +201,25 @@ impl Container {
         let Self { direction, distrib, align, size } = *self;
         let Oriented { main, cross } = direction.relative(size);
 
-        if children.is_empty() {
+        if children_entities.is_empty() {
             return Ok(Size::ZERO);
         }
-        let mut child_orient = Oriented { main: 0.0, cross: 0.0 };
+        let mut child_size = Oriented { main: 0.0, cross: 0.0 };
         let mut children_count = 0;
         let bounds = bounds.refine(direction, this, main, cross, names)?;
-        for child_item in nodes.iter_many(children) {
+        for child_item in nodes.iter_many(children_entities) {
             let result = layout_at(child_item, direction, bounds, to_update, nodes, names)?;
-            child_orient.main += result.main;
-            child_orient.cross = child_orient.cross.max(result.cross);
+            child_size.main += result.main;
+            child_size.cross = child_size.cross.max(result.cross);
             children_count += 1;
         }
-        let cross = bounds.0.on(direction.perp()).unwrap_or(child_orient.cross);
+        let cross_size = bounds.0.on(direction.perp()).unwrap_or(child_size.cross);
+        let cross_align = Align::new(cross_size, align);
 
         match distrib {
+            // TODO(clean): the `while let` loops inside are repetitive
             Distribution::FillParent => {
-                let total_space_between =
-                    bounds.on(direction).why(this, names)? - child_orient.main;
+                let total_space_between = bounds.on(direction).why(this, names)? - child_size.main;
 
                 if total_space_between < 0.0 {
                     return Err(error::Why::ContainerOverflow {
@@ -226,32 +227,42 @@ impl Container {
                         bounds,
                         node_children_count: children_count,
                         dir_name: direction.size_name(),
-                        child_size: child_orient.main,
+                        child_size: child_size.main,
                     });
                 }
                 let space_between = total_space_between / (children_count - 1) as f32;
 
                 let mut main_offset = 0.0;
-                let mut iter = to_update.iter_many_mut(children);
+                let mut iter = to_update.iter_many_mut(children_entities);
                 while let Some(mut space) = iter.fetch_next() {
-                    // TODO(bug): account for `align`
-                    let cross_offset = (cross - direction.perp().orient(space.size)) / 2.0;
+                    let child_cross_size = direction.relative(space.size).cross;
+                    let cross_offset = cross_align.offset(child_cross_size);
                     space.pos.set_main(direction, main_offset);
                     space.pos.set_cross(direction, cross_offset);
                     main_offset += direction.orient(space.size) + space_between;
                 }
-                let oriented = Oriented::new(bounds.on(direction).why(this, names)?, cross);
+                let oriented = Oriented::new(bounds.on(direction).why(this, names)?, cross_size);
                 Ok(direction.absolute(oriented))
             }
             Distribution::Start | Distribution::End => {
-                let mut main_offset = 0.0; // TODO(bug): When End, should be size - offset
-                let mut iter = to_update.iter_many_mut(children);
+                let start_offset = match distrib {
+                    Distribution::FillParent => unreachable!("we just matched on this"),
+                    Distribution::Start => 0.0,
+                    Distribution::End => {
+                        let main_parent_size = bounds.on(direction).why(this, names)?;
+                        main_parent_size - child_size.main
+                    }
+                };
+                let mut main_offset = start_offset;
+                let mut iter = to_update.iter_many_mut(children_entities);
                 while let Some(mut space) = iter.fetch_next() {
+                    let child_cross_size = direction.relative(space.size).cross;
+                    let cross_offset = cross_align.offset(child_cross_size);
+                    space.pos.set_cross(direction, cross_offset);
                     space.pos.set_main(direction, main_offset);
-                    space.pos.set_cross(direction, 0.0); // TODO(bug) account for `align`
                     main_offset += direction.orient(space.size);
                 }
-                let oriented = Oriented::new(child_orient.main, cross);
+                let oriented = Oriented::new(child_size.main, cross_size);
                 Ok(direction.absolute(oriented))
             }
         }

@@ -94,3 +94,23 @@ pub enum Distribution {
     /// > `cuicui_layout` will log an error message.
     End,
 }
+
+/// Manage cross alignment.
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) struct Align {
+    cross_parent_size: f32,
+    align: Alignment,
+}
+
+impl Align {
+    pub const fn new(cross_parent_size: f32, align: Alignment) -> Self {
+        Align { cross_parent_size, align }
+    }
+    pub fn offset(self, cross_child_size: f32) -> f32 {
+        match self.align {
+            Alignment::Start => 0.0,
+            Alignment::Center => (self.cross_parent_size - cross_child_size) / 2.0,
+            Alignment::End => self.cross_parent_size - cross_child_size,
+        }
+    }
+}
