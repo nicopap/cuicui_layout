@@ -1,7 +1,6 @@
 //! Demonstrate how to use cuicui layout.
 
 use bevy::{
-    ecs::system::EntityCommands,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::RenderLayers},
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
@@ -13,12 +12,14 @@ const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
 
 macro_rules! root {
     (($name:literal, $dir:expr, $suse:ident, $width:expr, $height:expr), $($branch:expr),* $(,)?) => {
-        UiRoot {
+        UiRoot(UiTree {
             name: $name,
             children: vec![$( $branch, )*],
-            container: layout::Container::$suse ( $dir ),
-            bounds: layout::Size { width: $width as f32, height: $height as f32 },
-        }
+            node: layout::Node::Container(Container {
+                size: layout::Size::new($width as f32, $height as f32).map(layout::Rule::Fixed),
+                ..Container::$suse ( $dir )
+            })
+        })
     };
 }
 macro_rules! spacer {
@@ -49,28 +50,15 @@ macro_rules! cont {
     };
 }
 
-struct Rng {
-    seed: u64,
-}
-impl Rng {
-    const P0: u64 = 0xa076_1d64_78bd_642f;
-    const P1: u64 = 0xe703_7ed1_a0b4_28db;
-    fn color(&mut self) -> Color {
-        const fn random(a: u64, b: u64) -> u64 {
-            let (hh, hl) = ((a >> 32) * (b >> 32), (a >> 32) * (b & 0xFFFF_FFFF));
-            let lh = (a & 0xFFFF_FFFF) * (b >> 32);
-            let ll = (a & 0xFFFF_FFFF) * (b & 0xFFFF_FFFF);
-            (hl.rotate_left(32) ^ hh) ^ (lh.rotate_left(32) ^ ll)
-        }
-        self.seed = self.seed.wrapping_add(Self::P0);
-        let rand_u64 = random(self.seed, self.seed ^ Self::P1);
-        Color::rgba_u8(
-            (rand_u64 & 0xff) as u8,
-            ((rand_u64 & 0xff_00) >> 8) as u8,
-            ((rand_u64 & 0xff_00_00) >> 16) as u8,
-            200,
-        )
-    }
+fn color_from_entity(entity: Entity) -> Color {
+    use std::hash::{Hash, Hasher};
+    const U64_TO_DEGREES: f32 = 360.0 / u64::MAX as f32;
+
+    let mut hasher = bevy::utils::AHasher::default();
+    entity.hash(&mut hasher);
+
+    let hue = hasher.finish() as f32 * U64_TO_DEGREES;
+    Color::hsla(hue, 0.8, 0.5, 0.5)
 }
 
 fn main() {
@@ -85,21 +73,22 @@ fn main() {
         .add_system(stretch_boxes)
         .run();
 }
-struct ExtraSpawnArgs<'a, 'b, 'c> {
-    rng: &'a mut Rng,
-    assets: &'b mut Assets<ColorMaterial>,
-    mesh: &'c Mesh2dHandle,
+struct ExtraSpawnArgs<'a, 'm> {
+    entity: Entity,
+    assets: &'a mut Assets<ColorMaterial>,
+    mesh: &'m Mesh2dHandle,
 }
 
-impl<'a, 'b, 'c> ExtraSpawnArgs<'a, 'b, 'c> {
-    fn debug_child(&mut self) -> impl Bundle {
+impl<'a, 'm> ExtraSpawnArgs<'a, 'm> {
+    fn debug_mesh(&mut self) -> impl Bundle {
         (
             MaterialMesh2dBundle {
                 mesh: self.mesh.clone(),
-                material: self.assets.add(ColorMaterial::from(self.rng.color())),
+                material: self.assets.add(color_from_entity(self.entity).into()),
                 ..default()
             },
             DebugChild,
+            Name::new("DebugMesh"),
             UI_LAYER,
         )
     }
@@ -110,66 +99,49 @@ impl<'a, 'b, 'c> ExtraSpawnArgs<'a, 'b, 'c> {
         )
     }
 }
-struct SpawnArgs<'w, 's, 'a, 'b, 'c, 'd> {
-    cmds: EntityCommands<'w, 's, 'a>,
-    inner: ExtraSpawnArgs<'b, 'c, 'd>,
-}
-
-struct UiRoot {
+struct UiRoot(UiTree);
+struct UiTree {
     name: &'static str,
     children: Vec<UiTree>,
-    container: layout::Container,
-    bounds: layout::Size<f32>,
+    node: layout::Node,
 }
 impl UiRoot {
-    fn spawn(self, cmds: &mut Commands, mut inner: ExtraSpawnArgs) {
-        let Self { children, container, bounds, name } = self;
-        let Container { flow, align, distrib, .. } = container;
-
+    fn spawn(self, cmds: &mut Commands, inner: &mut ExtraSpawnArgs) {
+        let Self(UiTree { children, name, node }) = self;
+        let layout::Node::Container(Container { flow, align, distrib, size }) = node else {
+            return;
+        };
+        let bounds = size.map(|v| if let layout::Rule::Fixed(v) = v { v } else { 0.0 });
         cmds.spawn(layout::render::UiCameraBundle::for_layer(1, 20));
-        cmds.spawn((
+
+        let bundle = (
             layout::render::RootBundle {
                 node: layout::Root::new(bounds, flow, align, distrib),
                 layer: UI_LAYER,
             },
             inner.debug_node(),
             Name::new(name),
-        ))
-        .with_children(|cmds| {
-            cmds.spawn((inner.debug_child(), Name::new("DebugMesh")));
-            for child in children.into_iter() {
-                let inner = ExtraSpawnArgs {
-                    rng: inner.rng,
-                    assets: inner.assets,
-                    mesh: inner.mesh,
-                };
-                let cmds = cmds.spawn_empty();
-                child.spawn(SpawnArgs { cmds, inner });
-            }
+        );
+        cmds.spawn(bundle).with_children(|cmds| {
+            inner.entity = cmds.parent_entity();
+            cmds.spawn(inner.debug_mesh());
+            children.into_iter().for_each(|child| {
+                child.spawn(cmds, inner);
+            });
         });
     }
 }
-struct UiTree {
-    name: &'static str,
-    children: Vec<UiTree>,
-    node: layout::Node,
-}
 impl UiTree {
-    fn spawn(self, SpawnArgs { mut cmds, mut inner }: SpawnArgs) {
+    fn spawn(self, cmds: &mut ChildBuilder, inner: &mut ExtraSpawnArgs) {
         let Self { children, node, name } = self;
-        cmds.insert((node, inner.debug_node(), Name::new(name)))
-            .with_children(|cmds| {
-                cmds.spawn((inner.debug_child(), Name::new("DebugMesh")));
-                for child in children.into_iter() {
-                    let inner = ExtraSpawnArgs {
-                        rng: inner.rng,
-                        assets: inner.assets,
-                        mesh: inner.mesh,
-                    };
-                    let cmds = cmds.spawn_empty();
-                    child.spawn(SpawnArgs { cmds, inner });
-                }
+        let bundle = (node, inner.debug_node(), Name::new(name));
+        cmds.spawn(bundle).with_children(|cmds| {
+            inner.entity = cmds.parent_entity();
+            cmds.spawn(inner.debug_mesh());
+            children.into_iter().for_each(|child| {
+                child.spawn(cmds, inner);
             });
+        });
     }
 }
 
@@ -193,6 +165,7 @@ fn setup(
     mut assets: ResMut<Assets<ColorMaterial>>,
 ) {
     use layout::Flow::*;
+
     let tree = root! { ("root", Vertical, stretch, 300, 270),
         spacer!("spacer1", 10%),
         cont! { ("horiz_cont1", Horizontal, stretch),
@@ -239,8 +212,8 @@ fn setup(
     };
     tree.spawn(
         &mut cmds,
-        ExtraSpawnArgs {
-            rng: &mut Rng { seed: Rng::P0 },
+        &mut ExtraSpawnArgs {
+            entity: Entity::PLACEHOLDER,
             assets: &mut assets,
             mesh: &meshes.add(top_left_quad()).into(),
         },
