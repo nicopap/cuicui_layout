@@ -4,7 +4,7 @@
 //!
 //! Note: this isn't the only way to build a layout, just a quick and dirty way.
 
-use super::{Alignment, Constraint, Direction, Distribution};
+use super::{Alignment, Distribution, Flow, Rule};
 
 /// The container's size is equal to `.0` times what is containing it.
 /// Must be within the range `[0.0, 1.0]` (inclusive)
@@ -46,25 +46,25 @@ pub struct Fixed(pub f32);
 
 /// A constraint on the width or height of a [`Container`].
 ///
-/// This enables expressing [`Spec`] at the type level and emitting
+/// This enables expressing [`Rule`] at the type level and emitting
 /// compile-time failures when a layout expressed in code is invalid.
 pub trait Constrain {
-    /// The [`Constraint`] the constraint represents.
-    fn spec(&self) -> Constraint;
+    /// The [`Rule`] the constraint represents.
+    fn rule(&self) -> Rule;
 }
 impl Constrain for Parent {
-    fn spec(&self) -> Constraint {
-        Constraint::Parent(self.0)
+    fn rule(&self) -> Rule {
+        Rule::Parent(self.0)
     }
 }
 impl Constrain for Children {
-    fn spec(&self) -> Constraint {
-        Constraint::Children(self.0)
+    fn rule(&self) -> Rule {
+        Rule::Children(self.0)
     }
 }
 impl Constrain for Fixed {
-    fn spec(&self) -> Constraint {
-        Constraint::Fixed(self.0)
+    fn rule(&self) -> Rule {
+        Rule::Fixed(self.0)
     }
 }
 
@@ -72,13 +72,12 @@ trait MakeNode {
     fn node(&self) -> super::Node;
 }
 
-/// A constraint that doesn't need to know
+/// We don't care about the parent size.
 pub trait FreeParent: Constrain {}
 impl FreeParent for Fixed {}
 impl FreeParent for Children {}
 
-/// A constraint that isn't `Child`. It means that its children can
-/// compute their own size based on their parent's size.
+/// We don't care about the children size.
 pub trait FreeChildren: Constrain {}
 impl FreeChildren for Parent {}
 impl FreeChildren for Fixed {}
@@ -91,7 +90,9 @@ impl FreeChildren for Fixed {}
 /// If the layout constraints do not allow it, a compilation error is
 /// produced, generally looking like:
 ///
-/// > the trait bound `Width: AllowsUnconstrainedParent` is not satisfied
+/// ```text
+/// the trait bound `Width: FreeParent` is not satisfied
+/// ```
 ///
 /// ## Jargon
 ///
@@ -122,7 +123,7 @@ impl FreeChildren for Fixed {}
 ///
 /// - Given `Node` size depends on the size of its parent, while its parent
 ///   depends on the size of `Node`
-/// - This includes `spacers`, which depends on the size in the layout direction
+/// - This includes `spacers`, which depends on the size in the layout flow
 ///   of their direct parent.
 ///
 /// Yeah I don't think there is any other failure mode.
@@ -131,7 +132,7 @@ impl FreeChildren for Fixed {}
 ///
 /// This doesn't eliminate all classes of errors.
 /// For example, using a `Container::spacer` in a container going in a
-/// direction which size is unconstrained compiles, but results in a runtime
+/// flow which size is unconstrained compiles, but results in a runtime
 /// error.
 ///
 /// ## Usage
@@ -158,7 +159,7 @@ impl FreeChildren for Fixed {}
 pub struct Container<W: Constrain, H: Constrain> {
     width: W,
     height: H,
-    direction: Direction,
+    flow: Flow,
     align: Alignment,
     distrib: Distribution,
     children: Vec<Box<dyn MakeNode>>,
@@ -178,12 +179,12 @@ impl MakeNode for FixedNode {
 impl<W: Constrain, H: Constrain> MakeNode for Container<W, H> {
     fn node(&self) -> super::Node {
         super::Node::Container(super::Container {
-            direction: self.direction,
+            flow: self.flow,
             align: self.align,
             distrib: self.distrib,
             size: super::Size {
-                width: self.width.spec(),
-                height: self.height.spec(),
+                width: self.width.rule(),
+                height: self.height.rule(),
             },
         })
     }
@@ -229,34 +230,34 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
     /// Vertically aligned (bottom to top), children stretch to fill
     /// the whole height of the container.
     pub const fn v_stretch(width: W, height: H) -> Self {
-        Self::stretch(width, height, Direction::Vertical)
+        Self::stretch(width, height, Flow::Vertical)
     }
     /// Horizontally aligned (left to right), children stretch to fill
     /// the whole width of the container.
     pub const fn h_stretch(width: W, height: H) -> Self {
-        Self::stretch(width, height, Direction::Horizontal)
+        Self::stretch(width, height, Flow::Horizontal)
     }
     pub const fn v_compact(width: W, height: H) -> Self {
-        Self::compact(width, height, Direction::Vertical)
+        Self::compact(width, height, Flow::Vertical)
     }
     pub const fn h_compact(width: W, height: H) -> Self {
-        Self::compact(width, height, Direction::Horizontal)
+        Self::compact(width, height, Flow::Horizontal)
     }
-    pub const fn stretch(width: W, height: H, direction: Direction) -> Self {
+    pub const fn stretch(width: W, height: H, flow: Flow) -> Self {
         Self {
             width,
             height,
-            direction,
+            flow,
             align: Alignment::Center,
             distrib: Distribution::FillParent,
             children: Vec::new(),
         }
     }
-    pub const fn compact(width: W, height: H, direction: Direction) -> Self {
+    pub const fn compact(width: W, height: H, flow: Flow) -> Self {
         Self {
             width,
             height,
-            direction,
+            flow,
             align: Alignment::Start,
             distrib: Distribution::Start,
             children: Vec::new(),

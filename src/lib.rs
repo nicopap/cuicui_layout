@@ -41,9 +41,9 @@ use bevy::prelude::*;
 use bevy_mod_sysfail::sysfail;
 
 pub use alignment::{Alignment, Distribution};
-pub use direction::{Direction, Oriented, Size};
+pub use direction::{Flow, Oriented, Size};
 use error::{Bounds, Why};
-pub use layout::{Constraint, Container, LayoutNode, LeafConstraint, Node, Root};
+pub use layout::{Container, LayoutNode, LeafRule, Node, Root, Rule};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -76,15 +76,15 @@ fn compute_layout(
     names: Query<&Name>,
     roots: Query<(Entity, &Root, &Children)>,
 ) -> Result<(), Why> {
-    for (entity, &Root { bounds, direction, align, distrib }, children) in &roots {
+    for (entity, &Root { bounds, flow, align, distrib }, children) in &roots {
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
         }
         let container = Container {
-            direction,
+            flow,
             align,
             distrib,
-            size: bounds.map(Constraint::Fixed),
+            size: bounds.map(Rule::Fixed),
         };
         let bounds = Bounds::from(bounds);
         container.layout(entity, children, bounds, &mut to_update, &nodes, &names)?;
@@ -111,16 +111,16 @@ impl Plugin for Plug {
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()
-            .register_type::<Constraint>()
+            .register_type::<Rule>()
             .register_type::<Container>()
-            .register_type::<Direction>()
+            .register_type::<Flow>()
             .register_type::<Distribution>()
             .register_type::<Node>()
-            .register_type::<Oriented<LeafConstraint>>()
+            .register_type::<Oriented<LeafRule>>()
             .register_type::<PosRect>()
             .register_type::<Root>()
-            .register_type::<Size<Constraint>>()
+            .register_type::<Size<Rule>>()
             .register_type::<Size<f32>>()
-            .register_type::<Size<LeafConstraint>>();
+            .register_type::<Size<LeafRule>>();
     }
 }

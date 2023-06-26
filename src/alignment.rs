@@ -1,3 +1,5 @@
+#[cfg(doc)]
+use crate::Rule;
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect};
 
@@ -56,7 +58,7 @@ pub enum Alignment {
 ///
 /// Note that [`Distribution::FillParent`] and [`Distribution::End`] requires
 /// a parent with a known size (ie: the container's main axis constraint
-/// must not be [`Constraint::Children`]).
+/// must not be [`Rule::Children`]).
 ///
 /// The following suposes an [`Alignment::Start`].
 ///
@@ -74,6 +76,7 @@ pub enum Alignment {
 /// ```
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[doc(alias = "justification")]
 pub enum Distribution {
     /// All item will be clumped together at the left/top.
     Start,
@@ -82,7 +85,7 @@ pub enum Distribution {
     /// > **Note**: This requires a known parent container main axis size.
     /// > Use [`Distribution::Start`] if you don't know it!
     /// >
-    /// > If the parent container's constraint on the main axis is [`Constraint::Children`],
+    /// > If the parent container's constraint on the main axis is [`Rule::Children`],
     /// > `cuicui_layout` will log an error message.
     FillParent,
     /// All item will be clumped together at the right/bottom.
@@ -90,7 +93,7 @@ pub enum Distribution {
     /// > **Note**: This requires a known parent container main axis size.
     /// > Use [`Distribution::Start`] if you don't know it!
     /// >
-    /// > If the parent container's constraint on the main axis is [`Constraint::Children`],
+    /// > If the parent container's constraint on the main axis is [`Rule::Children`],
     /// > `cuicui_layout` will log an error message.
     End,
 }

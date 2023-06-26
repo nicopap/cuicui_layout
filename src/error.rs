@@ -4,7 +4,7 @@ use bevy::prelude::{Entity, Name, Query};
 use bevy_mod_sysfail::FailureMode;
 use thiserror::Error;
 
-use crate::direction::{Direction, Size};
+use crate::direction::{Flow, Size};
 
 pub(crate) type Bound = Result<f32, BadParent>;
 
@@ -62,9 +62,9 @@ impl From<Size<f32>> for Bounds {
 }
 
 impl Bounds {
-    pub(crate) const fn on(&self, direction: Direction) -> MaybeDirectionalBound {
-        let name = direction.orient(Size::new("width", "height"));
-        MaybeDirectionalBound { bound: self.0.on(direction), name }
+    pub(crate) const fn on(&self, flow: Flow) -> MaybeDirectionalBound {
+        let name = flow.orient(Size::new("width", "height"));
+        MaybeDirectionalBound { bound: self.0.on(flow), name }
     }
 }
 impl MaybeDirectionalBound {

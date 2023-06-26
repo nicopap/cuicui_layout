@@ -20,14 +20,14 @@ pub struct Oriented<T> {
 /// The layout direction of a [`Container`].
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
-pub enum Direction {
+pub enum Flow {
     /// Children are arranged on the horizontal axis.
     Horizontal,
 
     /// Children are arranged on the vertical axis.
     Vertical,
 }
-impl Direction {
+impl Flow {
     pub(crate) const fn orient<T: Copy>(self, size: Size<T>) -> T {
         self.relative(size).main
     }
@@ -43,13 +43,13 @@ impl Direction {
     /// This is the inverse of [`Oriented::relative`].
     pub(crate) const fn absolute<T: Copy>(self, Oriented { main, cross }: Oriented<T>) -> Size<T> {
         match self {
-            Direction::Horizontal => Size::new(main, cross),
-            Direction::Vertical => Size::new(cross, main),
+            Flow::Horizontal => Size::new(main, cross),
+            Flow::Vertical => Size::new(cross, main),
         }
     }
     /// Perpendicular orientation.
     pub(crate) const fn perp(self) -> Self {
-        self.orient(Size::new(Direction::Vertical, Direction::Horizontal))
+        self.orient(Size::new(Flow::Vertical, Flow::Horizontal))
     }
     pub(crate) const fn size_name(&self) -> &'static str {
         self.orient(Size::new("width", "height"))
@@ -72,22 +72,22 @@ impl<T> Size<T> {
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Size<U> {
         Size { width: f(self.width), height: f(self.height) }
     }
-    pub fn set_cross(&mut self, direction: Direction, cross: T) {
-        match direction {
-            Direction::Horizontal => self.height = cross,
-            Direction::Vertical => self.width = cross,
+    pub fn set_cross(&mut self, flow: Flow, cross: T) {
+        match flow {
+            Flow::Horizontal => self.height = cross,
+            Flow::Vertical => self.width = cross,
         }
     }
-    pub fn set_main(&mut self, direction: Direction, main: T) {
-        match direction {
-            Direction::Horizontal => self.width = main,
-            Direction::Vertical => self.height = main,
+    pub fn set_main(&mut self, flow: Flow, main: T) {
+        match flow {
+            Flow::Horizontal => self.width = main,
+            Flow::Vertical => self.height = main,
         }
     }
 }
 impl<T: Copy> Size<T> {
-    pub(crate) const fn on(self, direction: Direction) -> T {
-        direction.orient(self)
+    pub(crate) const fn on(self, flow: Flow) -> T {
+        flow.orient(self)
     }
 }
 
@@ -109,19 +109,20 @@ mod tests {
     #[test]
     fn relative() {
         let Oriented { main: main_v, cross: cross_v } =
-            Direction::Vertical.relative(Size::new("width", "height"));
-
+            Flow::Vertical.relative(Size::new("width", "height"));
         let Oriented { main: main_h, cross: cross_h } =
-            Direction::Horizontal.relative(Size::new("width", "height"));
+            Flow::Horizontal.relative(Size::new("width", "height"));
+
         assert_eq!(main_v, cross_h);
         assert_eq!(main_h, cross_v);
     }
     #[test]
     fn absolute() {
         let Size { width: width_v, height: height_v } =
-            Direction::Vertical.absolute(Oriented::new("main", "cross"));
+            Flow::Vertical.absolute(Oriented::new("main", "cross"));
         let Size { width: width_h, height: height_h } =
-            Direction::Horizontal.absolute(Oriented::new("main", "cross"));
+            Flow::Horizontal.absolute(Oriented::new("main", "cross"));
+
         assert_eq!(width_v, height_h);
         assert_eq!(width_h, height_v);
     }

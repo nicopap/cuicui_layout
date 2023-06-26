@@ -124,12 +124,12 @@ struct UiRoot {
 impl UiRoot {
     fn spawn(self, cmds: &mut Commands, mut inner: ExtraSpawnArgs) {
         let Self { children, container, bounds, name } = self;
-        let Container { direction, align, distrib, .. } = container;
+        let Container { flow, align, distrib, .. } = container;
 
         cmds.spawn(layout::render::UiCameraBundle::for_layer(1, 20));
         cmds.spawn((
             layout::render::RootBundle {
-                node: layout::Root::new(bounds, direction, align, distrib),
+                node: layout::Root::new(bounds, flow, align, distrib),
                 layer: UI_LAYER,
             },
             inner.debug_node(),
@@ -192,7 +192,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut assets: ResMut<Assets<ColorMaterial>>,
 ) {
-    use layout::Direction::*;
+    use layout::Flow::*;
     let tree = root! { ("root", Vertical, stretch, 300, 270),
         spacer!("spacer1", 10%),
         cont! { ("horiz_cont1", Horizontal, stretch),
