@@ -7,15 +7,16 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use cuicui_layout as layout;
+use layout::Container;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
 
 macro_rules! root {
-    (($name:literal, $dir:expr, $suse:expr, $width:expr, $height:expr), $($branch:expr),* $(,)?) => {
+    (($name:literal, $dir:expr, $suse:ident, $width:expr, $height:expr), $($branch:expr),* $(,)?) => {
         UiRoot {
             name: $name,
             children: vec![$( $branch, )*],
-            container: layout::Container::new ( $dir, $suse ),
+            container: layout::Container::$suse ( $dir ),
             bounds: layout::Size { width: $width as f32, height: $height as f32 },
         }
     };
@@ -39,11 +40,11 @@ macro_rules! fix {
     };
 }
 macro_rules! cont {
-    (($name:literal, $dir:expr, $suse:expr), $($branch:expr),* $(,)?) => {
+    (($name:literal, $dir:expr, $suse:ident), $($branch:expr),* $(,)?) => {
         UiTree {
             name: $name,
             children: vec![$( $branch, )*],
-            node: layout::Node::Container(layout::Container::new ( $dir, $suse ))
+            node: layout::Node::Container(layout::Container::$suse ( $dir ))
         }
     };
 }
@@ -123,10 +124,12 @@ struct UiRoot {
 impl UiRoot {
     fn spawn(self, cmds: &mut Commands, mut inner: ExtraSpawnArgs) {
         let Self { children, container, bounds, name } = self;
+        let Container { direction, align, distrib, .. } = container;
+
         cmds.spawn(layout::render::UiCameraBundle::for_layer(1, 20));
         cmds.spawn((
             layout::render::RootBundle {
-                node: layout::Root::new(bounds, container.direction, container.space_use),
+                node: layout::Root::new(bounds, direction, align, distrib),
                 layer: UI_LAYER,
             },
             inner.debug_node(),
@@ -189,24 +192,24 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut assets: ResMut<Assets<ColorMaterial>>,
 ) {
-    use layout::{Direction::*, SpaceUse::*};
-    let tree = root! { ("root", Vertical, Stretch, 300, 270),
+    use layout::Direction::*;
+    let tree = root! { ("root", Vertical, stretch, 300, 270),
         spacer!("spacer1", 10%),
-        cont! { ("horiz_cont1", Horizontal, Stretch),
+        cont! { ("horiz_cont1", Horizontal, stretch),
             fix!("h1_1_fix", 10, 10), fix!("h1_2_fix", 30, 10), fix!("h1_3_fix", 50, 20),
             spacer!("h1_4_spacer", 10%), fix!("h1_5_fix", 51, 32),
         },
         fix!("fix1", 10, 20),
         fix!("fix2", 40, 30),
-        cont! { ("horiz_cont2", Horizontal, Compact),
+        cont! { ("horiz_cont2", Horizontal, compact),
             fix!("h2_1_fix", 10, 14), fix!("h2_2_fix", 12, 12), fix!("h2_3_fix", 14, 10),
         },
-        cont! { ("horiz_cont3", Horizontal, Stretch),
+        cont! { ("horiz_cont3", Horizontal, stretch),
             spacer!("spacer5", 4%),
-            // cont! { ("horiz_cont4", Horizontal, Stretch),
+            // cont! { ("horiz_cont4", Horizontal, stretch),
             //     fix!("h4_1", 10, 14), fix!("h4_2", 12, 12), fix!("h4_3", 14, 10),
             // }
-            cont! { ("vert_cont1", Vertical, Compact),
+            cont! { ("vert_cont1", Vertical, compact),
                 fix!("v1_1_fix",10, 21),
                 fix!("v1_2_fix",12, 12),
                 fix!("v1_3_fix",14, 20),
@@ -214,7 +217,7 @@ fn setup(
                 fix!("v1_5_fix",18, 12),
                 fix!("v1_6_fix",20, 20),
             },
-            cont! { ("horiz_inner", Horizontal, Compact),
+            cont! { ("horiz_inner", Horizontal, compact),
                 fix!("v2_1_fix",10, 21),
                 fix!("v2_2_fix",12, 12),
                 fix!("v2_3_fix",14, 20),
@@ -222,7 +225,7 @@ fn setup(
                 fix!("v2_5_fix",18, 12),
                 fix!("v2_6_fix",20, 20),
             },
-            cont! { ("vert_cont3", Vertical, Compact),
+            cont! { ("vert_cont3", Vertical, compact),
                 fix!("v3_1_fix",10, 21),
                 fix!("v3_2_fix",12, 12),
                 fix!("v3_3_fix",14, 20),

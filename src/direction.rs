@@ -95,10 +95,6 @@ impl<T: Copy> Oriented<T> {
     pub const fn new(main: T, cross: T) -> Self {
         Self { main, cross }
     }
-
-    pub(crate) fn on(self, direction: Direction) -> Size<T> {
-        direction.absolute(self)
-    }
 }
 
 impl<T: fmt::Display> fmt::Display for Size<T> {

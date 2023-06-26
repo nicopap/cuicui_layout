@@ -29,6 +29,7 @@
 //! * Write a tool to make and export layouts.
 #![allow(clippy::manual_range_contains)]
 
+mod alignment;
 mod direction;
 mod error;
 mod layout;
@@ -39,9 +40,10 @@ pub mod typed;
 use bevy::prelude::*;
 use bevy_mod_sysfail::sysfail;
 
+pub use alignment::{Alignment, Distribution};
 pub use direction::{Direction, Oriented, Size};
 use error::{Bounds, Why};
-pub use layout::{Constraint, Container, LayoutNode, LeafConstraint, Node, Root, SpaceUse};
+pub use layout::{Constraint, Container, LayoutNode, LeafConstraint, Node, Root};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -74,13 +76,14 @@ fn compute_layout(
     names: Query<&Name>,
     roots: Query<(Entity, &Root, &Children)>,
 ) -> Result<(), Why> {
-    for (entity, &Root { bounds, direction, space_use }, children) in &roots {
+    for (entity, &Root { bounds, direction, align, distrib }, children) in &roots {
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
         }
         let container = Container {
             direction,
-            space_use,
+            align,
+            distrib,
             size: bounds.map(Constraint::Fixed),
         };
         let bounds = Bounds::from(bounds);
@@ -107,16 +110,17 @@ impl Plugin for Plug {
         app.add_system(compute_layout.in_set(Systems::ComputeLayout));
 
         #[cfg(feature = "reflect")]
-        app.register_type::<Constraint>()
+        app.register_type::<Alignment>()
+            .register_type::<Constraint>()
             .register_type::<Container>()
             .register_type::<Direction>()
+            .register_type::<Distribution>()
             .register_type::<Node>()
             .register_type::<Oriented<LeafConstraint>>()
             .register_type::<PosRect>()
             .register_type::<Root>()
             .register_type::<Size<Constraint>>()
             .register_type::<Size<f32>>()
-            .register_type::<Size<LeafConstraint>>()
-            .register_type::<SpaceUse>();
+            .register_type::<Size<LeafConstraint>>();
     }
 }

@@ -66,6 +66,5 @@ bevy hierarchy for your Ui.
 - [ ] Define a parametrable plugin to add smoothly the layout systems to app
 - [ ] Integrate Change detection
 - [ ] Accumulate errors instead of early exit.
-- [ ] Root expressed as percent of UiCamera
 - [ ] Write a tool to make and export layouts.
 - [ ] Separate the algo into its own crate independent of bevy

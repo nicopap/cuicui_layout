@@ -6,6 +6,7 @@ use bevy::{
 };
 
 use crate::{
+    alignment::{Alignment, Distribution},
     direction::{Direction, Oriented, Size},
     error::{self, BadParent, Bound, Bounds},
     PosRect,
@@ -28,7 +29,7 @@ impl Bounds {
         };
         let main = component(main, dir)?;
         let cross = component(cross, dir.perp())?;
-        Ok(Self(Oriented::new(main, cross).on(dir)))
+        Ok(Self(dir.absolute(Oriented::new(main, cross))))
     }
 
     fn inside(self, Size { width, height }: Size<LeafConstraint>) -> Size<Bound> {
@@ -39,18 +40,21 @@ impl Bounds {
     }
 }
 
+// TODO(clean): Split out `size` so that I can re-use it in `Root`
 #[derive(Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct Container {
     pub direction: Direction,
-    pub space_use: SpaceUse,
+    pub align: Alignment,
+    pub distrib: Distribution,
     pub size: Size<Constraint>,
 }
 impl Default for Container {
     fn default() -> Self {
         Container {
             direction: Direction::Horizontal,
-            space_use: SpaceUse::Stretch,
+            align: Alignment::Center,
+            distrib: Distribution::FillParent,
             size: Size {
                 width: Constraint::Parent(1.0),
                 height: Constraint::Parent(1.0),
@@ -58,24 +62,7 @@ impl Default for Container {
         }
     }
 }
-impl Container {
-    pub fn new(direction: Direction, space_use: SpaceUse) -> Self {
-        let main = match space_use {
-            SpaceUse::Stretch => Constraint::Parent(1.0),
-            SpaceUse::Compact => Constraint::Children(1.0),
-        };
-        let cross = Constraint::Children(1.0);
-        let size = direction.absolute(Oriented::new(main, cross));
-        Self { direction, space_use, size }
-    }
-}
 
-#[derive(Clone, Copy, PartialEq)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
-pub enum SpaceUse {
-    Stretch,
-    Compact,
-}
 #[derive(Component)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
 pub enum Node {
@@ -161,19 +148,47 @@ impl Default for Constraint {
 #[derive(Component)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct Root {
-    pub direction: Direction,
-    pub space_use: SpaceUse,
     pub bounds: Size<f32>,
+    pub direction: Direction,
+    pub align: Alignment,
+    pub distrib: Distribution,
 }
 impl Root {
-    pub fn new(bounds: Size<f32>, direction: Direction, space_use: SpaceUse) -> Self {
-        Root { bounds, space_use, direction }
+    pub const fn new(
+        bounds: Size<f32>,
+        direction: Direction,
+        align: Alignment,
+        distrib: Distribution,
+    ) -> Self {
+        Root { bounds, align, distrib, direction }
+    }
+    pub const fn stretch(bounds: Size<f32>, direction: Direction) -> Self {
+        use Distribution::FillParent;
+        Root::new(bounds, direction, Alignment::Center, FillParent)
+    }
+    pub const fn compact(bounds: Size<f32>, direction: Direction) -> Self {
+        Root::new(bounds, direction, Alignment::Start, Distribution::Start)
     }
 }
 
 pub type LayoutNode = (Entity, &'static Node, &'static Children);
 
 impl Container {
+    pub const fn new(direction: Direction, align: Alignment, distrib: Distribution) -> Self {
+        let main = match distrib {
+            Distribution::FillParent => Constraint::Parent(1.0),
+            Distribution::Start | Distribution::End => Constraint::Children(1.0),
+        };
+        let cross = Constraint::Children(1.0);
+        let size = direction.absolute(Oriented::new(main, cross));
+        Self { direction, distrib, align, size }
+    }
+    pub const fn stretch(direction: Direction) -> Self {
+        Self::new(direction, Alignment::Center, Distribution::FillParent)
+    }
+    pub const fn compact(direction: Direction) -> Self {
+        Self::new(direction, Alignment::Start, Distribution::Start)
+    }
     pub(crate) fn layout(
         &self,
         this: Entity,
@@ -183,8 +198,7 @@ impl Container {
         nodes: &Query<LayoutNode>,
         names: &Query<&Name>,
     ) -> Result<Size<f32>, error::Why> {
-        use SpaceUse::*;
-        let Self { direction, space_use, size } = *self;
+        let Self { direction, distrib, align, size } = *self;
         let Oriented { main, cross } = direction.relative(size);
 
         if children.is_empty() {
@@ -201,8 +215,8 @@ impl Container {
         }
         let cross = bounds.0.on(direction.perp()).unwrap_or(child_orient.cross);
 
-        match space_use {
-            Stretch => {
+        match distrib {
+            Distribution::FillParent => {
                 let total_space_between =
                     bounds.on(direction).why(this, names)? - child_orient.main;
 
@@ -220,22 +234,25 @@ impl Container {
                 let mut main_offset = 0.0;
                 let mut iter = to_update.iter_many_mut(children);
                 while let Some(mut space) = iter.fetch_next() {
+                    // TODO(bug): account for `align`
                     let cross_offset = (cross - direction.perp().orient(space.size)) / 2.0;
                     space.pos.set_main(direction, main_offset);
                     space.pos.set_cross(direction, cross_offset);
                     main_offset += direction.orient(space.size) + space_between;
                 }
-                Ok(Oriented::new(bounds.on(direction).why(this, names)?, cross).on(direction))
+                let oriented = Oriented::new(bounds.on(direction).why(this, names)?, cross);
+                Ok(direction.absolute(oriented))
             }
-            Compact => {
-                let mut main_offset = 0.0;
+            Distribution::Start | Distribution::End => {
+                let mut main_offset = 0.0; // TODO(bug): When End, should be size - offset
                 let mut iter = to_update.iter_many_mut(children);
                 while let Some(mut space) = iter.fetch_next() {
                     space.pos.set_main(direction, main_offset);
-                    space.pos.set_cross(direction, 0.0);
+                    space.pos.set_cross(direction, 0.0); // TODO(bug) account for `align`
                     main_offset += direction.orient(space.size);
                 }
-                Ok(Oriented::new(child_orient.main, cross).on(direction))
+                let oriented = Oriented::new(child_orient.main, cross);
+                Ok(direction.absolute(oriented))
             }
         }
     }
@@ -249,7 +266,7 @@ impl Container {
 // - **the position of the children** will be set with `to_update`.
 fn layout_at(
     (this, node, children): QueryItem<LayoutNode>,
-    direction: Direction,
+    flow: Direction,
     bounds: Bounds,
     to_update: &mut Query<&mut PosRect>,
     nodes: &Query<LayoutNode>,
@@ -259,11 +276,11 @@ fn layout_at(
         Node::Container(container) => {
             container.layout(this, children, bounds, to_update, nodes, names)?
         }
-        Node::Axis(oriented) => bounds.inside(oriented.on(direction)).why(this, names)?,
-        Node::Box(size) => bounds.inside(*size).why(this, names)?,
+        &Node::Axis(oriented) => bounds.inside(flow.absolute(oriented)).why(this, names)?,
+        &Node::Box(size) => bounds.inside(size).why(this, names)?,
     };
     if let Ok(mut to_update) = to_update.get_mut(this) {
         to_update.size = size;
     }
-    Ok(direction.relative(size))
+    Ok(flow.relative(size))
 }
