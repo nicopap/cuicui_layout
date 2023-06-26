@@ -1,3 +1,4 @@
+//! Structs to help convert between a relative and absolute direction.
 use std::fmt;
 
 #[cfg(feature = "reflect")]

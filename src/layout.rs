@@ -1,3 +1,5 @@
+//! The `cuicui_layout` algorithm.
+
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
 use bevy::{

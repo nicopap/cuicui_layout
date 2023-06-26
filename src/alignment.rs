@@ -1,3 +1,5 @@
+//! enums for main axis and cross axis alignment.
+
 #[cfg(doc)]
 use crate::Rule;
 #[cfg(feature = "reflect")]
