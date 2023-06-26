@@ -213,11 +213,9 @@ impl Container {
         let cross_size = bounds.0.on(flow.perp()).unwrap_or(child_size.cross);
         let cross_align = Align::new(cross_size, align);
 
-        match distrib {
-            // TODO(clean): the `while let` loops inside are repetitive
+        let (main_size, mut main_offset, space_between) = match distrib {
             Distribution::FillParent => {
                 let total_space_between = bounds.on(flow).why(this, names)? - child_size.main;
-
                 if total_space_between < 0.0 {
                     return Err(error::Why::ContainerOverflow {
                         this: error::Handle::of(this, names),
@@ -228,41 +226,24 @@ impl Container {
                     });
                 }
                 let space_between = total_space_between / (children_count - 1) as f32;
-
-                let mut main_offset = 0.0;
-                let mut iter = to_update.iter_many_mut(children_entities);
-                while let Some(mut space) = iter.fetch_next() {
-                    let child_cross_size = flow.relative(space.size).cross;
-                    let cross_offset = cross_align.offset(child_cross_size);
-                    space.pos.set_main(flow, main_offset);
-                    space.pos.set_cross(flow, cross_offset);
-                    main_offset += flow.orient(space.size) + space_between;
-                }
-                let oriented = Oriented::new(bounds.on(flow).why(this, names)?, cross_size);
-                Ok(flow.absolute(oriented))
+                (bounds.on(flow).why(this, names)?, 0.0, space_between)
             }
-            Distribution::Start | Distribution::End => {
-                let start_offset = match distrib {
-                    Distribution::FillParent => unreachable!("we just matched on this"),
-                    Distribution::Start => 0.0,
-                    Distribution::End => {
-                        let main_parent_size = bounds.on(flow).why(this, names)?;
-                        main_parent_size - child_size.main
-                    }
-                };
-                let mut main_offset = start_offset;
-                let mut iter = to_update.iter_many_mut(children_entities);
-                while let Some(mut space) = iter.fetch_next() {
-                    let child_cross_size = flow.relative(space.size).cross;
-                    let cross_offset = cross_align.offset(child_cross_size);
-                    space.pos.set_cross(flow, cross_offset);
-                    space.pos.set_main(flow, main_offset);
-                    main_offset += flow.orient(space.size);
-                }
-                let oriented = Oriented::new(child_size.main, cross_size);
-                Ok(flow.absolute(oriented))
+            Distribution::Start => (child_size.main, 0.0, 0.0),
+            Distribution::End => {
+                let main_parent_size = bounds.on(flow).why(this, names)?;
+                (child_size.main, main_parent_size - child_size.main, 0.0)
             }
+        };
+        let mut iter = to_update.iter_many_mut(children_entities);
+        while let Some(mut space) = iter.fetch_next() {
+            let child_cross_size = flow.relative(space.size).cross;
+            let cross_offset = cross_align.offset(child_cross_size);
+            space.pos.set_cross(flow, cross_offset);
+            space.pos.set_main(flow, main_offset);
+            main_offset += flow.orient(space.size) + space_between;
         }
+        let oriented = Oriented::new(main_size, cross_size);
+        Ok(flow.absolute(oriented))
     }
 }
 // This functions' responsability is to compute the layout for `current` Entity,
