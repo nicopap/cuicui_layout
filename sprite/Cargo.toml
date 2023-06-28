@@ -1,0 +1,18 @@
+[package]
+name = "cuicui_layout_bevy_sprite"
+description = "Integration with bevy_sprite for cuicui_layout"
+readme = "README.md"
+keywords = ["bevy", "layout", "ui"]
+categories = ["game-development", "gui"]
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+bevy_mod_sysfail = "2"
+bevy = { version = "0.10", default-features = false, features = ["bevy_sprite"] }
+cuicui_layout.workspace = true

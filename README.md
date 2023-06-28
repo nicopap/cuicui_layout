@@ -45,6 +45,17 @@ cuicui layout returns postion as offset from parent, which may not be useful
 if you do not use bevy's transform hierarchy. This also locks you into using
 bevy hierarchy for your Ui.
 
+## Understanding this repository
+
+This repository at <https://github.com/nicopap/cuicui_layout> contains several
+packages. One root package and further integration packages:
+
+- The root package, `cuicui_layout` defines a layouting algorithm that works
+  on its own defined components. It doesn't even hard-code to update `Transform`.
+- `ui` contains integration with the bevy-native UI framework, `bevy_ui`
+- `sprite` on the other hand, integrates with bevy's 2D renderer, `bevy_sprite`.
+
+ 
 ## TODO
 
 - [X] Basic algorithm
@@ -64,6 +75,7 @@ bevy hierarchy for your Ui.
   - [ ] Test alignment and distribution
 - [X] `ChildDefined(how_much_larger_than_child)`
 - [ ] API cleanup
+  - [ ] Margin containers
 - [ ] Define a parametrable plugin to add smoothly the layout systems to app
 - [ ] Integrate Change detection
 - [ ] Accumulate errors instead of early exit.

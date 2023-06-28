@@ -6,6 +6,7 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use cuicui_layout as layout;
+use cuicui_layout_bevy_sprite as render;
 use layout::Container;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
@@ -69,7 +70,7 @@ fn main() {
         .add_plugin(WorldInspectorPlugin::default())
         .add_plugin(layout::Plug)
         .add_system(layout::update_transforms)
-        .add_system(layout::render::update_ui_camera_root)
+        .add_system(render::update_ui_camera_root)
         .add_system(stretch_boxes)
         .run();
 }
@@ -112,10 +113,10 @@ impl UiRoot {
             return;
         };
         let bounds = size.map(|v| if let layout::Rule::Fixed(v) = v { v } else { 0.0 });
-        cmds.spawn(layout::render::UiCameraBundle::for_layer(1, 20));
+        cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
 
         let bundle = (
-            layout::render::RootBundle {
+            render::RootBundle {
                 node: layout::Root::new(bounds, flow, align, distrib),
                 layer: UI_LAYER,
             },

@@ -6,8 +6,7 @@ use bevy::{
     render::view::{Layer, RenderLayers},
 };
 use bevy_mod_sysfail::quick_sysfail;
-
-use super::Root;
+use cuicui_layout::Root;
 
 #[derive(Component, Clone, Copy, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]

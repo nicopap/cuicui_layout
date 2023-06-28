@@ -1,0 +1,21 @@
+[package]
+name = "cuicui_layout"
+description = "A layout algorithm made to be understood by humans"
+readme = "README.md"
+categories = ["game-development", "gui"]
+keywords = ["bevy", "layout", "ui"]
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["reflect"]
+reflect = []
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+bevy_mod_sysfail = "2"
+bevy = { version = "0.10", default-features = false }

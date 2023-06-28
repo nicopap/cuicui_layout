@@ -1,0 +1,17 @@
+[package]
+name = "sprite_mesh_debug"
+description = "Show extents of containers using cuicui_layout"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "sprite_mesh_debug"
+path = "main.rs"
+
+[dependencies]
+cuicui_layout.workspace = true
+cuicui_layout_bevy_sprite.workspace = true
+bevy-inspector-egui = "0.18.3"
+bevy = { version = "0.10", features = ["png", "x11", "bevy_asset", "bevy_render", "bevy_sprite" ] }

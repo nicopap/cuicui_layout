@@ -30,11 +30,10 @@
 #![allow(clippy::manual_range_contains)]
 
 mod alignment;
+// mod builder;
 mod direction;
 mod error;
 mod layout;
-#[cfg(feature = "bevy_render")]
-pub mod render;
 pub mod typed;
 
 use bevy::prelude::*;

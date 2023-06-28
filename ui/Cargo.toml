@@ -1,0 +1,22 @@
+[package]
+name = "cuicui_layout_bevy_ui"
+description = "Integration with bevy_ui for cuicui_layout"
+readme = "README.md"
+keywords = ["bevy", "layout", "ui"]
+categories = ["game-development", "gui"]
+edition.workspace = true
+version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1"
+thiserror = "1"
+bevy_mod_sysfail = "2"
+bevy = { version = "0.10", default-features = false, features = ["bevy_ui"] }
+cuicui_layout = { version = "0.1", path = "../" }
+
+[dev-dependencies]
+bevy-inspector-egui = "0.18.3"
+bevy = { version = "0.10", features = ["png", "x11", "bevy_asset", "bevy_render" ] }

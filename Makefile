@@ -1,5 +1,5 @@
 check:
-	cargo clippy
+	cargo clippy --workspace
 run:
-	cargo test
-	cargo run --example layout
+	# cargo test
+	cargo run --bin sprite_mesh_debug
