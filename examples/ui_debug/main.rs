@@ -6,12 +6,14 @@ macro_rules! text {
     ($handle:expr, $value:expr) => {
         Text::from_section($value, TextStyle {
             font: $handle.clone(),
+            font_size: 32.0,
             ..Default::default()
         })
     };
     ($handle:expr, $($tail:tt)*) => {
         Text::from_section(format!($($tail)*), TextStyle {
             font: $handle.clone(),
+            font_size: 32.0,
             ..Default::default()
         })
     };
@@ -64,7 +66,10 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 
     cmds.screen_root().named("root").main_margin(100.0).align_start().row(|cmds| {
         cmds.named("menu").width_rule(Rule::Fixed(300.0)).fill_main_axis().column(|cmds| {
-            cmds.named("Title card").height_rule(Rule::Fixed(100.0)).spawn_ui(title_card.clone());
+            cmds.named("Title card")
+                .height_rule(Rule::Fixed(100.0))
+                .width_rule(Rule::Parent(1.0))
+                .spawn_ui(title_card.clone());
 
             menu_entites.extend(menu_buttons.iter().map(|n| {
                 cmds.named(format!("{n} button"))

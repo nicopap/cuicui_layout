@@ -189,6 +189,7 @@ impl Container {
     pub const fn compact(flow: Flow) -> Self {
         Self::new(flow, Alignment::Start, Distribution::Start)
     }
+    // TODO(bug): There should be an error when overflow on cross size.
     pub(crate) fn layout<F: ReadOnlyWorldQuery>(
         &self,
         this: Entity,

@@ -1,7 +1,9 @@
+#![allow(clippy::type_complexity)]
 use std::marker::PhantomData;
 
 use bevy::{ecs::query::ReadOnlyWorldQuery, prelude::*};
 use bevy_mod_sysfail::quick_sysfail;
+use content_size::ContentSize;
 use cuicui_layout::{PosRect, Root};
 
 pub mod bundles;
@@ -48,7 +50,9 @@ pub fn update_ui_camera_root(
 
 /// Set the [`Sytle`]'s `{min_,max_,}size.{width,height}` and `position.{left,right}`
 /// according to [`PosRect`]'s computed from [`cuicui_layout`].
-pub fn set_layout_style(mut query: Query<(&mut Style, &PosRect), Changed<PosRect>>) {
+pub fn set_layout_style(
+    mut query: Query<(&mut Style, &PosRect), (Changed<PosRect>, Without<ContentSize>)>,
+) {
     query.for_each_mut(|(mut style, pos)| {
         style.position_type = PositionType::Absolute;
         style.position.left = Val::Px(pos.pos().x);
@@ -85,11 +89,19 @@ impl Plug<()> {
 impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
     fn build(&self, app: &mut App) {
         use bevy::ui::UiSystem;
-        use CoreSet::PostUpdate as Set;
+        use CoreSet::PostUpdate;
 
         app.add_plugin(cuicui_layout::Plug::filter::<F>())
             .add_system(content_size::update_node.before(cuicui_layout::Systems::ComputeLayout))
             .add_system(update_ui_camera_root.before(cuicui_layout::Systems::ComputeLayout))
-            .add_system(set_layout_style.before(UiSystem::Flex).in_base_set(Set));
+            .add_system(content_size::add_content_size.after(cuicui_layout::Systems::ComputeLayout))
+            .add_system(
+                content_size::clear_content_size.after(cuicui_layout::Systems::ComputeLayout),
+            )
+            .add_system(
+                set_layout_style
+                    .before(UiSystem::Flex)
+                    .in_base_set(PostUpdate),
+            );
     }
 }
