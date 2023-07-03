@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cuicui_layout::Rule;
-use cuicui_layout_bevy_ui::{traits::LayoutCommandsExt, LayoutRootCamera};
+use cuicui_layout_bevy_ui::{layout, traits::LayoutCommandsExt, LayoutRootCamera};
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {
@@ -61,33 +61,36 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
         "CREDITS",
         "QUIT GAME",
     ];
-    let mut menu_entites = Vec::with_capacity(menu_buttons.len());
+    let mut menu_entities = Vec::with_capacity(menu_buttons.len());
     let font = serv.load("adobe_sans.ttf");
 
-    cmds.screen_root().named("root").main_margin(100.0).align_start().row(|cmds| {
-        cmds.named("menu").width_rule(Rule::Fixed(300.0)).fill_main_axis().column(|cmds| {
-            cmds.named("Title card")
+    let _defined_using_macro = || {
+        layout! {
+            &mut cmds,
+            row(screen_root, "root", main_margin 100, align_start) {
+                column("menu", width px 300, fill_main_axis) {
+                    spawn_ui(title_card, "Title card", height px 100, width %100);
+                    code(let cmds) {
+                        menu_entities.extend(menu_buttons.iter( ).map(|n| {
+                            let name = format!("{n} button");
+                            layout!(cmds, spawn_ui(text!(font, *n), named name, height px 30);)
+                        }));
+                    }
+                }
+            }
+        }
+    };
+    cmds.align_start().main_margin(100.0).named("root").screen_root().row(|cmds| {
+        cmds.fill_main_axis().width_rule(Rule::Fixed(300.0)).named("menu").column(|cmds| {
+            cmds.width_rule(Rule::Parent(1.0))
                 .height_rule(Rule::Fixed(100.0))
-                .width_rule(Rule::Parent(1.0))
+                .named("Title card")
                 .spawn_ui(title_card.clone());
-
-            menu_entites.extend(menu_buttons.iter().map(|n| {
-                cmds.named(format!("{n} button"))
-                    .height_rule(Rule::Fixed(30.0))
+            menu_entities.extend(menu_buttons.iter().map(|n| {
+                cmds.height_rule(Rule::Fixed(30.0))
+                    .named(format!("{n} button"))
                     .spawn_ui(text!(font, *n))
             }));
-        })
+        });
     });
-    // layout!{
-    //     cmds,
-    //     row(screen_root, main_margin 100, align_start) {
-    //         column(width 300, main_margin 40, fill_main_axis) {
-    //             spawn_ui(title_card.clone());
-    //
-    //             code(|cmds| {
-    //                 menu_entites.extend(menu_buttons.iter().map(|n| cmds.spawn_ui(*n)));
-    //             });
-    //         }
-    //     }
-    // }
 }

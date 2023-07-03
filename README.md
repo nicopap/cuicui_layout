@@ -97,7 +97,7 @@ packages. One root package and further integration packages:
 - [ ] layout error: give size of largest node when overspill
 - [ ] layout error: compute relative size and raise error based on this when
       several sibling have a `Rule::Parent`.
-- [ ] Ergonomic macro to define a UI tree
+- [X] Ergonomic macro to define a UI tree
 - [ ] Alignments
   - [X] Cross axis alignment (aka alignment): for Horizontal, should items be aligned to the:
     - top

@@ -11,6 +11,7 @@ pub mod content_size;
 mod debug;
 mod into_ui_bundle;
 mod layout_dsl;
+mod layout_macro;
 
 pub mod traits {
     pub use crate::into_ui_bundle::IntoUiBundle;

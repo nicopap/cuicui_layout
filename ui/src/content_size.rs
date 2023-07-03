@@ -1,4 +1,3 @@
-#![allow(clippy::type_complexity)]
 //! Systems to update a [`cuicui_layout::Node`]'s size based on an image's
 //! and text's size, rather that fixed at spawn time.
 use bevy::prelude::CalculatedSize;
