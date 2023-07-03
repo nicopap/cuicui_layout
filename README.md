@@ -2,7 +2,30 @@
 
 cuicui defines its own layout algorithm.
 
-### Why not Flexbox
+## Running examples
+
+Use the `cargo run --bin` command to list possible examples, and run them.
+
+We do this because it allows us to have different dependencies between examples.
+
+## Using `cuicui_layout`
+
+1. Chose which crate you want to use:
+  - Interested in a ready-made UI library on top of `bevy_ui`? [`cuicui_layout_bevy_ui`] is for you!
+  - Want more flexibility? Using `cuicui_layout` on top of `bevy_sprite` will let you
+    integrate your UI with a lot of 3rd party crates that only work with sprites!
+    [`cuicui_layout_bevy_sprite`] is for you!
+  - Using a custom renderer or want your UI to be part of the 3D environment?
+    Build on top of [`cuicui_layout`] itself then!
+1. Add the chosen crate as a dependency to your crate.
+2. Use either the [`CommandsLayoutExt`] trait or [`layout!`] macro to build
+   a UI (text representation coming soon). The macro is just a thin wrapper
+   around the trait, and the trait itself is very easy to use, so your choice.
+3. That's it! You are now using `cuicui_layout`, congratulations!
+   Make sure to check the [`CommandsLayoutExt`]
+   docs to learn the current capabilities of `cuicui_layout`.
+
+## Why not Flexbox
 
 You are writing text to get 2d visual results on screen.
 The translation from text to screen should be trivial, easy to do in your head.
@@ -28,7 +51,7 @@ in two short bullet points.
 That's it. There are some edge cases, but cuicui will ~~yell at you~~
 tell you nicely when you hit them and tell you how to handle them properly.
 
-#### Flexbox FAQ
+### Flexbox FAQ
 
 **Q**: Where is `padding`?
 <br>**A**: `padding` is equivalent to `margin` in cuicui_layout. `margin` and `border`
@@ -57,7 +80,10 @@ and whether they really do anything, so I wont' adventure an asnwer.
 **Q**: What is the equivalent of `flex_grow`, `flex_shrink`, `flex_basis`, `gap`?
 <br>**A**: Do you even know what they do?
 
-### Why cuicui layout
+**Q**: Why can't child container overflow their parents?
+<br>**A**: It's likely you didn't expect this, so we report it as an error.
+
+## Why cuicui layout
 
 On top of the very friendly layout algorithm,
 cuicui runs on `bevy_ecs` and therefore can ~~abuse~~ use it as a backing storage.
@@ -98,6 +124,7 @@ packages. One root package and further integration packages:
 - [ ] layout error: compute relative size and raise error based on this when
       several sibling have a `Rule::Parent`.
 - [X] Ergonomic macro to define a UI tree
+- [ ] Consider not making macro dependent on bevy_ui
 - [ ] Alignments
   - [X] Cross axis alignment (aka alignment): for Horizontal, should items be aligned to the:
     - top
