@@ -3,14 +3,14 @@
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
 use bevy::{
-    ecs::query::QueryItem,
+    ecs::query::{QueryItem, ReadOnlyWorldQuery},
     prelude::{Children, Component, Entity, Name, Query},
 };
 
 use crate::{
     alignment::{Align, Alignment, Distribution},
     direction::{Flow, Oriented, Size},
-    error::{self, BadParent, Bound, Bounds},
+    error::{self, BadParent, Bound, Bounds, Handle},
     PosRect,
 };
 
@@ -42,7 +42,7 @@ impl Bounds {
 }
 
 // TODO(clean): Split out `size` so that I can re-use it in `Root`
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct Container {
     pub flow: Flow,
@@ -55,7 +55,7 @@ impl Default for Container {
         Container {
             flow: Flow::Horizontal,
             align: Alignment::Center,
-            distrib: Distribution::FillParent,
+            distrib: Distribution::FillMain,
             size: Size {
                 width: Rule::Parent(1.0),
                 height: Rule::Parent(1.0),
@@ -64,7 +64,7 @@ impl Default for Container {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Clone, Copy, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
 pub enum Node {
     Container(Container),
@@ -102,7 +102,7 @@ impl Node {
 }
 
 /// A constraint on an axis of a terminal `Node` (ie: doesn't have a `Children` constraint).
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum LeafRule {
     /// The container's size is equal to its parent's size  times `.0`.
@@ -128,7 +128,7 @@ impl Default for LeafRule {
 }
 
 /// A constraint on an axis of containers.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Rule {
     /// The container's size is equal to the total size of all its children
@@ -146,8 +146,8 @@ impl Default for Rule {
     }
 }
 
-#[derive(Component)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[derive(Component, Default)]
+#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
 pub struct Root {
     pub bounds: Size<f32>,
     pub flow: Flow,
@@ -164,19 +164,19 @@ impl Root {
         Root { bounds, align, distrib, flow }
     }
     pub const fn stretch(bounds: Size<f32>, flow: Flow) -> Self {
-        Root::new(bounds, flow, Alignment::Center, Distribution::FillParent)
+        Root::new(bounds, flow, Alignment::Center, Distribution::FillMain)
     }
     pub const fn compact(bounds: Size<f32>, flow: Flow) -> Self {
         Root::new(bounds, flow, Alignment::Start, Distribution::Start)
     }
 }
 
-pub type LayoutNode = (Entity, &'static Node, &'static Children);
+pub type LayoutNode = (Entity, &'static Node, Option<&'static Children>);
 
 impl Container {
     pub const fn new(flow: Flow, align: Alignment, distrib: Distribution) -> Self {
         let main = match distrib {
-            Distribution::FillParent => Rule::Parent(1.0),
+            Distribution::FillMain => Rule::Parent(1.0),
             Distribution::Start | Distribution::End => Rule::Children(1.0),
         };
         let cross = Rule::Children(1.0);
@@ -184,18 +184,18 @@ impl Container {
         Self { flow, distrib, align, size }
     }
     pub const fn stretch(flow: Flow) -> Self {
-        Self::new(flow, Alignment::Center, Distribution::FillParent)
+        Self::new(flow, Alignment::Center, Distribution::FillMain)
     }
     pub const fn compact(flow: Flow) -> Self {
         Self::new(flow, Alignment::Start, Distribution::Start)
     }
-    pub(crate) fn layout(
+    pub(crate) fn layout<F: ReadOnlyWorldQuery>(
         &self,
         this: Entity,
         children_entities: &Children,
         bounds: Bounds,
-        to_update: &mut Query<&mut PosRect>,
-        nodes: &Query<LayoutNode>,
+        to_update: &mut Query<&mut PosRect, F>,
+        nodes: &Query<LayoutNode, F>,
         names: &Query<&Name>,
     ) -> Result<Size<f32>, error::Why> {
         let Self { flow, distrib, align, size } = *self;
@@ -216,8 +216,11 @@ impl Container {
         let cross_align = Align::new(cross_size, align);
 
         let (main_size, mut main_offset, space_between) = match distrib {
-            Distribution::FillParent => {
-                let total_space_between = bounds.on(flow).why(this, names)? - child_size.main;
+            Distribution::FillMain => {
+                // TODO(bug)TODO(err): error message here is bogus "this needs to know size of this"
+                // instead, this error should be created when computing child layout.
+                let main_size = bounds.on(flow).why(this, names)?;
+                let total_space_between = main_size - child_size.main;
                 if total_space_between < 0.0 {
                     return Err(error::Why::ContainerOverflow {
                         this: error::Handle::of(this, names),
@@ -227,13 +230,16 @@ impl Container {
                         child_size: child_size.main,
                     });
                 }
-                let space_between = total_space_between / (children_count - 1) as f32;
-                (bounds.on(flow).why(this, names)?, 0.0, space_between)
+                let count = children_count.saturating_sub(1).max(1);
+                let space_between = total_space_between / count as f32;
+                (main_size, 0.0, space_between)
             }
             Distribution::Start => (child_size.main, 0.0, 0.0),
             Distribution::End => {
-                let main_parent_size = bounds.on(flow).why(this, names)?;
-                (child_size.main, main_parent_size - child_size.main, 0.0)
+                // TODO(bug)TODO(err): error message here is bogus "this needs to know size of this"
+                // instead, this error should be created when computing child layout.
+                let main_size = bounds.on(flow).why(this, names)?;
+                (child_size.main, main_size - child_size.main, 0.0)
             }
         };
         let mut iter = to_update.iter_many_mut(children_entities);
@@ -255,18 +261,19 @@ impl Container {
 //
 // - Nodes will set **their own size** with the `to_update` query.
 // - **the position of the children** will be set with `to_update`.
-fn layout_at(
+fn layout_at<F: ReadOnlyWorldQuery>(
     (this, node, children): QueryItem<LayoutNode>,
     flow: Flow,
     bounds: Bounds,
-    to_update: &mut Query<&mut PosRect>,
-    nodes: &Query<LayoutNode>,
+    to_update: &mut Query<&mut PosRect, F>,
+    nodes: &Query<LayoutNode, F>,
     names: &Query<&Name>,
 ) -> Result<Oriented<f32>, error::Why> {
     let size = match node {
-        Node::Container(container) => {
-            container.layout(this, children, bounds, to_update, nodes, names)?
-        }
+        Node::Container(container) => match children {
+            Some(children) => container.layout(this, children, bounds, to_update, nodes, names)?,
+            None => return Err(error::Why::ChildlessContainer(Handle::of(this, names))),
+        },
         &Node::Axis(oriented) => bounds.inside(flow.absolute(oriented)).why(this, names)?,
         &Node::Box(size) => bounds.inside(size).why(this, names)?,
     };

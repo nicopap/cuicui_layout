@@ -1,0 +1,18 @@
+[package]
+name = "ui_debug"
+description = "Show extents of containers for bevy_ui cuicui_layout adaptor"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "ui_debug"
+path = "main.rs"
+
+[dependencies]
+ahash.workspace = true
+cuicui_layout.workspace = true
+cuicui_layout_bevy_ui.workspace = true
+bevy-inspector-egui.workspace = true
+bevy = { version = "0.10", features = ["png", "x11", "bevy_asset", "bevy_render", "bevy_sprite" ] }

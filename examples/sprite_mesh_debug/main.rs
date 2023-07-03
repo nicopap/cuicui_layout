@@ -68,7 +68,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_plugin(WorldInspectorPlugin::default())
-        .add_plugin(layout::Plug)
+        .add_plugin(layout::Plug::new())
         .add_system(layout::update_transforms)
         .add_system(render::update_ui_camera_root)
         .add_system(stretch_boxes)
@@ -119,6 +119,7 @@ impl UiRoot {
             render::RootBundle {
                 node: layout::Root::new(bounds, flow, align, distrib),
                 layer: UI_LAYER,
+                screen_root: render::ScreenRoot,
             },
             inner.debug_node(),
             Name::new(name),

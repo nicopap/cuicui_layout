@@ -73,7 +73,7 @@ impl MaybeDirectionalBound {
     }
 }
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
-pub(crate) enum Handle {
+pub enum Handle {
     Unnamed(Entity),
     Named(Name),
 }
@@ -95,6 +95,11 @@ impl fmt::Display for Handle {
 }
 #[derive(Clone, Debug, PartialEq, Error)]
 pub(crate) enum Why {
+    #[error(
+        "{0}'s `Node` is a `Container`, yet it has no children! Use `Node::Box` or `Node::Axis` \
+        for terminal nodes!"
+    )]
+    ChildlessContainer(Handle),
     #[error(
         "{this} needs to know its {axis}, \
         but {parent}, an ancestor of {this}, doesn't have a defined {axis}.   \
@@ -120,7 +125,11 @@ pub(crate) enum Why {
         child_size: f32,
     },
 }
-impl FailureMode for Why {
+#[derive(Debug, Error)]
+#[error(transparent)]
+pub struct ComputeLayoutError(#[from] Why);
+
+impl FailureMode for ComputeLayoutError {
     fn log_level(&self) -> bevy_mod_sysfail::LogLevel {
         bevy_mod_sysfail::LogLevel::Error
     }
@@ -128,9 +137,10 @@ impl FailureMode for Why {
     type ID = Handle;
 
     fn identify(&self) -> Self::ID {
-        match self {
-            Why::ParentIsStretch { this, .. } | Why::ContainerOverflow { this, .. } => this.clone(),
-        }
+        let (Why::ChildlessContainer(this)
+        | Why::ParentIsStretch { this, .. }
+        | Why::ContainerOverflow { this, .. }) = &self.0;
+        this.clone()
     }
     fn display(&self) -> Option<String> {
         Some(self.to_string())

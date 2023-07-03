@@ -19,10 +19,11 @@ pub struct Oriented<T> {
 }
 
 /// The layout direction of a [`Container`].
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Flow {
     /// Children are arranged on the horizontal axis.
+    #[default]
     Horizontal,
 
     /// Children are arranged on the vertical axis.

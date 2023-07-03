@@ -37,13 +37,14 @@ use bevy::prelude::{FromReflect, Reflect};
 /// |           |           |██ ███ █ ██|
 /// |▔▔▔▔▔▔▔▔▔▔▔|▔▔▔▔▔▔▔▔▔▔▔|▔▔▔▔▔▔▔▔▔▔▔|
 /// ```
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Alignment {
     /// The items within the container are all aligned to the top or left.
     ///
     /// If the container's axis is `Direction::Vertical`, a start alignment
     /// will align all items to the left.
+    #[default]
     Start,
 
     /// The items within the container are all centered on the container's axis.
@@ -58,7 +59,7 @@ pub enum Alignment {
 
 /// The main axis alignment. Aka distribution.
 ///
-/// Note that [`Distribution::FillParent`] and [`Distribution::End`] requires
+/// Note that [`Distribution::FillMain`] and [`Distribution::End`] requires
 /// a parent with a known size (ie: the container's main axis constraint
 /// must not be [`Rule::Children`]).
 ///
@@ -67,7 +68,7 @@ pub enum Alignment {
 /// ```text
 ///          Direction::Vertical
 ///
-///    Start    | FillParent  |     End     |
+///    Start    |  FillMain   |     End     |
 /// ▕██  ⁞    ▏ | ▕██  ⁞    ▏ | ▕    ⁞    ▏ |
 /// ▕███████  ▏ | ▕    ⁞    ▏ | ▕    ⁞    ▏ |
 /// ▕███ ⁞    ▏ | ▕███████  ▏ | ▕    ⁞    ▏ |
@@ -76,12 +77,14 @@ pub enum Alignment {
 /// ▕    ⁞    ▏ | ▕    ⁞    ▏ | ▕███ ⁞    ▏ |
 /// ▕    ⁞    ▏ | ▕█   ⁞    ▏ | ▕█   ⁞    ▏ |
 /// ```
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 #[doc(alias = "justification")]
 pub enum Distribution {
     /// All item will be clumped together at the left/top.
+    #[default]
     Start,
+
     /// Items are distributed evenly, with no space left on the sides of the container.
     ///
     /// > **Note**: This requires a known parent container main axis size.
@@ -89,7 +92,8 @@ pub enum Distribution {
     /// >
     /// > If the parent container's constraint on the main axis is [`Rule::Children`],
     /// > `cuicui_layout` will log an error message.
-    FillParent,
+    FillMain,
+
     /// All item will be clumped together at the right/bottom.
     ///
     /// > **Note**: This requires a known parent container main axis size.

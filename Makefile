@@ -2,4 +2,4 @@ check:
 	cargo clippy --workspace
 run:
 	# cargo test
-	cargo run --bin sprite_mesh_debug
+	RUST_BACKTRACE=1 cargo run --bin ui_debug

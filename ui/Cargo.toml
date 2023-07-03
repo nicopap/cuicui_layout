@@ -11,12 +11,9 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-anyhow = "1"
-thiserror = "1"
-bevy_mod_sysfail = "2"
+ahash.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+bevy_mod_sysfail.workspace = true
 bevy = { version = "0.10", default-features = false, features = ["bevy_ui"] }
-cuicui_layout = { version = "0.1", path = "../" }
-
-[dev-dependencies]
-bevy-inspector-egui = "0.18.3"
-bevy = { version = "0.10", features = ["png", "x11", "bevy_asset", "bevy_render" ] }
+cuicui_layout.workspace = true

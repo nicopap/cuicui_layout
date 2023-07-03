@@ -8,21 +8,32 @@ use bevy::{
 use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::Root;
 
-#[derive(Component, Clone, Copy, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
-pub struct UiCamera;
+/// Use this camera's logical size as the root fixed-size container for
+/// `cuicui_layout`.
+///
+/// Note that it is an error to have more than a single camera with this
+/// component.
+#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
+#[reflect(Component)]
+pub struct LayoutRootCamera;
+
+/// Set this [`cuicui_layout::Root`] to track the [`LayoutRootCamera`]'s size.
+#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
+#[reflect(Component)]
+pub struct ScreenRoot;
 
 #[derive(Bundle)]
 pub struct RootBundle {
     pub node: Root,
     pub layer: RenderLayers,
+    pub screen_root: ScreenRoot,
 }
 
 #[derive(Bundle)]
 pub struct UiCameraBundle {
     pub camera: Camera2dBundle,
     pub layer: RenderLayers,
-    pub ui_camera: UiCamera,
+    pub ui_camera: LayoutRootCamera,
 }
 impl UiCameraBundle {
     pub fn for_layer(order: isize, layer: Layer) -> Self {
@@ -37,15 +48,15 @@ impl UiCameraBundle {
                 ..default()
             },
             layer: RenderLayers::none().with(layer),
-            ui_camera: UiCamera,
+            ui_camera: LayoutRootCamera,
         }
     }
 }
 
 #[quick_sysfail]
 pub fn update_ui_camera_root(
-    ui_cameras: Query<(&Camera, &RenderLayers), (With<UiCamera>, Changed<Camera>)>,
-    mut roots: Query<(&mut Root, &RenderLayers)>,
+    ui_cameras: Query<(&Camera, &RenderLayers), (With<LayoutRootCamera>, Changed<Camera>)>,
+    mut roots: Query<(&mut Root, &RenderLayers), With<ScreenRoot>>,
 ) {
     for (cam, layers) in &ui_cameras {
         let size = cam.logical_viewport_size()?;

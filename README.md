@@ -18,13 +18,44 @@ In fact, I will forecefully push cuicui's layout algorithm in your head
 in two short bullet points.
 
 - A node can be a `Node::Container` and distribute its children
-  along a `Direction` either by evenly spacing them (`Stretched`)
-  or putting them directly one after another (`Compact`).
-- A `Container`'s size can be expressed as a static value or a fraction
-  of the size of what contains it.
+  along a `Direction` either by evenly spacing them (`Distribution::FillParent`)
+  or putting them directly one after another (`Distribution::Start`).
+- A `Container`'s size can be expressed as a static value, a fraction
+  of the size of what contains it, or a multiple of what it contains.
+- The content of a `Container` can be `Alignment` to the start, end or center
+  of its parent (by default it's centered).
 
 That's it. There are some edge cases, but cuicui will ~~yell at you~~
 tell you nicely when you hit them and tell you how to handle them properly.
+
+#### Flexbox FAQ
+
+**Q**: Where is `padding`?
+<br>**A**: `padding` is equivalent to `margin` in cuicui_layout. `margin` and `border`
+doesn't make conceptual sense.
+
+**Q**: How do I center a node?
+<br>**A**: Add an empty node at the start and end of the container, and use `fill_parent`
+
+**Q**: What is the equivalent of `flex_direction`?
+<br>**A**: use `row` and `column`
+
+**Q**: What are the equivalents of `column-reverse` and `row-reverse`?
+<br>**A**: None. Use `Alignment::End` and swap your elements! Note that the `*-reverse`
+flows in flexbox are very useful for internationalization, as cultures that are not
+western have different understanding of where is the start and end of things. However,
+when making a game, it is not enough to just swap the elements! Artistic control is
+paramount and internationalization needs to be taken as a whole in the context of the UI.
+
+**Q**: What is the equivalent of `flex_wrap`?
+<br>**A**: None, do you really need it?
+
+**Q**: What is the equivalent of `align_item`, `align_self`, `align_content`, `justify_content`?
+<br>**A**: After 5 years of working with CSS, I still have no clue which one does what,
+and whether they really do anything, so I wont' adventure an asnwer.
+
+**Q**: What is the equivalent of `flex_grow`, `flex_shrink`, `flex_basis`, `gap`?
+<br>**A**: Do you even know what they do?
 
 ### Why cuicui layout
 
@@ -62,6 +93,10 @@ packages. One root package and further integration packages:
 - [X] Typed constructor
 - [X] In depth documentation explaining the algorithm
 - [X] Meaningfull error messages when algorithm hits circular constraints
+- [ ] layout error: wonky (ie: any `?` in `layout` method)
+- [ ] layout error: give size of largest node when overspill
+- [ ] layout error: compute relative size and raise error based on this when
+      several sibling have a `Rule::Parent`.
 - [ ] Ergonomic macro to define a UI tree
 - [ ] Alignments
   - [X] Cross axis alignment (aka alignment): for Horizontal, should items be aligned to the:
@@ -74,10 +109,11 @@ packages. One root package and further integration packages:
     - spaced evenly so that the first is at the start and last at the end
   - [ ] Test alignment and distribution
 - [X] `ChildDefined(how_much_larger_than_child)`
-- [ ] API cleanup
-  - [ ] Margin containers
+- [X] API cleanup
+  - [X] Margin containers
 - [ ] Define a parametrable plugin to add smoothly the layout systems to app
+- [ ] Better {ui,sprite}/debug module (using gizmos)
 - [ ] Integrate Change detection
-- [ ] Accumulate errors instead of early exit.
 - [ ] Write a tool to make and export layouts.
 - [ ] Separate the algo into its own crate independent of bevy
+- [ ] (questionable) Accumulate errors instead of early exit.

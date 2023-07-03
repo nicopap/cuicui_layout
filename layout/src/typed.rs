@@ -249,7 +249,7 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
             height,
             flow,
             align: Alignment::Center,
-            distrib: Distribution::FillParent,
+            distrib: Distribution::FillMain,
             children: Vec::new(),
         }
     }

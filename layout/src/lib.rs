@@ -25,8 +25,6 @@
 //!
 //! * Integrate Change detection
 //! * Accumulate errors instead of early exit. (doubt)
-//! * Root expressed as percent of UiCamera
-//! * Write a tool to make and export layouts.
 #![allow(clippy::manual_range_contains)]
 
 mod alignment;
@@ -36,12 +34,15 @@ mod error;
 mod layout;
 pub mod typed;
 
-use bevy::prelude::*;
+use std::marker::PhantomData;
+
+use bevy::{ecs::query::ReadOnlyWorldQuery, prelude::*};
 use bevy_mod_sysfail::sysfail;
 
 pub use alignment::{Alignment, Distribution};
 pub use direction::{Flow, Oriented, Size};
-use error::{Bounds, Why};
+use error::Bounds;
+pub use error::ComputeLayoutError;
 pub use layout::{Container, LayoutNode, LeafRule, Node, Root, Rule};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
@@ -63,18 +64,28 @@ impl PosRect {
     }
 }
 
+#[derive(Bundle)]
+pub struct LayoutBundle {
+    pub node: Node,
+    pub pos: PosRect,
+}
+impl LayoutBundle {
+    pub fn new(node: Node) -> Self {
+        LayoutBundle { node, pos: PosRect::default() }
+    }
+}
 // TODO:
 // - minimize recomputation using `Changed`
 // - better error handling (log::error!)
 // - maybe parallelize
 /// Run the layout algorithm on
 #[sysfail(log(level = "error"))]
-fn compute_layout(
-    mut to_update: Query<&mut PosRect>,
-    nodes: Query<LayoutNode>,
+pub fn compute_layout<F: ReadOnlyWorldQuery>(
+    mut to_update: Query<&mut PosRect, F>,
+    nodes: Query<LayoutNode, F>,
     names: Query<&Name>,
-    roots: Query<(Entity, &Root, &Children)>,
-) -> Result<(), Why> {
+    roots: Query<(Entity, &Root, &Children), F>,
+) -> Result<(), ComputeLayoutError> {
     for (entity, &Root { bounds, flow, align, distrib }, children) in &roots {
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
@@ -86,7 +97,7 @@ fn compute_layout(
             size: bounds.map(Rule::Fixed),
         };
         let bounds = Bounds::from(bounds);
-        container.layout(entity, children, bounds, &mut to_update, &nodes, &names)?;
+        container.layout::<F>(entity, children, bounds, &mut to_update, &nodes, &names)?;
     }
     Ok(())
 }
@@ -103,10 +114,19 @@ pub enum Systems {
     ComputeLayout,
 }
 
-pub struct Plug;
-impl Plugin for Plug {
+pub struct Plug<F = ()>(PhantomData<fn(F)>);
+impl Plug<()> {
+    pub const fn new() -> Self {
+        Plug(PhantomData)
+    }
+    pub const fn filter<F: ReadOnlyWorldQuery + 'static>() -> Plug<F> {
+        Plug(PhantomData)
+    }
+}
+
+impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
     fn build(&self, app: &mut App) {
-        app.add_system(compute_layout.in_set(Systems::ComputeLayout));
+        app.add_system(compute_layout::<F>.in_set(Systems::ComputeLayout));
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()
