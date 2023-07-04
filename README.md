@@ -22,11 +22,11 @@ a lot of things are going to break a lot.
     [`cuicui_layout_bevy_sprite`] is for you!
   - Using a custom renderer or want your UI to be part of the 3D environment?
     Build on top of [`cuicui_layout`] itself then!
-1. Add the chosen crate as a dependency to your crate.
-2. Use either the [`CommandsLayoutExt`] trait or [`layout!`] macro to build
+2. Add the chosen crate as a dependency to your crate.
+3. Use either the [`CommandsLayoutExt`] trait or [`layout!`] macro to build
    a UI (text representation coming soon). The macro is just a thin wrapper
    around the trait, and the trait itself is very easy to use, so your choice.
-3. That's it! You are now using `cuicui_layout`, congratulations!
+4. That's it! You are now using `cuicui_layout`, congratulations!
    Make sure to check the [`CommandsLayoutExt`]
    docs to learn the current capabilities of `cuicui_layout`.
 

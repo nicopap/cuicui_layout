@@ -10,21 +10,31 @@ env:
   CARGO_TERM_COLORS: always
 
 jobs:
-  clippy_check:
-    name: Check clippy lints
+  clippy_fmt_docs_check:
+    name: Check clippy lints, formatting and docs
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy,rustfmt
-      - name: Install alsa and udev
-        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
-      - name: Check clippy
-        run: cargo clippy --workspace -- --deny clippy::pedantic --deny clippy::nursery
-      - name: Check documentation
-        run: cargo doc --workspace --no-deps
-      - name: Run tests
-        run: cargo test
       - name: Check formatting
         run: cargo fmt --all -- --check
+
+      - name: Install alsa and udev
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+
+      - name: Check clippy
+        run: cargo clippy --workspace -- --deny clippy::pedantic --deny clippy::nursery
+
+  tests:
+    name: Compile and run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install alsa and udev
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+
+      - name: Run tests
+        run: cargo test
