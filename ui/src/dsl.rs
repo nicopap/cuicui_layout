@@ -17,11 +17,6 @@ pub(crate) struct Layout {
     pub align: Alignment,
     // Default to Start Distribution
     pub distrib: Distribution,
-    // NOTE: margin is incompatible with Distribution::FillParent. When
-    // margin is set, and FillParent, must spawn an outer container in the
-    // form [spacer, inner, spacer] with Distribution::Start and THEN
-    // spawn inner as a container with Distribution::FillParent.
-    // TODO: forbid several children with FillParent.
     // TODO: check that single FillParent with sibling Rule::Parent(%) works.
     // TODO: Oriented<LeafRule> / margin: Size
     pub margin: Oriented<f32>,
@@ -63,6 +58,7 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
             align: self.layout.align,
             distrib: self.layout.distrib,
             size: self.layout.size.map(|r| r.unwrap_or(Rule::Parent(1.0))),
+            margin: flow.absolute(self.layout.margin),
         }
     }
     fn flow(mut self, flow: Flow, f: impl FnOnce(&mut ChildBuilder)) {

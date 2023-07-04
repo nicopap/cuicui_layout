@@ -45,7 +45,6 @@ impl Bounds {
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 // TODO(clean): Split out `size` so that I can re-use it in `Root`
-// TODO(feat): Add margin to this.
 pub struct Container {
     /// The axis on which the nodes in this containers are arranged.
     pub flow: Flow,
@@ -82,6 +81,12 @@ pub struct Container {
     ///
     /// See [`Rule`] for details.
     pub size: Size<Rule>,
+
+    /// The empty space to leave between this `Container` and its content, in pixels.
+    ///
+    /// Note that margins are symetric, so that left/right and top/bottom margins
+    /// are identical.
+    pub margin: Size<f32>,
 }
 impl Default for Container {
     fn default() -> Self {
@@ -89,10 +94,8 @@ impl Default for Container {
             flow: Flow::Horizontal,
             align: Alignment::Center,
             distrib: Distribution::FillMain,
-            size: Size {
-                width: Rule::Parent(1.0),
-                height: Rule::Parent(1.0),
-            },
+            margin: Size::all(0.0),
+            size: Size::all(Rule::Parent(1.0)),
         }
     }
 }
@@ -109,7 +112,8 @@ impl Container {
             Distribution::Start => Rule::Children(1.0),
         };
         let size = flow.absolute(Oriented::new(main, Rule::Children(1.0)));
-        Self { flow, align, distrib, size }
+        let margin = Size::ZERO;
+        Self { flow, align, distrib, size, margin }
     }
     /// Create a [`Container`] where children are center-aligned and
     /// fill this container on the `flow` main axis.
@@ -132,38 +136,59 @@ impl Container {
 /// Unlike a [`Container`], a `Root` always has a fixed `size`, (`bounds`).
 #[derive(Component, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
-pub struct Root {
-    /// The fixed size of this root container.
-    pub bounds: Size<f32>,
-    /// See [`Container::flow`].
-    pub flow: Flow,
-    /// See [`Container::align`].
-    pub align: Alignment,
-    /// See [`Container::distrib`].
-    pub distrib: Distribution,
-}
+pub struct Root(Container);
 impl Root {
+    /// Get the [`Container`] in `Self`.
+    #[must_use]
+    pub const fn get(&self) -> &Container {
+        &self.0
+    }
+
+    /// Get a mutable reference to the fixed size of this [`Root`] container
+    #[must_use]
+    pub fn size_mut(&mut self) -> Size<&mut f32> {
+        use Rule::Fixed;
+        let Size { width: Fixed(width), height: Fixed(height) } = &mut self.0.size else {
+            unreachable!("Can't construct a `Root` with non-fixed size");
+        };
+        Size { width, height }
+    }
+    /// Get the fixed size of this [`Root`] container
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)] // panic is used over unreachable for const-ness
+    pub const fn size(&self) -> Size<f32> {
+        use Rule::Fixed;
+        let Size { width: Fixed(width), height: Fixed(height) } = self.0.size else {
+            panic!("Can't construct a `Root` with non-fixed size");
+        };
+        Size { width, height }
+    }
     /// Create a new [`Root`] with given parameters.
     #[must_use]
     pub const fn new(
-        bounds: Size<f32>,
+        Size { width, height }: Size<f32>,
         flow: Flow,
         align: Alignment,
         distrib: Distribution,
+        margin: Size<f32>,
     ) -> Self {
-        Root { bounds, flow, align, distrib }
+        use Rule::Fixed;
+        let size = Size::new(Fixed(width), Fixed(height));
+        Root(Container { flow, align, distrib, size, margin })
     }
     /// Create a [`Root`] container where children are center-aligned and
     /// fill this container on the `flow` main axis.
     #[must_use]
     pub const fn stretch(bounds: Size<f32>, flow: Flow) -> Self {
-        Root::new(bounds, flow, Alignment::Center, Distribution::FillMain)
+        let distrib = Distribution::FillMain;
+        Root::new(bounds, flow, Alignment::Center, distrib, Size::ZERO)
     }
     /// Create a [`Root`] container where children are compactly bunched at the
     /// start of the main and cross axis.
     #[must_use]
     pub const fn compact(bounds: Size<f32>, flow: Flow) -> Self {
-        Root::new(bounds, flow, Alignment::Start, Distribution::Start)
+        let distrib = Distribution::Start;
+        Root::new(bounds, flow, Alignment::Start, distrib, Size::ZERO)
     }
 }
 
@@ -281,7 +306,7 @@ pub type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
 // TODO(bug): There should be an error when overflow on cross size.
 #[allow(clippy::cast_precision_loss)] // count as f32
 pub(crate) fn layout<F: ReadOnlyWorldQuery>(
-    Container { flow, distrib, align, size }: Container,
+    Container { flow, distrib, align, size, margin }: Container,
     this: Entity,
     children_entities: &Children,
     bounds: Bounds,

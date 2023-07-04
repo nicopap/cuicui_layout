@@ -1,3 +1,4 @@
 /Cargo.lock
 /assets
 /.cargo/config.toml
+/spec

@@ -44,8 +44,9 @@ pub fn update_ui_camera_root(
     for cam in &ui_cameras {
         let size = cam.logical_viewport_size()?;
         for mut root in roots.iter_mut() {
-            root.bounds.width = size.x;
-            root.bounds.height = size.y;
+            let bounds = root.size_mut();
+            *bounds.width = size.x;
+            *bounds.height = size.y;
         }
     }
 }

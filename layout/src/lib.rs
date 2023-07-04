@@ -83,13 +83,13 @@ pub fn compute_layout<F: ReadOnlyWorldQuery>(
     roots: Query<(Entity, &Root, &Children), F>,
 ) -> Result<(), ComputeLayoutError> {
     use layout::layout;
-    for (entity, &Root { bounds, flow, align, distrib }, child) in &roots {
+    for (entity, root, child) in &roots {
+        let bounds = root.size();
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
         }
-        let size = bounds.map(Rule::Fixed);
-        let root = Container { flow, align, distrib, size };
         let bounds = Bounds::from(bounds);
+        let root = *root.get();
         layout(root, entity, child, bounds, &mut to_update, &nodes, &names)?;
     }
     Ok(())

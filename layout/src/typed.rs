@@ -197,6 +197,7 @@ impl<W: Constrain, H: Constrain> MakeNode for Container<W, H> {
                 width: self.width.rule(),
                 height: self.height.rule(),
             },
+            ..Default::default()
         })
     }
 }

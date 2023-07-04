@@ -111,7 +111,7 @@ struct UiTree {
 impl UiRoot {
     fn spawn(self, cmds: &mut Commands, inner: &mut ExtraSpawnArgs) {
         let Self(UiTree { children, name, node }) = self;
-        let layout::Node::Container(Container { flow, align, distrib, size }) = node else {
+        let layout::Node::Container(Container { flow, align, distrib, size, .. }) = node else {
             return;
         };
         let bounds = size.map(|v| if let layout::Rule::Fixed(v) = v { v } else { 0.0 });
@@ -119,7 +119,7 @@ impl UiRoot {
 
         let bundle = (
             render::RootBundle {
-                node: layout::Root::new(bounds, flow, align, distrib),
+                node: layout::Root::new(bounds, flow, align, distrib, layout::Size::ZERO),
                 layer: UI_LAYER,
                 screen_root: render::ScreenRoot,
             },

@@ -205,9 +205,9 @@ impl RootBundle {
     #[must_use]
     pub(crate) fn new(flow: Flow, align: Alignment, distrib: Distribution) -> Self {
         RootBundle {
-            pos_rect: PosRect::default(),
+            pos_rect: default(),
             inner: default(),
-            root: Root { bounds: Size::all(0.0), flow, align, distrib },
+            root: Root::new(Size::ZERO, flow, align, distrib, Size::ZERO),
             screen_root: ScreenRoot,
         }
     }
