@@ -4,22 +4,30 @@ use std::fmt;
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect};
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+/// A `T` that applies to the `width` and `height` of something.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct Size<T> {
+    /// `T` on the horizontal axis.
     pub width: T,
+    /// `T` on the vertical axis.
     pub height: T,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+/// Similar to [`Size`], but relative to a [`Flow`] direction.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub struct Oriented<T> {
+    /// `T` on the same axis as the [`Flow`].
     pub main: T,
+    /// `T` on the perpendicular axis of the [`Flow`].
     pub cross: T,
 }
 
 /// The layout direction of a [`Container`].
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+///
+/// [`Container`]: crate::Container
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Flow {
     /// Children are arranged on the horizontal axis.
@@ -53,37 +61,40 @@ impl Flow {
     pub(crate) const fn perp(self) -> Self {
         self.orient(Size::new(Flow::Vertical, Flow::Horizontal))
     }
-    pub(crate) const fn size_name(&self) -> &'static str {
+    pub(crate) const fn size_name(self) -> &'static str {
         self.orient(Size::new("width", "height"))
     }
 }
 
-impl Size<f32> {
-    pub const ZERO: Self = Size { width: 0.0, height: 0.0 };
-}
 impl<T> Size<T> {
+    /// Create a [`Size`] for given `width` and `height` `T`.
     pub const fn new(width: T, height: T) -> Self {
         Self { width, height }
     }
+    /// Create a [`Size`] where `width` and `height` are set to `value`.
     pub fn all(value: T) -> Self
     where
         T: Clone,
     {
         Size { width: value.clone(), height: value }
     }
+    /// Apply `f` on `width` and `height`, returning a `Size` with the output
+    /// values of `f`.
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Size<U> {
         Size { width: f(self.width), height: f(self.height) }
     }
-    pub fn set_cross(&mut self, flow: Flow, cross: T) {
+    /// Set `value` on axis perpendicular to `flow` direction.
+    pub fn set_cross(&mut self, flow: Flow, value: T) {
         match flow {
-            Flow::Horizontal => self.height = cross,
-            Flow::Vertical => self.width = cross,
+            Flow::Horizontal => self.height = value,
+            Flow::Vertical => self.width = value,
         }
     }
-    pub fn set_main(&mut self, flow: Flow, main: T) {
+    /// Set `value` on axis of `flow` direction.
+    pub fn set_main(&mut self, flow: Flow, value: T) {
         match flow {
-            Flow::Horizontal => self.width = main,
-            Flow::Vertical => self.height = main,
+            Flow::Horizontal => self.width = value,
+            Flow::Vertical => self.height = value,
         }
     }
 }
@@ -94,6 +105,7 @@ impl<T: Copy> Size<T> {
 }
 
 impl<T: Copy> Oriented<T> {
+    /// Create an [`Oriented`] for given `main` and `cross` `T`.
     pub const fn new(main: T, cross: T) -> Self {
         Self { main, cross }
     }

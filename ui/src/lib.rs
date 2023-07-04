@@ -1,25 +1,30 @@
-#![allow(clippy::type_complexity)]
-use std::marker::PhantomData;
+//! TODO
+#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
+#![allow(clippy::type_complexity, clippy::use_self, clippy::redundant_pub_crate)]
 
-use bevy::{ecs::query::ReadOnlyWorldQuery, prelude::*};
+use bevy::ecs::prelude::*;
+use bevy::prelude::{App, Camera, CoreSet, FromReflect, Plugin, Reflect, ReflectComponent, Style};
 use bevy_mod_sysfail::quick_sysfail;
-use content_size::ContentSize;
+use content_sized::ContentSized;
 use cuicui_layout::{PosRect, Root};
 
 pub mod bundles;
-pub mod content_size;
+pub mod content_sized;
 mod debug;
-mod into_ui_bundle;
-mod layout_dsl;
-mod layout_macro;
+mod dsl;
+mod macros;
 
+/// Traits defined by this crate.
 pub mod traits {
-    pub use crate::into_ui_bundle::IntoUiBundle;
-    pub use crate::layout_dsl::LayoutCommandsExt;
+    pub use crate::bundles::IntoUiBundle;
+    pub use crate::dsl::LayoutCommandsExt;
 }
 
 /// Use this camera's logical size as the root fixed-size container for
 /// `cuicui_layout`.
+///
+/// Note that it is an error to have more than a single camera with this
+/// component.
 #[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
 #[reflect(Component)]
 pub struct LayoutRootCamera;
@@ -29,12 +34,8 @@ pub struct LayoutRootCamera;
 #[reflect(Component)]
 pub struct ScreenRoot;
 
-#[derive(Bundle)]
-pub struct RootBundle {
-    pub node: Root,
-    pub screen_root: ScreenRoot,
-}
-
+/// System updating the [`ScreenRoot`] [`cuicui_layout::Node`] with the
+/// [`LayoutRootCamera`]'s viewport size, whenever it changes.
 #[quick_sysfail]
 pub fn update_ui_camera_root(
     ui_cameras: Query<&Camera, (With<LayoutRootCamera>, Changed<Camera>)>,
@@ -49,11 +50,12 @@ pub fn update_ui_camera_root(
     }
 }
 
-/// Set the [`Sytle`]'s `{min_,max_,}size.{width,height}` and `position.{left,right}`
+/// Set the [`Style`]'s `{min_,max_,}size.{width,height}` and `position.{left,right}`
 /// according to [`PosRect`]'s computed from [`cuicui_layout`].
 pub fn set_layout_style(
-    mut query: Query<(&mut Style, &PosRect), (Changed<PosRect>, Without<ContentSize>)>,
+    mut query: Query<(&mut Style, &PosRect), (Changed<PosRect>, Without<ContentSized>)>,
 ) {
+    use bevy::ui::{PositionType, Val};
     query.for_each_mut(|(mut style, pos)| {
         style.position_type = PositionType::Absolute;
         style.position.left = Val::Px(pos.pos().x);
@@ -68,37 +70,34 @@ pub fn set_layout_style(
         style.min_size.height = height;
         style.max_size.height = height;
         style.size.height = height;
-    })
+    });
 }
 
 /// Plugin managing position and size of UI elements using [`cuicui_layout`]
 /// components.
 ///
-/// See [`set_layout_style`] for details.
+/// What this does:
 ///
-/// The `F` type parameter is the additional filters to use.
-pub struct Plug<F = ()>(PhantomData<fn(F)>);
-impl Plug<()> {
-    pub const fn new() -> Self {
-        Plug(PhantomData)
-    }
-    pub const fn filter<F: ReadOnlyWorldQuery + 'static>() -> Plug<F> {
-        Plug(PhantomData)
-    }
-}
-
-impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
+/// - **Manage size of text and image elements**: UI elements spawned through [`spawn_ui`]
+///   (with the [`ContentSized`] component)
+/// - **Manage size of the [`ScreenRoot`] container**
+/// - **Set the [`Style`] flex parameters according to [`cuicui_layout`] computed values**
+/// - **Compute [`cuicui_layout::Node`] layouts**
+///
+/// [`spawn_ui`]: dsl::LayoutCommandsExt::spawn_ui
+/// [`ContentSized`]: content_sized::ContentSized
+pub struct Plug;
+impl Plugin for Plug {
     fn build(&self, app: &mut App) {
         use bevy::ui::UiSystem;
+        use cuicui_layout::Systems::ComputeLayout;
         use CoreSet::PostUpdate;
 
-        app.add_plugin(cuicui_layout::Plug::filter::<F>())
-            .add_system(content_size::update_node.before(cuicui_layout::Systems::ComputeLayout))
-            .add_system(update_ui_camera_root.before(cuicui_layout::Systems::ComputeLayout))
-            .add_system(content_size::add_content_size.after(cuicui_layout::Systems::ComputeLayout))
-            .add_system(
-                content_size::clear_content_size.after(cuicui_layout::Systems::ComputeLayout),
-            )
+        app.add_plugin(cuicui_layout::Plug::new())
+            .add_system(content_sized::update.before(ComputeLayout))
+            .add_system(update_ui_camera_root.before(ComputeLayout))
+            .add_system(content_sized::add.after(ComputeLayout))
+            .add_system(content_sized::clear.after(ComputeLayout))
             .add_system(
                 set_layout_style
                     .before(UiSystem::Flex)

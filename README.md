@@ -1,12 +1,17 @@
 # Cuicui Layout
 
-cuicui defines its own layout algorithm.
+A dumb layout algorithm you can rely on, built for and with bevy.
 
 ## Running examples
 
 Use the `cargo run --bin` command to list possible examples, and run them.
 
 We do this because it allows us to have different dependencies between examples.
+
+## Stability
+
+This crate is in expansion, use at your own risk, it is extremely likely that
+a lot of things are going to break a lot.
 
 ## Using `cuicui_layout`
 
@@ -24,6 +29,18 @@ We do this because it allows us to have different dependencies between examples.
 3. That's it! You are now using `cuicui_layout`, congratulations!
    Make sure to check the [`CommandsLayoutExt`]
    docs to learn the current capabilities of `cuicui_layout`.
+
+## `cuicui_layout` crates
+
+This repository contains several crates:
+
+- `cuicui_layout`: The base algorithm and components, does not make any assumption
+  about how it is used, beside the requirement that layout nodes be bevy `Entitiy` and
+  uses `bevy_hierarchy` and `bevy_transform`.
+- `cuicui_layout_bevy_ui`: Integration with `bevy_ui` and the nice layout DSL.
+- `cuicui_layout_bevy_sprite`: More bare-bone `bevy_sprite` integration.
+
+(maybe `cuicui_layout_spec` in the future)
 
 ## Why not Flexbox
 
@@ -115,32 +132,26 @@ packages. One root package and further integration packages:
  
 ## TODO
 
+Before first release:
+
+- [ ] Integrate Change detection
 - [X] Basic algorithm
-- [X] Typed constructor
 - [X] In depth documentation explaining the algorithm
 - [X] Meaningfull error messages when algorithm hits circular constraints
-- [ ] layout error: wonky (ie: any `?` in `layout` method)
+- [X] Ergonomic macro to define a UI tree
+- [ ] Margin as `Container` property.
+- [X] Alignment & Distribution
+
+After first release:
+
+- [ ] bevy_ui: background image and background color of row/column nodes.
+- [ ] layout error: wonky (ie: any `?` in `layout` function)
 - [ ] layout error: give size of largest node when overspill
 - [ ] layout error: compute relative size and raise error based on this when
       several sibling have a `Rule::Parent`.
-- [X] Ergonomic macro to define a UI tree
 - [ ] Consider not making macro dependent on bevy_ui
-- [ ] Alignments
-  - [X] Cross axis alignment (aka alignment): for Horizontal, should items be aligned to the:
-    - top
-    - bottom
-    - middle
-  - [X] Main axis alignment (aka distribution/justification): for Horizontal, should items be:
-    - compactly pushed at the start
-    - compactly pushed at the end
-    - spaced evenly so that the first is at the start and last at the end
-  - [ ] Test alignment and distribution
-- [X] `ChildDefined(how_much_larger_than_child)`
-- [X] API cleanup
-  - [X] Margin containers
-- [ ] Define a parametrable plugin to add smoothly the layout systems to app
 - [ ] Better {ui,sprite}/debug module (using gizmos)
-- [ ] Integrate Change detection
 - [ ] Write a tool to make and export layouts.
 - [ ] Separate the algo into its own crate independent of bevy
+- [ ] Typed constructor
 - [ ] (questionable) Accumulate errors instead of early exit.

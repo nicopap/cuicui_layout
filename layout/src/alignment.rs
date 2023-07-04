@@ -37,7 +37,7 @@ use bevy::prelude::{FromReflect, Reflect};
 /// |           |           |██ ███ █ ██|
 /// |▔▔▔▔▔▔▔▔▔▔▔|▔▔▔▔▔▔▔▔▔▔▔|▔▔▔▔▔▔▔▔▔▔▔|
 /// ```
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Alignment {
     /// The items within the container are all aligned to the top or left.
@@ -77,7 +77,7 @@ pub enum Alignment {
 /// ▕    ⁞    ▏ | ▕    ⁞    ▏ | ▕███ ⁞    ▏ |
 /// ▕    ⁞    ▏ | ▕█   ⁞    ▏ | ▕█   ⁞    ▏ |
 /// ```
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 #[doc(alias = "justification")]
 pub enum Distribution {

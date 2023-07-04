@@ -51,6 +51,7 @@ macro_rules! cont {
     };
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn color_from_entity(entity: Entity) -> Color {
     use std::hash::{Hash, Hasher};
     const U64_TO_DEGREES: f32 = 360.0 / u64::MAX as f32;
@@ -93,13 +94,14 @@ impl<'a, 'm> ExtraSpawnArgs<'a, 'm> {
             UI_LAYER,
         )
     }
-    fn debug_node(&mut self) -> impl Bundle {
-        (
-            layout::PosRect::default(),
-            SpatialBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.01)),
-        )
-    }
 }
+fn debug_node() -> impl Bundle {
+    (
+        layout::PosRect::default(),
+        SpatialBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.01)),
+    )
+}
+
 struct UiRoot(UiTree);
 struct UiTree {
     name: &'static str,
@@ -121,34 +123,36 @@ impl UiRoot {
                 layer: UI_LAYER,
                 screen_root: render::ScreenRoot,
             },
-            inner.debug_node(),
+            debug_node(),
             Name::new(name),
         );
         cmds.spawn(bundle).with_children(|cmds| {
             inner.entity = cmds.parent_entity();
             cmds.spawn(inner.debug_mesh());
-            children.into_iter().for_each(|child| {
+            for child in children {
                 child.spawn(cmds, inner);
-            });
+            }
         });
     }
 }
 impl UiTree {
     fn spawn(self, cmds: &mut ChildBuilder, inner: &mut ExtraSpawnArgs) {
         let Self { children, node, name } = self;
-        let bundle = (node, inner.debug_node(), Name::new(name));
+        let bundle = (node, debug_node(), Name::new(name));
         cmds.spawn(bundle).with_children(|cmds| {
             inner.entity = cmds.parent_entity();
             cmds.spawn(inner.debug_mesh());
-            children.into_iter().for_each(|child| {
+            for child in children {
                 child.spawn(cmds, inner);
-            });
+            }
         });
     }
 }
 
 #[derive(Component)]
 struct DebugChild;
+
+#[allow(clippy::needless_pass_by_value)]
 fn stretch_boxes(
     query: Query<(&Children, &layout::PosRect), Changed<layout::PosRect>>,
     mut trans: Query<&mut Transform, With<DebugChild>>,
@@ -166,7 +170,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut assets: ResMut<Assets<ColorMaterial>>,
 ) {
-    use layout::Flow::*;
+    use layout::Flow::{Horizontal, Vertical};
 
     let tree = root! { ("root", Vertical, stretch, 300, 270),
         spacer!("spacer1", 10%),

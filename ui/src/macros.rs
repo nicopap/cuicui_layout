@@ -21,7 +21,7 @@
 ///
 /// ## Layout arguments
 ///
-/// `spawn_ui`, `column` and `row` might seem familiar. Indeed, they are methods of [`LayoutCommands`].
+/// `spawn_ui`, `column` and `row` might seem familiar. Indeed, they are methods of [`LayoutCommandsExt`].
 /// The remaining methods exist as **layout arguments**, they are specified within parenthesis
 /// in a **layout statement**.
 ///
@@ -83,6 +83,9 @@
 /// ```
 ///
 /// [`LayoutCommandsExt`]: crate::traits::LayoutCommandsExt
+/// [`row`]: crate::traits::LayoutCommandsExt::row
+/// [`spawn_ui`]: crate::traits::LayoutCommandsExt::spawn_ui
+/// [`column`]: crate::traits::LayoutCommandsExt::column
 #[rustfmt::skip]
 #[macro_export]
 macro_rules! layout {

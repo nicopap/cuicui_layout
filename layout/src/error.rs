@@ -1,3 +1,4 @@
+#![allow(clippy::module_name_repetitions)]
 use std::fmt;
 
 use bevy::prelude::{Entity, Name, Query};
@@ -79,10 +80,9 @@ pub enum Handle {
 }
 impl Handle {
     pub(crate) fn of(entity: Entity, names: &Query<&Name>) -> Self {
-        match names.get(entity) {
-            Ok(name) => Handle::Named(name.clone()),
-            Err(_) => Handle::Unnamed(entity),
-        }
+        names
+            .get(entity)
+            .map_or(Handle::Unnamed(entity), |name| Handle::Named(name.clone()))
     }
 }
 impl fmt::Display for Handle {
@@ -125,6 +125,8 @@ pub(crate) enum Why {
         child_size: f32,
     },
 }
+
+/// An error caused by a bad layout.
 #[derive(Debug, Error)]
 #[error(transparent)]
 pub struct ComputeLayoutError(#[from] Why);

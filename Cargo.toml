@@ -4,6 +4,7 @@ members = [
   "sprite",
   "ui",
   "layout",
+  # "spec",
   "examples/*",
 ]
 

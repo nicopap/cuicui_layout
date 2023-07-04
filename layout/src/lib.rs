@@ -3,29 +3,28 @@
 //! The layouting system is very dumb. It is based on [`Container`]s.
 //! A [`Container`] layouts its content in either a column or a row.
 //!     
-//! The individual items are positioned according to one of two possible [`SpaceUse`].
-//! Either items are compactly put one after another with [`SpaceUse::Compact`],
-//! or they [`SpaceUse::Stretch`] to the parent's Vertical/Horizontal space.
+//! The individual items are positioned according to:
+//! - [`Container::align`]: The container's children [`Alignment`].
+//! - [`Container::distrib`]: The container's children [`Distribution`].
+//! - [`Container::flow`]: The direction in which the container's children [`Flow`].
 //!
-//! If you want some margin, use [`Node::Spacer`].
-//! [`Node::Spacer::0`] is the percent of the containing container's total size.
+//! By default, items are aligned at the center of the container, distributed
+//! on the flow direction evenly within the container.
 //!
 //! All things in a cuicui layout has a known fixed size. This is why
 //! everything needs to live in a root countainer of a fixed size.
 //!
-//! ## Things you can't do
-//!
-//! * Several `SpaceUse::Stretch` vertical layout within a vertical layout (same for horizontal)
-//!   A single `SpaceUse::Stretch` is accepted, but several do not make sense.
-//! * Note that this is transitive, so a `Stretch` vertical layout within
-//!   an horizontal layout within a `Stretch` vertical layout is also a no-no.
-//! * `Spacer` within a `SpaceUse::Compact`.
+//! That's it! Now make a nice UI using bevy.
 //!
 //! ## TODO:
 //!
 //! * Integrate Change detection
-//! * Accumulate errors instead of early exit. (doubt)
-#![allow(clippy::manual_range_contains)]
+#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
+#![allow(
+    clippy::manual_range_contains,
+    clippy::use_self,
+    clippy::redundant_pub_crate
+)]
 
 mod alignment;
 // mod builder;
@@ -43,7 +42,7 @@ pub use alignment::{Alignment, Distribution};
 pub use direction::{Flow, Oriented, Size};
 use error::Bounds;
 pub use error::ComputeLayoutError;
-pub use layout::{Container, LayoutNode, LeafRule, Node, Root, Rule};
+pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -56,48 +55,42 @@ pub struct PosRect {
     pos: Size<f32>,
 }
 impl PosRect {
-    pub fn pos(&self) -> Vec2 {
+    /// The `(top, left)` position of the [`Node`].
+    #[must_use]
+    pub const fn pos(&self) -> Vec2 {
         Vec2::new(self.pos.width, self.pos.height)
     }
-    pub fn size(&self) -> Size<f32> {
+    /// The [`Size`] of the node.
+    #[must_use]
+    pub const fn size(&self) -> Size<f32> {
         self.size
     }
 }
 
-#[derive(Bundle)]
-pub struct LayoutBundle {
-    pub node: Node,
-    pub pos: PosRect,
-}
-impl LayoutBundle {
-    pub fn new(node: Node) -> Self {
-        LayoutBundle { node, pos: PosRect::default() }
-    }
-}
 // TODO:
 // - minimize recomputation using `Changed`
 // - better error handling (log::error!)
 // - maybe parallelize
-/// Run the layout algorithm on
+/// Run the layout algorithm on entities with [`Node`] and [`PosRect`] components.
+///
+/// You may set `F` to any query filter in order to limit the layouting to a
+/// subset of layout entities.
 #[sysfail(log(level = "error"))]
 pub fn compute_layout<F: ReadOnlyWorldQuery>(
     mut to_update: Query<&mut PosRect, F>,
-    nodes: Query<LayoutNode, F>,
+    nodes: Query<NodeQuery, F>,
     names: Query<&Name>,
     roots: Query<(Entity, &Root, &Children), F>,
 ) -> Result<(), ComputeLayoutError> {
-    for (entity, &Root { bounds, flow, align, distrib }, children) in &roots {
+    use layout::layout;
+    for (entity, &Root { bounds, flow, align, distrib }, child) in &roots {
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
         }
-        let container = Container {
-            flow,
-            align,
-            distrib,
-            size: bounds.map(Rule::Fixed),
-        };
+        let size = bounds.map(Rule::Fixed);
+        let root = Container { flow, align, distrib, size };
         let bounds = Bounds::from(bounds);
-        container.layout::<F>(entity, children, bounds, &mut to_update, &nodes, &names)?;
+        layout(root, entity, child, bounds, &mut to_update, &nodes, &names)?;
     }
     Ok(())
 }
@@ -109,16 +102,28 @@ pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Chang
     }
 }
 
+/// Systems added by [`Plug`].
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub enum Systems {
+    /// The layouting system, [`compute_layout`].
     ComputeLayout,
 }
 
+/// Add the [`compute_layout`] system to the bevy `Update` set.
+///
+/// ## Features
+///
+/// When the `"reflect"` feature is enabled, also register all the layouting
+/// types used by `cuicui_layout`.
 pub struct Plug<F = ()>(PhantomData<fn(F)>);
 impl Plug<()> {
+    /// Layout all relevant entities, without filters.
+    #[must_use]
     pub const fn new() -> Self {
         Plug(PhantomData)
     }
+    /// Layout entities with the provided filters.
+    #[must_use]
     pub const fn filter<F: ReadOnlyWorldQuery + 'static>() -> Plug<F> {
         Plug(PhantomData)
     }

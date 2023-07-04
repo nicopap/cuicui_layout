@@ -3,6 +3,11 @@
 //! Use [`Container`] to create a hierarchy of containers.
 //!
 //! Note: this isn't the only way to build a layout, just a quick and dirty way.
+#![allow(missing_docs)]
+#![deprecated = "The constructors in this module may be type safe, but are compltely \
+    useless as a way to create a UI. Prefer \
+    cuicui_layout_bevy_ui::LayoutCommandsExt until a more general layout \
+    declaration system is available."]
 
 use super::{Alignment, Distribution, Flow, Rule};
 
@@ -15,10 +20,13 @@ impl Parent {
     /// # Panics
     ///
     /// When `value` is not in the range `[0.0, 1.0]` (inclusive)
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation, clippy::float_cmp)]
     pub fn new(value: f32) -> Self {
-        if value as i32 != 0 && value != 1.0 {
-            panic!("Invalid `Parent` constraint, it was not between 0 and 1, while it should!");
-        }
+        assert!(
+            value as i32 == 0 || value == 1.0,
+            "Invalid `Parent` constraint, it was not between 0 and 1, while it should!",
+        );
         Parent(value)
     }
 }
@@ -32,10 +40,13 @@ impl Children {
     /// # Panics
     ///
     /// When `value` is greater than 1
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
     pub const fn new(value: f32) -> Self {
-        if (value as i32) < 1 {
-            panic!("Invalid `Children` constraint, it was not greater than 1, while it should!");
-        }
+        assert!(
+            value as i32 >= 1,
+            "Invalid `Children` constraint, it was not greater than 1, while it should!",
+        );
         Children(value)
     }
 }
@@ -190,6 +201,8 @@ impl<W: Constrain, H: Constrain> MakeNode for Container<W, H> {
     }
 }
 impl<W: Constrain, H: Constrain> Container<W, H> {
+    /// Add a fixed-size child to this container.
+    #[must_use]
     pub fn fixed(mut self, width: f32, height: f32) -> Self {
         let size = super::Size { width, height };
         self.children.push(Box::new(FixedNode(size)));
@@ -197,6 +210,9 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
     }
 }
 impl<W: FreeChildren, H: FreeChildren> Container<W, H> {
+    /// Add a container to this container, the added container will have its
+    /// size depend on its own children.
+    #[must_use]
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: Constrain + 'static,
@@ -207,6 +223,9 @@ impl<W: FreeChildren, H: FreeChildren> Container<W, H> {
     }
 }
 impl<W: FreeChildren> Container<W, Children> {
+    /// Add a container to this container, the added container will have its
+    /// size depend on its own children.
+    #[must_use]
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: Constrain + 'static,
@@ -217,6 +236,9 @@ impl<W: FreeChildren> Container<W, Children> {
     }
 }
 impl<H: FreeChildren> Container<Children, H> {
+    /// Add a container to this container, the added container will have its
+    /// size depend on its own children.
+    #[must_use]
     pub fn child<Width, Height>(mut self, child: Container<Width, Height>) -> Self
     where
         Width: FreeParent + 'static,
@@ -229,20 +251,25 @@ impl<H: FreeChildren> Container<Children, H> {
 impl<W: Constrain, H: Constrain> Container<W, H> {
     /// Vertically aligned (bottom to top), children stretch to fill
     /// the whole height of the container.
+    #[must_use]
     pub const fn v_stretch(width: W, height: H) -> Self {
         Self::stretch(width, height, Flow::Vertical)
     }
     /// Horizontally aligned (left to right), children stretch to fill
     /// the whole width of the container.
+    #[must_use]
     pub const fn h_stretch(width: W, height: H) -> Self {
         Self::stretch(width, height, Flow::Horizontal)
     }
+    #[must_use]
     pub const fn v_compact(width: W, height: H) -> Self {
         Self::compact(width, height, Flow::Vertical)
     }
+    #[must_use]
     pub const fn h_compact(width: W, height: H) -> Self {
         Self::compact(width, height, Flow::Horizontal)
     }
+    #[must_use]
     pub const fn stretch(width: W, height: H, flow: Flow) -> Self {
         Self {
             width,
@@ -253,6 +280,7 @@ impl<W: Constrain, H: Constrain> Container<W, H> {
             children: Vec::new(),
         }
     }
+    #[must_use]
     pub const fn compact(width: W, height: H, flow: Flow) -> Self {
         Self {
             width,
