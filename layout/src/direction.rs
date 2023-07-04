@@ -43,14 +43,14 @@ impl Flow {
     }
     /// Returns [`Size`] oriented according to this orientation.
     ///
-    /// This is the inverse of [`Oriented::absolute`].
+    /// This is the inverse of [`Flow::absolute`].
     pub const fn relative<T: Copy>(self, Size { width, height }: Size<T>) -> Oriented<T> {
         let Size { width: main, height: cross } = self.absolute(Oriented::new(width, height));
         Oriented { main, cross }
     }
     /// Returns [`Oriented`] in oriented according to the global point of view.
     ///
-    /// This is the inverse of [`Oriented::relative`].
+    /// This is the inverse of [`Flow::relative`].
     pub const fn absolute<T: Copy>(self, Oriented { main, cross }: Oriented<T>) -> Size<T> {
         match self {
             Flow::Horizontal => Size::new(main, cross),
