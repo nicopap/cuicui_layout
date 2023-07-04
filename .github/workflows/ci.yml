@@ -17,31 +17,14 @@ jobs:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
-      - run: cargo clippy --workspace -- --deny clippy::pedantic --deny clippy::nursery
-
-  doc_check:
-    name: Check documentation
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo doc --workspace --no-deps
-
-  run_tests:
-    name: Run tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test
-
-  fmt_check:
-    name: Check formatting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt
-      - run: cargo fmt --all -- --check
+          components: clippy,rustfmt
+      - name: Install alsa and udev
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - name: Check clippy
+        run: cargo clippy --workspace -- --deny clippy::pedantic --deny clippy::nursery
+      - name: Check documentation
+        run: cargo doc --workspace --no-deps
+      - name: Run tests
+        run: cargo test
+      - name: Check formatting
+        run: cargo fmt --all -- --check
