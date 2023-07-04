@@ -28,8 +28,16 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo doc --workspace --no-deps
 
+  run_tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test
+
   fmt_check:
-    name: Check documentation
+    name: Check formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
