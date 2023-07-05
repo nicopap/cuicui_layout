@@ -442,7 +442,12 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
 
         let size = flow.relative(computed_size).with_children(child_size);
 
-        // self.validate_size(flow.absolute(child_size), flow.absolute(size))?;
+        // Error on overflow (TODO(clean): consider logging instead)
+        self.validate_size(
+            children_count,
+            flow.absolute(child_size),
+            flow.absolute(size),
+        )?;
 
         let (main_offset, space_between) = match distrib {
             Distribution::FillMain => {
@@ -502,8 +507,30 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         Ok(flow.relative(size))
     }
 
-    // fn validate_size(&self, _child_size: Size<f32>, _size: Size<f32>) -> Result<(), error::Why> {
-    //     // TODO(err): This needs to be implemented
-    //     Ok(())
-    // }
+    fn validate_size(
+        &self,
+        node_children_count: u32,
+        child_size: Size<f32>,
+        size: Size<f32>,
+    ) -> Result<(), error::Why> {
+        if child_size.width > size.width {
+            return Err(error::Why::ContainerOverflow {
+                this: Handle::of(self),
+                size,
+                node_children_count,
+                dir_name: "width",
+                child_size: child_size.width,
+            });
+        }
+        if child_size.height > size.height {
+            return Err(error::Why::ContainerOverflow {
+                this: Handle::of(self),
+                size,
+                node_children_count,
+                dir_name: "height",
+                child_size: child_size.height,
+            });
+        }
+        Ok(())
+    }
 }
