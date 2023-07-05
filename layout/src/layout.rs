@@ -455,21 +455,9 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
             flow.absolute(size),
         )?;
 
+        let count = children_count.saturating_sub(1).max(1) as f32;
         let (main_offset, space_between) = match distrib {
-            Distribution::FillMain => {
-                let total_space_between = size.main - child_size.main;
-                if total_space_between < 0.0 {
-                    return Err(error::Why::ContainerOverflow {
-                        this: error::Handle::of(self),
-                        size: flow.absolute(size),
-                        node_children_count: children_count,
-                        dir_name: flow.size_name(),
-                        child_size: child_size.main,
-                    });
-                }
-                let count = children_count.saturating_sub(1).max(1);
-                (0.0, total_space_between / count as f32)
-            }
+            Distribution::FillMain => (0.0, size.main - child_size.main / count),
             Distribution::Start => (0.0, 0.0),
             Distribution::End => (size.main - child_size.main, 0.0),
         };
