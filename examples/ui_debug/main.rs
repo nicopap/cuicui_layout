@@ -95,16 +95,17 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
     ];
     let font = serv.load("adobe_sans.ttf");
 
+    let width = Rule::Fixed(300.0);
+    let t_height = Rule::Fixed(100.0);
+    let b_height = Rule::Fixed(30.0);
     cmds.align_start().main_margin(100.0).named("root").screen_root().row(|cmds| {
-        cmds.fill_main_axis().width_rule(Rule::Fixed(300.0)).named("menu").column(|cmds| {
+        cmds.fill_main_axis().main_margin(40.0).width_rule(width).named("menu").column(|cmds| {
             cmds.width_rule(Rule::Parent(1.0))
-                .height_rule(Rule::Fixed(100.0))
-                .named("Title card")
-                .spawn_ui(title_card.clone());
+                .height_rule(t_height)
+                .named("Title")
+                .spawn_ui(title_card);
             for n in &menu_buttons {
-                cmds.height_rule(Rule::Fixed(30.0))
-                    .named(format!("{n} button"))
-                    .spawn_ui(text!(font, *n));
+                cmds.height_rule(b_height).named(format!("{n} button")).spawn_ui(text!(font, *n));
             }
         });
     });

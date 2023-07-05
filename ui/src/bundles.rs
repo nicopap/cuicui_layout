@@ -6,7 +6,7 @@ use bevy::{
     utils::default,
 };
 use cuicui_layout::{
-    Alignment, Container, Distribution, Flow, LeafRule, Node, Oriented, PosRect, Root, Size,
+    Alignment, Container, Distribution, Flow, LeafRule, Node, Oriented, PosRect, Root, Rule, Size,
 };
 
 use crate::{content_sized::ContentSized, ScreenRoot};
@@ -22,6 +22,15 @@ macro_rules! impl_bundle {
     };
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Layout {
+    // Default to center alignment.
+    pub align: Alignment,
+    // Default to Start Distribution
+    pub distrib: Distribution,
+    pub margin: Oriented<f32>,
+    pub size: Size<Option<Rule>>,
+}
 /// An image leaf node wrapping a [`bevy_ui::ImageBundle`].
 ///
 /// By default, will stretch to fit the parent container.
@@ -203,11 +212,11 @@ pub struct RootBundle {
 }
 impl RootBundle {
     #[must_use]
-    pub(crate) fn new(flow: Flow, align: Alignment, distrib: Distribution) -> Self {
+    pub(crate) fn new(flow: Flow, Layout { align, distrib, margin, .. }: Layout) -> Self {
         RootBundle {
             pos_rect: default(),
             inner: default(),
-            root: Root::new(Size::ZERO, flow, align, distrib, Size::ZERO),
+            root: Root::new(Size::ZERO, flow, align, distrib, flow.absolute(margin)),
             screen_root: ScreenRoot,
         }
     }

@@ -4,24 +4,12 @@ use bevy::{
     ecs::system::EntityCommands,
     prelude::{BuildChildren, ChildBuilder, Commands, Entity, Name},
 };
-use cuicui_layout::{Alignment, Container, Distribution, Flow, LeafRule, Oriented, Rule, Size};
+use cuicui_layout::{Alignment, Container, Distribution, Flow, Oriented, Rule, Size};
 #[cfg(doc)]
 use cuicui_layout::{Node, Root};
 
-use crate::bundles::{BoxBundle, FlowBundle, IntoUiBundle, RootBundle, UiBundle};
+use crate::bundles::{FlowBundle, IntoUiBundle, Layout, RootBundle, UiBundle};
 use crate::ScreenRoot;
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct Layout {
-    // Default to center alignment.
-    pub align: Alignment,
-    // Default to Start Distribution
-    pub distrib: Distribution,
-    // TODO: check that single FillParent with sibling Rule::Parent(%) works.
-    // TODO: Oriented<LeafRule> / margin: Size
-    pub margin: Oriented<f32>,
-    pub size: Size<Option<Rule>>,
-}
 
 enum RootKind {
     ScreenRoot,
@@ -57,39 +45,18 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
             flow,
             align: self.layout.align,
             distrib: self.layout.distrib,
-            size: self.layout.size.map(|r| r.unwrap_or(Rule::Parent(1.0))),
+            rules: self.layout.size.map(|r| r.unwrap_or(Rule::Parent(1.0))),
             margin: flow.absolute(self.layout.margin),
         }
     }
     fn flow(mut self, flow: Flow, f: impl FnOnce(&mut ChildBuilder)) {
         let container = self.container(flow);
-        let root_bundle = || RootBundle::new(flow, self.layout.align, self.layout.distrib);
+        let root_bundle = || RootBundle::new(flow, self.layout);
         let cmds = &mut self.inner;
         match self.root {
             RootKind::ScreenRoot => cmds.insert(root_bundle()),
             RootKind::Root => cmds.insert(root_bundle()).remove::<ScreenRoot>(),
             RootKind::None => cmds.insert(FlowBundle::new(container)),
-        };
-        let main_margin = (self.layout.margin.main != 0.0).then_some(Oriented {
-            main: LeafRule::Fixed(self.layout.margin.main),
-            cross: LeafRule::Fixed(0.0),
-        });
-        let f = |cmds: &mut ChildBuilder| {
-            if let Some(main_margin) = main_margin {
-                //TODO: nest if distribution is FillParent
-                let mut entity = cmds.spawn(BoxBundle::axis(main_margin));
-                if let Some(name) = &self.name {
-                    entity.insert(Name::new(format!("{name} start margin")));
-                }
-            }
-            f(cmds);
-            if let Some(main_margin) = main_margin {
-                //TODO: nest if distribution is FillParent
-                let mut entity = cmds.spawn(BoxBundle::axis(main_margin));
-                if let Some(name) = &self.name {
-                    entity.insert(Name::new(format!("{name} end margin")));
-                }
-            }
         };
         if let Some(name) = &self.name {
             cmds.insert(Name::new(name.clone()));
@@ -107,8 +74,8 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
         }
         if set_size {
             let mut id = None;
-            let size = self.layout.size.map(|r| r.unwrap_or(Rule::Children(1.0)));
-            let container = Container { size, ..Container::compact(Flow::Horizontal) };
+            let rules = self.layout.size.map(|r| r.unwrap_or(Rule::Children(1.0)));
+            let container = Container { rules, ..Container::compact(Flow::Horizontal) };
             let bundle_container = FlowBundle::new(container);
             self.inner.insert(bundle_container).with_children(|cmds| {
                 if self.layout.size.width.is_none() {
@@ -144,6 +111,11 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
     #[must_use]
     const fn main_margin(mut self, pixels: f32) -> Self {
         self.layout.margin.main = pixels;
+        self
+    }
+    #[must_use]
+    const fn cross_margin(mut self, pixels: f32) -> Self {
+        self.layout.margin.cross = pixels;
         self
     }
     // #[must_use]
@@ -238,9 +210,10 @@ pub trait LayoutCommandsExt<'w, 's, 'a> : Into<Lec<'w, 's, 'a>> where 'w: 'a, 's
     /// Set this [`Container`]'s margin on the main flow axis.
     #[must_use]
     fn main_margin(self, pixels: f32) -> Lec<'w, 's, 'a> {self.into().main_margin(pixels)}
-    // fn cross_margin(self, pixels: f32) -> Lec<'w, 's, 'a> {self.into().cross_margin(pixels)}
-    // fn main_margin_pct(self, percent: f32) -> Lec<'w, 's, 'a>;
-    // fn cross_margin_pct(self, percent: f32) -> Lec<'w, 's, 'a>;
+
+    /// Set this [`Container`]'s margin on the cross flow axis.
+    #[must_use]
+    fn cross_margin(self, pixels: f32) -> Lec<'w, 's, 'a> {self.into().cross_margin(pixels)}
 
     /// Set the width [`Rule`] of this [`Node`].
     #[must_use]

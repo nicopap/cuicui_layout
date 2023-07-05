@@ -11,8 +11,8 @@
 //! By default, items are aligned at the center of the container, distributed
 //! on the flow direction evenly within the container.
 //!
-//! All things in a cuicui layout has a known fixed size. This is why
-//! everything needs to live in a root countainer of a fixed size.
+//! All things in a cuicui layout has a known size. This is why
+//! everything needs to live in a root container of a fixed size.
 //!
 //! That's it! Now make a nice UI using bevy.
 //!
@@ -40,9 +40,11 @@ use bevy_mod_sysfail::sysfail;
 
 pub use alignment::{Alignment, Distribution};
 pub use direction::{Flow, Oriented, Size};
-use error::Bounds;
 pub use error::ComputeLayoutError;
+use error::Computed;
 pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
+
+use crate::layout::Layout;
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -77,20 +79,21 @@ impl PosRect {
 /// subset of layout entities.
 #[sysfail(log(level = "error"))]
 pub fn compute_layout<F: ReadOnlyWorldQuery>(
-    mut to_update: Query<&mut PosRect, F>,
+    mut to_update: Query<&'static mut PosRect, F>,
     nodes: Query<NodeQuery, F>,
-    names: Query<&Name>,
-    roots: Query<(Entity, &Root, &Children), F>,
+    names: Query<&'static Name>,
+    roots: Query<(Entity, &'static Root, &'static Children), F>,
 ) -> Result<(), ComputeLayoutError> {
-    use layout::layout;
-    for (entity, root, child) in &roots {
+    for (entity, root, children) in &roots {
         let bounds = root.size();
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
         }
-        let bounds = Bounds::from(bounds);
         let root = *root.get();
-        layout(root, entity, child, bounds, &mut to_update, &nodes, &names)?;
+        let mut layout = Layout::new(entity, &mut to_update, &nodes, &names);
+        let mut bounds: Size<Computed> = bounds.into();
+        bounds.set_margin(root.margin, &layout)?;
+        layout.container(root, children, bounds)?;
     }
     Ok(())
 }

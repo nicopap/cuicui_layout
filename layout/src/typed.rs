@@ -193,7 +193,7 @@ impl<W: Constrain, H: Constrain> MakeNode for Container<W, H> {
             flow: self.flow,
             align: self.align,
             distrib: self.distrib,
-            size: super::Size {
+            rules: super::Size {
                 width: self.width.rule(),
                 height: self.height.rule(),
             },

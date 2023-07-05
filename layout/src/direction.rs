@@ -38,7 +38,7 @@ pub enum Flow {
     Vertical,
 }
 impl Flow {
-    pub(crate) const fn orient<T: Copy>(self, size: Size<T>) -> T {
+    const fn orient<T: Copy>(self, size: Size<T>) -> T {
         self.relative(size).main
     }
     /// Returns [`Size`] oriented according to this orientation.
@@ -56,10 +56,6 @@ impl Flow {
             Flow::Horizontal => Size::new(main, cross),
             Flow::Vertical => Size::new(cross, main),
         }
-    }
-    /// Perpendicular orientation.
-    pub(crate) const fn perp(self) -> Self {
-        self.orient(Size::new(Flow::Vertical, Flow::Horizontal))
     }
     pub(crate) const fn size_name(self) -> &'static str {
         self.orient(Size::new("width", "height"))
@@ -86,25 +82,6 @@ impl<T> Size<T> {
     /// values of `f`.
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Size<U> {
         Size { width: f(self.width), height: f(self.height) }
-    }
-    /// Set `value` on axis perpendicular to `flow` direction.
-    pub fn set_cross(&mut self, flow: Flow, value: T) {
-        match flow {
-            Flow::Horizontal => self.height = value,
-            Flow::Vertical => self.width = value,
-        }
-    }
-    /// Set `value` on axis of `flow` direction.
-    pub fn set_main(&mut self, flow: Flow, value: T) {
-        match flow {
-            Flow::Horizontal => self.width = value,
-            Flow::Vertical => self.height = value,
-        }
-    }
-}
-impl<T: Copy> Size<T> {
-    pub(crate) const fn on(self, flow: Flow) -> T {
-        flow.orient(self)
     }
 }
 

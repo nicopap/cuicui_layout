@@ -16,12 +16,12 @@ a lot of things are going to break a lot.
 ## Using `cuicui_layout`
 
 1. Chose which crate you want to use:
-  - Interested in a ready-made UI library on top of `bevy_ui`? [`cuicui_layout_bevy_ui`] is for you!
-  - Want more flexibility? Using `cuicui_layout` on top of `bevy_sprite` will let you
-    integrate your UI with a lot of 3rd party crates that only work with sprites!
-    [`cuicui_layout_bevy_sprite`] is for you!
-  - Using a custom renderer or want your UI to be part of the 3D environment?
-    Build on top of [`cuicui_layout`] itself then!
+    - Interested in a ready-made UI library on top of `bevy_ui`? [`cuicui_layout_bevy_ui`] is for you!
+    - Want more flexibility? Using `cuicui_layout` on top of `bevy_sprite` will let you
+      integrate your UI with a lot of 3rd party crates that only work with sprites!
+      [`cuicui_layout_bevy_sprite`] is for you!
+    - Using a custom renderer or want your UI to be part of the 3D environment?
+      Build on top of [`cuicui_layout`] itself then!
 2. Add the chosen crate as a dependency to your crate.
 3. Use either the [`CommandsLayoutExt`] trait or [`layout!`] macro to build
    a UI (text representation coming soon). The macro is just a thin wrapper

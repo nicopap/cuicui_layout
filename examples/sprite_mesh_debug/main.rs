@@ -17,7 +17,7 @@ macro_rules! root {
             name: $name,
             children: vec![$( $branch, )*],
             node: layout::Node::Container(Container {
-                size: layout::Size::new($width as f32, $height as f32).map(layout::Rule::Fixed),
+                rules: layout::Size::new($width as f32, $height as f32).map(layout::Rule::Fixed),
                 ..Container::$suse ( $dir )
             })
         })
@@ -111,10 +111,10 @@ struct UiTree {
 impl UiRoot {
     fn spawn(self, cmds: &mut Commands, inner: &mut ExtraSpawnArgs) {
         let Self(UiTree { children, name, node }) = self;
-        let layout::Node::Container(Container { flow, align, distrib, size, .. }) = node else {
+        let layout::Node::Container(Container { flow, align, distrib, rules, .. }) = node else {
             return;
         };
-        let bounds = size.map(|v| if let layout::Rule::Fixed(v) = v { v } else { 0.0 });
+        let bounds = rules.map(|v| if let layout::Rule::Fixed(v) = v { v } else { 0.0 });
         cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
 
         let bundle = (

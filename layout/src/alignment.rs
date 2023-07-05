@@ -1,5 +1,6 @@
 //! enums for main axis and cross axis alignment.
 
+use crate::Oriented;
 #[cfg(doc)]
 use crate::Rule;
 #[cfg(feature = "reflect")]
@@ -106,14 +107,14 @@ pub enum Distribution {
 
 /// Manage cross alignment.
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub(crate) struct Align {
+pub(crate) struct CrossAlign {
     cross_parent_size: f32,
     align: Alignment,
 }
 
-impl Align {
-    pub const fn new(cross_parent_size: f32, align: Alignment) -> Self {
-        Align { cross_parent_size, align }
+impl CrossAlign {
+    pub const fn new(parent_size: Oriented<f32>, align: Alignment) -> Self {
+        CrossAlign { cross_parent_size: parent_size.cross, align }
     }
     pub fn offset(self, cross_child_size: f32) -> f32 {
         match self.align {
