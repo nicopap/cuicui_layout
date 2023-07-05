@@ -414,7 +414,13 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         Self { this, to_update, nodes, names }
     }
 
-    // TODO(bug): There should be an error when overflow on cross size.
+    /// Compute layout for a [`Container`].
+    ///
+    /// `computed_size` is this container's _inner size_.
+    /// ie: the size of the container **removed the margin**.
+    ///
+    /// Returns the _inner size_, it is likely that adding back the margins is
+    /// necessary.
     #[allow(clippy::cast_precision_loss)] // count as f32
     pub(crate) fn container(
         &mut self,
@@ -491,11 +497,13 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
     ) -> Result<Oriented<f32>, error::Why> {
         let size = match *node {
             Node::Container(container) => match children {
-                Some(children) => self.container(
-                    container,
-                    children,
-                    parent.container_size(&container, self)?,
-                )?,
+                Some(children) => {
+                    let computed_size = parent.container_size(&container, self);
+                    let mut inner_size = self.container(container, children, computed_size?)?;
+                    inner_size.width += container.margin.width * 2.;
+                    inner_size.height += container.margin.height * 2.;
+                    inner_size
+                }
                 None => return Err(error::Why::ChildlessContainer(Handle::of(self))),
             },
             Node::Axis(oriented) => parent.leaf_size(flow.absolute(oriented)).unwrap(self)?,

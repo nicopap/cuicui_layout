@@ -95,7 +95,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
     ];
     let font = serv.load("adobe_sans.ttf");
 
-    let width = Rule::Fixed(300.0);
+    let width = Rule::Fixed(310.0);
     let t_height = Rule::Fixed(100.0);
     let b_height = Rule::Fixed(30.0);
     cmds.align_start().main_margin(100.0).named("root").screen_root().row(|cmds| {
