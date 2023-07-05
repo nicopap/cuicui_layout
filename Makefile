@@ -12,5 +12,5 @@ run:
 pre-hook:
 	cargo test
 	cargo doc --workspace --no-deps
-	cargo clippy --workspace -- --deny clippy::pedantic --deny clippy::nursery
+	cargo clippy --workspace -- --deny clippy::all
 	cargo fmt --all -- --check
