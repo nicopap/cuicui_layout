@@ -457,7 +457,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
 
         let count = children_count.saturating_sub(1).max(1) as f32;
         let (main_offset, space_between) = match distrib {
-            Distribution::FillMain => (0.0, size.main - child_size.main / count),
+            Distribution::FillMain => (0.0, (size.main - child_size.main) / count),
             Distribution::Start => (0.0, 0.0),
             Distribution::End => (size.main - child_size.main, 0.0),
         };

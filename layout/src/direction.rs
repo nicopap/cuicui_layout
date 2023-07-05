@@ -38,9 +38,6 @@ pub enum Flow {
     Vertical,
 }
 impl Flow {
-    const fn orient<T: Copy>(self, size: Size<T>) -> T {
-        self.relative(size).main
-    }
     /// Returns [`Size`] oriented according to this orientation.
     ///
     /// This is the inverse of [`Flow::absolute`].
@@ -56,9 +53,6 @@ impl Flow {
             Flow::Horizontal => Size::new(main, cross),
             Flow::Vertical => Size::new(cross, main),
         }
-    }
-    pub(crate) const fn size_name(self) -> &'static str {
-        self.orient(Size::new("width", "height"))
     }
 }
 impl Size<f32> {
