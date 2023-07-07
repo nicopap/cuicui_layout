@@ -22,7 +22,7 @@ fn color_from_entity(entity: Entity) -> Color {
     entity.hash(&mut hasher);
 
     let hue = hasher.finish() as f32 * U64_TO_DEGREES;
-    Color::hsla(hue, 0.8, 0.5, 0.1)
+    Color::hsla(hue, 0.8, 0.5, 0.5)
 }
 
 fn main() {
@@ -49,7 +49,10 @@ fn setup_debug(
     let mesh = meshes.add(top_left_quad());
     for node in &nodes {
         cmds.entity(node)
-            .insert((SpatialBundle::default(), UI_LAYER))
+            .insert((
+                SpatialBundle::from_transform(Transform::from_xyz(0., 0., 0.01)),
+                UI_LAYER,
+            ))
             .with_children(|cmds| {
                 cmds.spawn((
                     MaterialMesh2dBundle {
@@ -127,17 +130,15 @@ impl UiBundle for ElementBundle {
 }
 
 fn setup(mut cmds: Commands) {
-    cmds.spawn(render::UiCameraBundle {
-        camera: Camera2dBundle {
-            // projection: OrthographicProjection { scale: 0.25, ..default() },
-            // transform: Transform::from_xyz(108.7, 142.0, 999.9),
-            ..default()
-        },
-        ..render::UiCameraBundle::for_layer(1, 20)
+    cmds.spawn(Camera2dBundle {
+        projection: OrthographicProjection { scale: 0.25, ..default() },
+        transform: Transform::from_xyz(108.7, 142.0, 999.9),
+        ..default()
     });
+    cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
     layout! {
         &mut cmds,
-        column("root", screen_root, fill_main_axis) {
+        column("root", screen_root, fill_main_axis, main_margin 50., cross_margin 100.) {
             spawn_ui(Space(10), "spacer1");
             row("horiz_cont1", fill_main_axis, height * 1.0) {
                 spawn_ui(Fixed(10, 10), "h1_1_fix");
