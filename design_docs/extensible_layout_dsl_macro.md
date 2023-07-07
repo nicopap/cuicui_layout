@@ -1,5 +1,8 @@
 # Extensible Layout declaration
 
+As of commit 23cba2fd7 (2023-07-07), we use (2), (3) and (4), but strongly
+considering (5).
+
 **Problem**: I want users to be able to add **arbitrary methods** to
 `LayoutCommandsExt`.
 
@@ -42,7 +45,7 @@ User needs to control what `LayoutCommands` spawns (maybe also inspect it), the
 extension method has no power over the code implemented by `cuicui_layout`, we
 need a form of inversion of control.
 
-## 2. Make `LayoutCommands` wrap a `T`
+## 2. `impl CommandLike for XCmds` + `impl X for LayoutCommands`
 
 We need users to be able to "intercept" spawn/insert commands and add their own
 bundles on top of it, based on the `T` state.
@@ -53,13 +56,26 @@ we need to add `bevy_ui` related components.
 Then user can do something like
 
 ```rust
-trait MyExtraMethods {
-  fn menu(self) -> Lc<MenuCommands>;
+struct XCmds<'w, 's, 'a> {
+  inner: EntityCommands<'w, 's, 'a>,
+  menu_type: Menu
 }
-impl<T: LayoutCommandsExt<MenuCommands>> MyExtraMethods for T {
-  // ...
+impl<'w, 's, 'a> CommandLike for XCmds<'w, 's, 'a> {
+  //...
+}
+
+trait X {
+  fn menu(self) -> LayoutCommands<XCmds>;
+}
+impl X for LayoutCommands<XCmds> {
+  fn menu(self) -> Self {
+    // ...
+  }
 }
 ```
+
+Its very honerous, but we are just making this "possible" until we find a better
+way that makes it "simple".
 
 ## 3. The `spawn_ui` question
 
@@ -84,3 +100,58 @@ on several "implementation" crates for `cuicui_layout`
 (**TODO**: probably likely to happen to at least 5% of users!),
 it will chose automatically `Marker`, without further specificaction required
 by the end user.
+
+## 4. A simpler approach
+
+So, instead of deciding tht command-like types should have all the `LayoutCommands`
+methods, let's just add a `layout` method to them (through trait method extension).
+
+Then we have a `LayoutCommands` and we can do whatever we want with it.
+
+We are still `impl CommandLike for X` + `impl MyExtensionTrait for LayoutCommands`
+for extensibility, but it's now possible to do, and the API is not absolute bonker
+bad.
+
+## 5. Even simpler
+
+Now, I'd like to reverse the `CommandLike`. Instead of using it to "add" components,
+I'd like to split the "data accumulation" and "spawn" parts of `LayoutCommands`.
+
+After all, it is doing nothing else than accumulating data and spawning stuff according
+to the accumulated data.
+
+It seems that splitting the `LayoutCommands` could help simplify extending it.
+
+Saddly, it wouldn't play well with the method-based DSL, but we can expand a macro
+to look like
+
+```rust
+#[derive(DerefMut)]
+struct Layout<T = ()> {
+  #[deref]
+  inner: T,
+  name: Option<String>,
+  root: RootKind,
+  // etc.
+}
+<Layout<Ui>>::new()
+  .with(|s| s.align_start())
+  .with(|s| s.main_margin(100.0))
+  .row(cmds, |cmds| {
+
+})
+```
+
+The extension could do:
+
+```rust
+#[derive(DerefMut)]
+struct Ui<T= ()> {
+  #[deref]
+  inner: T,
+  bg_color: Color,
+  bg_image: Handle<Image>,
+}
+```
+
+This would allow infinite composition.

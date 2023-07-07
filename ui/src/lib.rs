@@ -67,7 +67,7 @@ pub fn set_layout_style(
 /// - **Set the [`Style`] flex parameters according to [`cuicui_layout`] computed values**
 /// - **Compute [`cuicui_layout::Node`] layouts**
 ///
-/// [`spawn_ui`]: cuicui_layout::dsl::LayoutCommandsExt::spawn_ui
+/// [`spawn_ui`]: cuicui_layout::dsl::LayoutCommands::spawn_ui
 /// [`ContentSized`]: content_sized::ContentSized
 pub struct Plug;
 impl Plugin for Plug {

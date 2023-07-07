@@ -1,12 +1,12 @@
-/// Dump wrapper around the [`crate::dsl::LayoutCommandsExt`] trait.
+/// Dump wrapper around the [`crate::dsl::IntoLayoutCommands`] trait.
 ///
-/// See [`crate::dsl::LayoutCommandsExt`] for details.
+/// See [`crate::dsl::IntoLayoutCommands`] for details.
 ///
 /// Basically, this is a way to use the methods on the dsl trait but, but reversed:
 ///
 /// # Syntax
 ///
-/// `layout!` accepts as argument a value that implements [`LayoutCommandsExt`],
+/// `layout!` accepts as argument a value that implements [`IntoLayoutCommands`],
 /// followed by a series of **layout statements**.
 ///
 /// ## Layout statements
@@ -21,9 +21,16 @@
 ///
 /// ## Layout arguments
 ///
-/// `spawn_ui`, `column` and `row` might seem familiar. Indeed, they are methods of [`LayoutCommandsExt`].
+/// `spawn_ui`, `column` and `row` might seem familiar. Indeed, they are methods of [`LayoutCommands`].
 /// The remaining methods exist as **layout arguments**, they are specified within parenthesis
 /// in a **layout statement**.
+///
+/// **Layout arguments** are methods on [`LayoutCommands`]. It is possible to add and access
+/// additional **layout arguments** in this macro by using an extension trait and implementing it
+/// for `LayoutCommands` (yep).
+///
+/// This is typically useful if you want to extend the layouting macro with 3rd party provided
+/// components, or if you want to emulate "styles" (ie: set of presets).
 ///
 /// The layout arguments are:
 /// - `"<string literal>"`: Set the name of the UI node to spawn.
@@ -43,8 +50,7 @@
 ///
 /// ```
 /// use bevy::prelude::*;
-/// use cuicui_layout::Rule;
-/// use cuicui_layout::{layout, dsl::LayoutCommandsExt, LayoutRootCamera};
+/// use cuicui_layout::{Rule, layout, LayoutRootCamera};
 /// # enum BevyUi {} impl cuicui_layout::dsl::IntoUiBundle<BevyUi> for &'_ str {type Target=();fn into_ui_bundle(self) {}}
 /// # fn sys(mut cmds: Commands) {
 /// # let title_card = "";
@@ -67,14 +73,15 @@
 /// }
 /// # };
 /// // Is strictly equivalent to:
-/// cmds.align_start().main_margin(100.0).named("root").screen_root().row(|cmds| {
-///     cmds.fill_main_axis().width_rule(Rule::Fixed(300.0)).named("menu").column(|cmds| {
-///         cmds.width_rule(Rule::Parent(1.0))
+/// use cuicui_layout::dsl::IntoLayoutCommands;
+/// cmds.lyout().align_start().main_margin(100.0).named("root").screen_root().row(|cmds| {
+///     cmds.lyout().fill_main_axis().width_rule(Rule::Fixed(300.0)).named("menu").column(|cmds| {
+///         cmds.lyout().width_rule(Rule::Parent(1.0))
 ///             .height_rule(Rule::Fixed(100.0))
 ///             .named("Title card")
 ///             .spawn_ui(title_card.clone());
 ///         menu_entities.extend(menu_buttons.iter().map(|button_name| {
-///             cmds.height_rule(Rule::Fixed(30.0))
+///             cmds.lyout().height_rule(Rule::Fixed(30.0))
 ///                 .named(format!("{button_name} button"))
 ///                 .spawn_ui(*button_name)
 ///         }));
@@ -83,16 +90,55 @@
 /// # }
 /// ```
 ///
-/// [`LayoutCommandsExt`]: crate::dsl::LayoutCommandsExt
-/// [`row`]: crate::dsl::LayoutCommandsExt::row
-/// [`spawn_ui`]: crate::dsl::LayoutCommandsExt::spawn_ui
-/// [`column`]: crate::dsl::LayoutCommandsExt::column
+/// # This also works with extension traits
+///
+///
+/// ```
+/// use bevy::prelude::*;
+/// use cuicui_layout::{Rule, layout, dsl::CommandLike, dsl::LayoutCommands};
+/// # enum BevyUi {} impl cuicui_layout::dsl::IntoUiBundle<BevyUi> for &'_ str {type Target=();fn into_ui_bundle(self) {}}
+/// # fn sys(mut cmds: Commands) {
+///
+/// trait MyStyles {
+///     fn button(self, bg: Color) -> Self;
+/// }
+/// impl<C: CommandLike> MyStyles for LayoutCommands<C> {
+///     fn button(self, bg: Color) -> Self {
+///          self.height_rule(Rule::Fixed(30.0))
+///              .height_rule(Rule::Fixed(30.0))
+///              .main_margin(10.0)
+///     }
+/// }
+///
+/// # let title_card = "";
+/// let menu_buttons = [("CONTINUE", Color::BLUE), ("QUIT", Color::WHITE), ("LOAD", Color::RED)];
+/// layout! {
+///     &mut cmds,
+///     row(screen_root, "root", main_margin 100., align_start) {
+///         column("menu", width px 300, fill_main_axis) {
+///             spawn_ui(title_card, "Title card", height px 100, width %100);
+///             code(let cmds) {
+///                 menu_buttons.iter().map(|(name, color)| {
+///                     layout!(cmds, spawn_ui(*name, button *color);)
+///                 });
+///             }
+///         }
+///     }
+/// }
+/// # }
+/// ```
+///
+/// [`IntoLayoutCommands`]: crate::dsl::IntoLayoutCommands
+/// [`LayoutCommands`]: crate::dsl::LayoutCommands
+/// [`row`]: crate::dsl::LayoutCommands::row
+/// [`spawn_ui`]: crate::dsl::LayoutCommands::spawn_ui
+/// [`column`]: crate::dsl::LayoutCommands::column
 #[rustfmt::skip]
 #[macro_export]
 macro_rules! layout {
     (@rule px $rule:expr) => { Rule::Fixed($rule as f32) };
     (@rule % $rule:expr) => { Rule::Parent($rule as f32 / 100.0) };
-    (@arg $cmds:expr,) => { $cmds };
+    (@arg $cmds:expr,) => { $cmds.lyout() };
     (@arg $cmds:expr, width $kind:tt $rul:expr $(, $($t:tt)*)? ) => {
         layout!(@arg $cmds, $($($t)*)?).width_rule(layout!(@rule $kind $rul))
     };
@@ -119,8 +165,11 @@ macro_rules! layout {
           $($code)*
           $(; layout!(@statement $cmds, $($t)*))? }
     };
+    (<> $cmds:expr, $($t:tt)*) => {{
+        layout!(@statement $cmds, $($t)*)
+    }};
     ($cmds:expr, $($t:tt)*) => {{
-        use $crate::dsl::LayoutCommandsExt;
+        use $crate::dsl::IntoLayoutCommands;
         layout!(@statement $cmds, $($t)*)
     }};
 }
