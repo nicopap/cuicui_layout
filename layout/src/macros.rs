@@ -138,6 +138,7 @@
 macro_rules! layout {
     (@rule px $rule:expr) => { Rule::Fixed($rule as f32) };
     (@rule % $rule:expr) => { Rule::Parent($rule as f32 / 100.0) };
+    (@rule * $rule:expr) => { Rule::Children($rule) };
     (@arg $cmds:expr,) => { $cmds.lyout() };
     (@arg $cmds:expr, width $kind:tt $rul:expr $(, $($t:tt)*)? ) => {
         layout!(@arg $cmds, $($($t)*)?).width_rule(layout!(@rule $kind $rul))

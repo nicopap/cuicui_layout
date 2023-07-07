@@ -3,53 +3,15 @@
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::RenderLayers},
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::MaterialMesh2dBundle,
 };
-use cuicui_layout as layout;
+use cuicui_layout::{
+    dsl::{IntoUiBundle, UiBundle},
+    layout, Node, PosRect, Root, Rule, Size,
+};
 use cuicui_layout_bevy_sprite as render;
-use layout::Container;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
-
-macro_rules! root {
-    (($name:literal, $dir:expr, $suse:ident, $width:expr, $height:expr), $($branch:expr),* $(,)?) => {
-        UiRoot(UiTree {
-            name: $name,
-            children: vec![$( $branch, )*],
-            node: layout::Node::Container(Container {
-                rules: layout::Size::new($width as f32, $height as f32).map(layout::Rule::Fixed),
-                ..Container::$suse ( $dir )
-            })
-        })
-    };
-}
-macro_rules! spacer {
-    ($name:literal, $parent_ratio:literal % $(,$branch:expr)* $(,)? ) => {
-        UiTree {
-            name: $name,
-            children: vec![$( $branch, )*],
-            node: layout::Node::spacer_percent($parent_ratio as f32).unwrap(),
-        }
-    };
-}
-macro_rules! fix {
-    ($name:literal, $width:expr, $height:expr $(,$branch:expr)* $(,)? ) => {
-        UiTree {
-            name: $name,
-            children: vec![$( $branch, )*],
-            node: layout::Node::fixed(layout::Size { width: $width as f32, height: $height as f32 })
-        }
-    };
-}
-macro_rules! cont {
-    (($name:literal, $dir:expr, $suse:ident), $($branch:expr),* $(,)?) => {
-        UiTree {
-            name: $name,
-            children: vec![$( $branch, )*],
-            node: layout::Node::Container(layout::Container::$suse ( $dir ))
-        }
-    };
-}
 
 #[allow(clippy::cast_precision_loss)]
 fn color_from_entity(entity: Entity) -> Color {
@@ -60,7 +22,7 @@ fn color_from_entity(entity: Entity) -> Color {
     entity.hash(&mut hasher);
 
     let hue = hasher.finish() as f32 * U64_TO_DEGREES;
-    Color::hsla(hue, 0.8, 0.5, 0.5)
+    Color::hsla(hue, 0.8, 0.5, 0.1)
 }
 
 fn main() {
@@ -68,84 +30,38 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
+        .add_startup_system(setup_debug.in_base_set(StartupSet::PostStartup))
         .add_plugin(WorldInspectorPlugin::default())
-        .add_plugin(layout::Plug::new())
-        .add_system(layout::update_transforms)
+        .add_plugin(cuicui_layout::Plug::new())
+        .add_system(cuicui_layout::update_transforms)
         .add_system(render::update_ui_camera_root)
         .add_system(stretch_boxes)
         .run();
 }
-struct ExtraSpawnArgs<'a, 'm> {
-    entity: Entity,
-    assets: &'a mut Assets<ColorMaterial>,
-    mesh: &'m Mesh2dHandle,
-}
 
-impl<'a, 'm> ExtraSpawnArgs<'a, 'm> {
-    fn debug_mesh(&mut self) -> impl Bundle {
-        (
-            MaterialMesh2dBundle {
-                mesh: self.mesh.clone(),
-                material: self.assets.add(color_from_entity(self.entity).into()),
-                ..default()
-            },
-            DebugChild,
-            Name::new("DebugMesh"),
-            UI_LAYER,
-        )
-    }
-}
-fn debug_node() -> impl Bundle {
-    (
-        layout::PosRect::default(),
-        SpatialBundle::from_transform(Transform::from_xyz(0.0, 0.0, 0.01)),
-    )
-}
-
-struct UiRoot(UiTree);
-struct UiTree {
-    name: &'static str,
-    children: Vec<UiTree>,
-    node: layout::Node,
-}
-impl UiRoot {
-    fn spawn(self, cmds: &mut Commands, inner: &mut ExtraSpawnArgs) {
-        let Self(UiTree { children, name, node }) = self;
-        let layout::Node::Container(Container { flow, align, distrib, rules, .. }) = node else {
-            return;
-        };
-        let bounds = rules.map(|v| if let layout::Rule::Fixed(v) = v { v } else { 0.0 });
-        cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
-
-        let bundle = (
-            render::RootBundle {
-                node: layout::Root::new(bounds, flow, align, distrib, layout::Size::ZERO),
-                layer: UI_LAYER,
-                screen_root: render::ScreenRoot,
-            },
-            debug_node(),
-            Name::new(name),
-        );
-        cmds.spawn(bundle).with_children(|cmds| {
-            inner.entity = cmds.parent_entity();
-            cmds.spawn(inner.debug_mesh());
-            for child in children {
-                child.spawn(cmds, inner);
-            }
-        });
-    }
-}
-impl UiTree {
-    fn spawn(self, cmds: &mut ChildBuilder, inner: &mut ExtraSpawnArgs) {
-        let Self { children, node, name } = self;
-        let bundle = (node, debug_node(), Name::new(name));
-        cmds.spawn(bundle).with_children(|cmds| {
-            inner.entity = cmds.parent_entity();
-            cmds.spawn(inner.debug_mesh());
-            for child in children {
-                child.spawn(cmds, inner);
-            }
-        });
+#[allow(clippy::type_complexity)]
+fn setup_debug(
+    mut cmds: Commands,
+    nodes: Query<Entity, Or<(With<Node>, With<Root>)>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut mats: ResMut<Assets<ColorMaterial>>,
+) {
+    let mesh = meshes.add(top_left_quad());
+    for node in &nodes {
+        cmds.entity(node)
+            .insert((SpatialBundle::default(), UI_LAYER))
+            .with_children(|cmds| {
+                cmds.spawn((
+                    MaterialMesh2dBundle {
+                        mesh: mesh.clone().into(),
+                        material: mats.add(color_from_entity(node).into()),
+                        ..default()
+                    },
+                    DebugChild,
+                    Name::new("DebugMesh"),
+                    UI_LAYER,
+                ));
+            });
     }
 }
 
@@ -154,7 +70,7 @@ struct DebugChild;
 
 #[allow(clippy::needless_pass_by_value)]
 fn stretch_boxes(
-    query: Query<(&Children, &layout::PosRect), Changed<layout::PosRect>>,
+    query: Query<(&Children, &PosRect), Changed<PosRect>>,
     mut trans: Query<&mut Transform, With<DebugChild>>,
 ) {
     for (children, pos) in &query {
@@ -165,70 +81,114 @@ fn stretch_boxes(
         }
     }
 }
-fn setup(
-    mut cmds: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut assets: ResMut<Assets<ColorMaterial>>,
-) {
-    use layout::Flow::{Horizontal, Vertical};
 
-    let tree = root! { ("root", Vertical, stretch, 300, 270),
-        spacer!("spacer1", 10%),
-        cont! { ("horiz_cont1", Horizontal, stretch),
-            fix!("h1_1_fix", 10, 10), fix!("h1_2_fix", 30, 10), fix!("h1_3_fix", 50, 20),
-            spacer!("h1_4_spacer", 10%), fix!("h1_5_fix", 51, 32),
+#[derive(Bundle)]
+struct ElementBundle {
+    node: Node,
+    pos: PosRect,
+    layer: RenderLayers,
+}
+impl Default for ElementBundle {
+    fn default() -> Self {
+        ElementBundle {
+            node: Node::default(),
+            pos: default(),
+            layer: UI_LAYER,
+        }
+    }
+}
+#[derive(Component, Clone)]
+struct Fixed(i32, i32);
+
+#[derive(Component, Clone)]
+struct Space(i8);
+
+impl IntoUiBundle<Fixed> for Fixed {
+    type Target = ElementBundle;
+    fn into_ui_bundle(self) -> Self::Target {
+        ElementBundle {
+            node: Node::fixed(Size::new(self.0 as f32, self.1 as f32)),
+            ..default()
+        }
+    }
+}
+impl IntoUiBundle<Space> for Space {
+    type Target = ElementBundle;
+    fn into_ui_bundle(self) -> Self::Target {
+        ElementBundle {
+            node: Node::spacer_percent(self.0 as f32).unwrap(),
+            ..default()
+        }
+    }
+}
+impl UiBundle for ElementBundle {
+    fn set_fixed_width(&mut self) {}
+    fn set_fixed_height(&mut self) {}
+}
+
+fn setup(mut cmds: Commands) {
+    cmds.spawn(render::UiCameraBundle {
+        camera: Camera2dBundle {
+            // projection: OrthographicProjection { scale: 0.25, ..default() },
+            // transform: Transform::from_xyz(108.7, 142.0, 999.9),
+            ..default()
         },
-        fix!("fix1", 10, 20),
-        fix!("fix2", 40, 30),
-        cont! { ("horiz_cont2", Horizontal, compact),
-            fix!("h2_1_fix", 10, 14), fix!("h2_2_fix", 12, 12), fix!("h2_3_fix", 14, 10),
-        },
-        cont! { ("horiz_cont3", Horizontal, stretch),
-            spacer!("spacer5", 4%),
-            // cont! { ("horiz_cont4", Horizontal, stretch),
-            //     fix!("h4_1", 10, 14), fix!("h4_2", 12, 12), fix!("h4_3", 14, 10),
-            // }
-            cont! { ("vert_cont1", Vertical, compact),
-                fix!("v1_1_fix",10, 21),
-                fix!("v1_2_fix",12, 12),
-                fix!("v1_3_fix",14, 20),
-                fix!("v1_4_fix",16, 21),
-                fix!("v1_5_fix",18, 12),
-                fix!("v1_6_fix",20, 20),
-            },
-            cont! { ("horiz_inner", Horizontal, compact),
-                fix!("v2_1_fix",10, 21),
-                fix!("v2_2_fix",12, 12),
-                fix!("v2_3_fix",14, 20),
-                fix!("v2_4_fix",16, 21),
-                fix!("v2_5_fix",18, 12),
-                fix!("v2_6_fix",20, 20),
-            },
-            cont! { ("vert_cont3", Vertical, compact),
-                fix!("v3_1_fix",10, 21),
-                fix!("v3_2_fix",12, 12),
-                fix!("v3_3_fix",14, 20),
-                fix!("v3_4_fix",16, 21),
-                fix!("v3_5_fix",18, 12),
-                fix!("v3_6_fix",20, 20),
-            },
-            spacer!("spacer4", 4%),
-        },
-        spacer!("spacer3", 10%),
-    };
-    tree.spawn(
-        &mut cmds,
-        &mut ExtraSpawnArgs {
-            entity: Entity::PLACEHOLDER,
-            assets: &mut assets,
-            mesh: &meshes.add(top_left_quad()).into(),
-        },
-    );
-    cmds.spawn(Camera2dBundle {
-        projection: OrthographicProjection { scale: 0.25, ..default() },
-        transform: Transform::from_xyz(108.7, 142.0, 999.9),
-        ..default()
+        ..render::UiCameraBundle::for_layer(1, 20)
     });
+    layout! {
+        &mut cmds,
+        column("root", screen_root, fill_main_axis) {
+            spawn_ui(Space(10), "spacer1");
+            row("horiz_cont1", fill_main_axis, height * 1.0) {
+                spawn_ui(Fixed(10, 10), "h1_1_fix");
+                spawn_ui(Fixed(30, 10), "h1_2_fix");
+                spawn_ui(Fixed(50, 20), "h1_3_fix");
+                spawn_ui(Space(10), "h1_4_spacer");
+                spawn_ui(Fixed(51, 32), "h1_5_fix");
+            }
+            spawn_ui(Fixed(10, 20), "fix1");
+            spawn_ui(Fixed(40, 30), "fix2");
+            row("horiz_cont2", height * 1.0) {
+                spawn_ui(Fixed(10, 14), "h2_1_fix");
+                spawn_ui(Fixed(12, 12), "h2_2_fix");
+                spawn_ui(Fixed(14, 10), "h2_3_fix");
+            }
+            row("horiz_cont3", fill_main_axis, height * 1.) {
+                spawn_ui(Space(4), "spacer5");
+                // row("horiz_cont4", fill_main) {
+                //     spawn_ui(Fixed(10, 14), "h4_1" );
+                //     spawn_ui(Fixed(12, 12), "h4_2" );
+                //     spawn_ui(Fixed(14, 10), "h4_3" );
+                // }
+                column("vert_cont1", height * 1., width * 1.) {
+                    spawn_ui(Fixed(10, 21), "v1_1_fix");
+                    spawn_ui(Fixed(12, 12), "v1_2_fix");
+                    spawn_ui(Fixed(14, 20), "v1_3_fix");
+                    spawn_ui(Fixed(16, 21), "v1_4_fix");
+                    spawn_ui(Fixed(18, 12), "v1_5_fix");
+                    spawn_ui(Fixed(20, 20), "v1_6_fix");
+                }
+                row("horiz_inner", height * 1., width * 1.) {
+                    spawn_ui(Fixed(10, 21), "v2_1_fix");
+                    spawn_ui(Fixed(12, 12), "v2_2_fix");
+                    spawn_ui(Fixed(14, 20), "v2_3_fix");
+                    spawn_ui(Fixed(16, 21), "v2_4_fix");
+                    spawn_ui(Fixed(18, 12), "v2_5_fix");
+                    spawn_ui(Fixed(20, 20), "v2_6_fix");
+                }
+                column("vert_cont3", height * 1., width * 1.) {
+                    spawn_ui(Fixed(10, 21), "v3_1_fix");
+                    spawn_ui(Fixed(12, 12), "v3_2_fix");
+                    spawn_ui(Fixed(14, 20), "v3_3_fix");
+                    spawn_ui(Fixed(16, 21), "v3_4_fix");
+                    spawn_ui(Fixed(18, 12), "v3_5_fix");
+                    spawn_ui(Fixed(20, 20), "v3_6_fix");
+                }
+                spawn_ui(Space(4), "spacer4");
+            }
+            spawn_ui(Space(10), "spacer3");
+        }
+    }
 }
 fn top_left_quad() -> Mesh {
     let vertices = [

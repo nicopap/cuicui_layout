@@ -31,6 +31,7 @@ pub struct Layout {
     pub distrib: Distribution,
     /// The [margin](Container::margin) size.
     pub margin: Oriented<f32>,
+    // TODO(feat): consider changing the default to Rule::Children(1.0) when layout is wihin another container.
     /// The inner size, defaults to [`Rule::Parent(1.0)`].
     pub size: Size<Option<Rule>>,
 }

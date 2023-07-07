@@ -8,21 +8,7 @@ use bevy::{
     render::view::{Layer, RenderLayers},
 };
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::Root;
-
-/// Use this camera's logical size as the root fixed-size container for
-/// `cuicui_layout`.
-///
-/// Note that it is an error to have more than a single camera with this
-/// component.
-#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
-#[reflect(Component)]
-pub struct LayoutRootCamera;
-
-/// Set this [`cuicui_layout::Root`] to track the [`LayoutRootCamera`]'s size.
-#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
-#[reflect(Component)]
-pub struct ScreenRoot;
+use cuicui_layout::{LayoutRootCamera, Root, ScreenRoot};
 
 /// Create a [`Root`] container as the screen root, its size will dyamically
 /// follow the size of the viewport of camera marked iwth [`LayoutRootCamera`].

@@ -365,7 +365,11 @@ impl Rule {
         use Computed::{ChildDefined, Valid};
         match (self, bound) {
             (Rule::Parent(ratio), Valid(value)) => Valid(value * ratio),
-            (Rule::Parent(_), ChildDefined(_, _)) => todo!("Proper error handling"),
+            (Rule::Parent(_), ChildDefined(_, parent)) => todo!(
+                "Proper error handling\n\
+                Container {parent:?} is child-dependent, yet its child {this:?} depends on its \
+                size.\nThis is an unsolvable circular dependency!"
+            ),
             (Rule::Fixed(fixed), _) => Valid(fixed),
             (Rule::Children(ratio), ChildDefined(_, parent)) => ChildDefined(ratio, parent),
             (Rule::Children(ratio), _) => ChildDefined(ratio, this),
