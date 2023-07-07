@@ -8,9 +8,10 @@ use bevy_mod_sysfail::quick_sysfail;
 use content_sized::ContentSized;
 use cuicui_layout::{LayoutRootCamera, PosRect, Root};
 
-pub mod bundles;
 pub mod content_sized;
-mod debug;
+pub mod dsl_extension;
+
+pub use dsl_extension::{BevyUiCommandsExt, IntoUiCommands};
 
 /// Marker for [`cuicui_layout::dsl::IntoUiBundle`] to indicate this instance of the layout DSL
 /// is meant to spawn bundles from [`bevy::ui`].

@@ -33,7 +33,6 @@ pub mod dsl;
 mod error;
 mod layout;
 mod macros;
-pub mod typed;
 
 use std::marker::PhantomData;
 
@@ -65,7 +64,7 @@ pub struct ScreenRoot;
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
-/// Note that `Pos` will always be relative to the top left position of the
+/// Note that `Pos` will always be **relative to** the top left position of the
 /// containing node.
 #[derive(Component, Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]

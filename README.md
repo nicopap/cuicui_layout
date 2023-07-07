@@ -23,22 +23,29 @@ a lot of things are going to break a lot.
     - Using a custom renderer or want your UI to be part of the 3D environment?
       Build on top of [`cuicui_layout`] itself then!
 2. Add the chosen crate as a dependency to your crate.
-3. Use either the [`CommandsLayoutExt`] trait or [`layout!`] macro to build
+3. Use either [`LayoutCommands`] or [`layout!`] macro to build
    a UI (text representation coming soon). The macro is just a thin wrapper
    around the trait, and the trait itself is very easy to use, so your choice.
 4. That's it! You are now using `cuicui_layout`, congratulations!
-   Make sure to check the [`CommandsLayoutExt`]
+   Make sure to check the [`LayoutCommands`]
    docs to learn the current capabilities of `cuicui_layout`.
+
+[`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
+[`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
+[`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
+[`LayoutCommands`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutCommands.html
+[`layout!`]: https://docs.rs/cuicui_layout/latest/macro.layout.html
 
 ## `cuicui_layout` crates
 
 This repository contains several crates:
 
-- `cuicui_layout`: The base algorithm and components, does not make any assumption
+- `cuicui_layout` ([./layout]): The base algorithm and components, does not make any assumption
   about how it is used, beside the requirement that layout nodes be bevy `Entitiy` and
-  uses `bevy_hierarchy` and `bevy_transform`.
-- `cuicui_layout_bevy_ui`: Integration with `bevy_ui` and the nice layout DSL.
-- `cuicui_layout_bevy_sprite`: More bare-bone `bevy_sprite` integration.
+  uses `bevy_hierarchy`.
+- `cuicui_layout_bevy_ui` ([./ui]): Integration with `bevy_ui`, including extension to `LayoutCommands`
+  for `UiImage`, `Text`, background images and background colors.
+- `cuicui_layout_bevy_sprite` ([./sprite]): More bare-bone `bevy_sprite` integration.
 
 (maybe `cuicui_layout_spec` in the future)
 
@@ -67,6 +74,8 @@ in two short bullet points.
 
 That's it. There are some edge cases, but cuicui will ~~yell at you~~
 tell you nicely when you hit them and tell you how to handle them properly.
+
+[`bevy-inspector-egui`]: https://lib.rs/crates/bevy-inspector-egui
 
 ### Flexbox FAQ
 
@@ -102,29 +111,13 @@ and whether they really do anything, so I wont' adventure an asnwer.
 
 ## Why cuicui layout
 
-On top of the very friendly layout algorithm,
-cuicui runs on `bevy_ecs` and therefore can ~~abuse~~ use it as a backing storage.
+- Friendly algo with less things to keep in your head and good defaults.[^1]
+- Uses and takes full advantage of the bevy ECS.
+- Only controls `PosRect`, not `Transform`, you need to add a system that sets
+  `Transform` based on `PosRect`.
+- Fully flexible and extensible, can be used with `bevy_ui`, `bevy_sprite`, your own stuff.
+- Helpful and fully detailed error messages when things are incoherent or broken.[^1]
+  As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
+  why things do not turn out as expected.
 
-Layouts are generally backed by a tree,
-[`taffy`]'s implementation of Flexbox internally uses a [`slotmap`].
-cuicui uses the ECS, which is basically a faster slotmap.
-
-Also, cuicui's layouting system relinquishes control to give more power to users.
-Meaning that you can tell cuicui to not manage UI entities `Transform`
-and instead chose yourself to build the UI based on what info cuicui gives you.
-
-### Limitations
-
-cuicui layout returns postion as offset from parent, which may not be useful
-if you do not use bevy's transform hierarchy. This also locks you into using
-bevy hierarchy for your Ui.
-
-## Understanding this repository
-
-This repository at <https://github.com/nicopap/cuicui_layout> contains several
-packages. One root package and further integration packages:
-
-- The root package, `cuicui_layout` defines a layouting algorithm that works
-  on its own defined components. It doesn't even hard-code to update `Transform`.
-- `ui` contains integration with the bevy-native UI framework, `bevy_ui`
-- `sprite` on the other hand, integrates with bevy's 2D renderer, `bevy_sprite`.
+[^1]: aspirational, currently not really the case.

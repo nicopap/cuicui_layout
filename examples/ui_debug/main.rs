@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cuicui_layout::{layout, LayoutRootCamera, Rule};
-use cuicui_layout_bevy_ui::bundles::{BevyUiCommandsExt, IntoUiCommands};
+use cuicui_layout_bevy_ui::dsl_extension::{BevyUiCommandsExt, IntoUiCommands};
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {

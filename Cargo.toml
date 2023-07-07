@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
+exclude = ["assets/", "design_docs/"]
 members = [
   "sprite",
   "ui",
@@ -13,6 +14,7 @@ edition = "2021"
 version = "0.1.0"
 authors = ["Nicola Papale"]
 license = "MIT OR Apache-2.0"
+readme = "../README.md"
 repository = "https://github.com/nicopap/cuicui_layout"
 
 [workspace.dependencies]
