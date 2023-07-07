@@ -1,15 +1,16 @@
 //! Bundles wrapping [`bevy::ui::node_bundles`] with additional [`cuicui_layout`]
 //! components.
 use bevy::{
-    prelude::{Bundle, Handle, Image, Text, TextStyle, UiImage},
-    ui::node_bundles as bevy_ui,
+    ecs::system::EntityCommands,
+    prelude::{Bundle, Color, Handle, Image, Text, TextStyle, UiImage},
+    ui::{node_bundles as bevy_ui, BackgroundColor},
     utils::default,
 };
-use cuicui_layout::{
-    Alignment, Container, Distribution, Flow, LeafRule, Node, Oriented, PosRect, Root, Rule, Size,
-};
+use cuicui_layout::dsl::{CommandLike, IntoUiBundle, LayoutCommands, LayoutCommandsExt, UiBundle};
+use cuicui_layout::{LeafRule, Node, PosRect, Size};
 
-use crate::{content_sized::ContentSized, ScreenRoot};
+use crate::content_sized::ContentSized;
+use crate::BevyUiLayout;
 
 macro_rules! impl_bundle {
     ($t:ident) => {
@@ -22,15 +23,6 @@ macro_rules! impl_bundle {
     };
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct Layout {
-    // Default to center alignment.
-    pub align: Alignment,
-    // Default to Start Distribution
-    pub distrib: Distribution,
-    pub margin: Oriented<f32>,
-    pub size: Size<Option<Rule>>,
-}
 /// An image leaf node wrapping a [`bevy_ui::ImageBundle`].
 ///
 /// By default, will stretch to fit the parent container.
@@ -84,69 +76,12 @@ impl ImageBundle {
     }
 }
 
-/// A terminal node, meant to add empty space/offsets between other nodes.
-#[derive(Bundle)]
-pub struct BoxBundle {
-    /// The [`cuicui_layout`] positional component.
-    pub pos_rect: PosRect,
-    /// The bevy bundle.
-    pub inner: bevy_ui::NodeBundle,
-    node: Node,
-}
-impl BoxBundle {
-    /// A terminal node with given `orient` [`LeafRule`], the axis of the rule
-    /// depends on the parent's flow direction.
-    #[must_use]
-    pub fn axis(orient: Oriented<LeafRule>) -> Self {
-        Self {
-            pos_rect: default(),
-            inner: default(),
-            node: Node::Axis(orient),
-        }
-    }
-    /// A terminal node with given `size` [`LeafRule`]. Unlike [`Self::axis`],
-    /// the rules are set to a given axis, rather that dependent on the
-    /// parent's direction.
-    #[must_use]
-    pub fn sized(size: Size<LeafRule>) -> Self {
-        Self {
-            pos_rect: default(),
-            inner: default(),
-            node: Node::Box(size),
-        }
-    }
-}
-/// A container node, meant to hold one or several other UI elements.
-#[derive(Bundle)]
-pub struct FlowBundle {
-    /// The [`cuicui_layout`] positional component.
-    pub pos_rect: PosRect,
-    /// The bevy bundle.
-    pub inner: bevy_ui::NodeBundle,
-    container: Node,
-}
-impl Default for FlowBundle {
-    fn default() -> Self {
-        Self {
-            pos_rect: PosRect::default(),
-            inner: default(),
-            container: Node::Box(Size::all(LeafRule::Fixed(1.0))),
-        }
-    }
-}
-impl FlowBundle {
-    pub(crate) fn new(container: Container) -> Self {
-        let container = Node::Container(container);
-        Self { container, ..default() }
-    }
-}
-
 /// A text leaf node wrapping a [`bevy_ui::TextBundle`].
 ///
 /// By default, a text node will stretch to fit the parent's size.
 ///
 /// In order to have the text be bound to a fixed size, you should use
-/// [`LeafRule::Parent`] and wrap the text in a [`FlowBundle`] with a [`Rule::Fixed`].
+/// [`LeafRule::Parent`] and wrap the text in another container with a [`Rule::Fixed`].
 ///
 /// [`Rule::Fixed`]: cuicui_layout::Rule::Fixed
 #[derive(Bundle, Default)]
@@ -196,70 +131,16 @@ impl From<UiImage> for ImageBundle {
     }
 }
 
-/// A [`Root`] container node, it will always span the entire screen.
-#[derive(Bundle, Default)]
-pub struct RootBundle {
-    /// The bevy bundle.
-    pub inner: bevy_ui::NodeBundle,
-    /// The [`cuicui_layout`] positional component.
-    pub pos_rect: PosRect,
-    /// The [`cuicui_layout::Root`].
-    pub root: Root,
-    /// Sets this [`cuicui_layout::Root`] to track the [`LayoutRootCamera`]'s size.
-    ///
-    /// [`LayoutRootCamera`]: crate::LayoutRootCamera
-    pub screen_root: ScreenRoot,
-}
-impl RootBundle {
-    #[must_use]
-    pub(crate) fn new(flow: Flow, Layout { align, distrib, margin, .. }: Layout) -> Self {
-        RootBundle {
-            pos_rect: default(),
-            inner: default(),
-            root: Root::new(Size::ZERO, flow, align, distrib, flow.absolute(margin)),
-            screen_root: ScreenRoot,
-        }
-    }
-}
-
 impl_bundle!(ImageBundle);
 impl_bundle!(TextBundle);
-impl From<bevy_ui::NodeBundle> for FlowBundle {
-    fn from(inner: bevy_ui::NodeBundle) -> Self {
-        Self { inner, ..default() }
-    }
-}
-impl From<bevy_ui::NodeBundle> for RootBundle {
-    fn from(inner: bevy_ui::NodeBundle) -> Self {
-        Self { inner, ..default() }
-    }
-}
-
-/// Convert a [`bevy_ui::NodeBundle`] into [`cuicui_layout`]-based bundles.
-pub trait NodeBundleFlowExt {
-    /// Get a default [`FlowBundle`] from this [`bevy_ui::NodeBundle`].
-    #[must_use]
-    fn flow(self) -> FlowBundle;
-    /// Get a default [`RootBundle`] from this [`bevy_ui::NodeBundle`].
-    #[must_use]
-    fn root(self) -> RootBundle;
-}
-impl NodeBundleFlowExt for bevy_ui::NodeBundle {
-    fn flow(self) -> FlowBundle {
-        FlowBundle::from(self)
-    }
-    fn root(self) -> RootBundle {
-        RootBundle::from(self)
-    }
-}
 
 macro_rules! from_delegate_impl {
     ([$from:ty, $to:ty]) => {
         from_delegate_impl!([$from, $to], |self| <$to>::from(self).into_ui_bundle());
     };
     ([$from:ty, $to:ty], |$s:ident| $delegate_adaptor:expr) => {
-        impl IntoUiBundle for $from {
-            type Target = <$to as IntoUiBundle>::Target;
+        impl IntoUiBundle<BevyUiLayout> for $from {
+            type Target = <$to as IntoUiBundle<BevyUiLayout>>::Target;
 
             fn into_ui_bundle($s) -> Self::Target {
                 $delegate_adaptor
@@ -268,32 +149,6 @@ macro_rules! from_delegate_impl {
     };
 }
 
-/// A bevy [`Bundle`] that can be spawned as a `cuicui_layout` terminal node.
-///
-/// [`UiBundle`] differs from [`Bundle`] in that it is possible to set its
-/// layouting properties.
-///
-/// This includes images and text, not much else.
-pub trait UiBundle: Bundle {
-    /// Mark this [`UiBundle`]'s width as fixed to the dynamic size of what
-    /// it contains.
-    ///
-    /// This will be the size of an image or text.
-    fn set_fixed_width(&mut self);
-    /// Mark this [`UiBundle`]'s height as fixed to the dynamic size of what
-    /// it contains.
-    ///
-    /// This will be the size of an image or text.
-    fn set_fixed_height(&mut self);
-}
-
-/// Something that can be converted into [`UiBundle`].
-pub trait IntoUiBundle {
-    /// The type of the [`UiBundle`] it can be converted into.
-    type Target: UiBundle;
-    /// Convert `self` into an [`UiBundle`].
-    fn into_ui_bundle(self) -> Self::Target;
-}
 from_delegate_impl!([&'_ str, String]);
 from_delegate_impl! {
     [String, Text],
@@ -305,13 +160,13 @@ from_delegate_impl!([UiImage, ImageBundle]);
 from_delegate_impl!([bevy_ui::ImageBundle, ImageBundle]);
 from_delegate_impl!([bevy_ui::TextBundle, TextBundle]);
 
-impl IntoUiBundle for TextBundle {
+impl IntoUiBundle<BevyUiLayout> for ImageBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
     }
 }
-impl IntoUiBundle for ImageBundle {
+impl IntoUiBundle<BevyUiLayout> for TextBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
@@ -333,4 +188,86 @@ impl UiBundle for TextBundle {
         self.mut_box_size().height = LeafRule::Fixed(1.0);
     }
 }
-// impl IntoUiBundle for NodeBundle {}
+
+/// Wrapper for [`EntityCommands`] to enable UI handling.
+pub struct BevyUiCommands<'w, 's, 'a> {
+    bg_color: Option<BackgroundColor>,
+    bg_image: Option<UiImage>,
+    cmds: EntityCommands<'w, 's, 'a>,
+}
+
+impl<'w, 's, 'a> BevyUiCommands<'w, 's, 'a> {
+    /// Create `Self` with default values.
+    #[must_use]
+    pub const fn new(cmds: EntityCommands<'w, 's, 'a>) -> Self {
+        BevyUiCommands { bg_color: None, bg_image: None, cmds }
+    }
+}
+
+impl<'w, 's, 'a> CommandLike for BevyUiCommands<'w, 's, 'a> {
+    fn insert(&mut self, bundle: impl Bundle) {
+        match (self.bg_color, self.bg_image.clone()) {
+            (Some(background_color), Some(image)) => self.cmds.insert((
+                bevy_ui::NodeBundle { background_color, ..default() },
+                image,
+                bundle,
+            )),
+            (Some(background_color), None) => self.cmds.insert((
+                bevy_ui::NodeBundle { background_color, ..default() },
+                bundle,
+            )),
+            (None, Some(image)) => {
+                self.cmds
+                    .insert((bevy_ui::NodeBundle::default(), image, bundle))
+            }
+            (None, None) => self.cmds.insert((bevy_ui::NodeBundle::default(), bundle)),
+        };
+    }
+    fn entity(&self) -> bevy::prelude::Entity {
+        self.cmds.id()
+    }
+    fn with_children(&mut self, f: impl FnOnce(&mut bevy::prelude::ChildBuilder)) {
+        self.insert(());
+        self.cmds.with_children(f);
+    }
+}
+impl<'w, 's, 'a> From<EntityCommands<'w, 's, 'a>> for BevyUiCommands<'w, 's, 'a> {
+    fn from(cmds: EntityCommands<'w, 's, 'a>) -> Self {
+        Self { cmds, bg_color: None, bg_image: None }
+    }
+}
+
+/// Add `bevy_ui` background data methods to [`LayoutCommands`].
+pub trait BevyUiCommandsExt<'w, 's, 'a, C> {
+    /// Set the node's background color.
+    fn bg(self, color: Color) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>>;
+    /// Set the node's background image.
+    fn bg_image(self, image: Handle<Image>) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>>;
+}
+impl<'w, 's, 'a, C, T> BevyUiCommandsExt<'w, 's, 'a, C> for T
+where
+    T: LayoutCommandsExt<C>,
+    C: CommandLike + Into<BevyUiCommands<'w, 's, 'a>>,
+    'w: 'a,
+    's: 'a,
+{
+    fn bg(self, color: Color) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
+        self.into_lc()
+            .with(|cmds| BevyUiCommands { bg_color: Some(color.into()), ..cmds.into() })
+    }
+    fn bg_image(self, image: Handle<Image>) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
+        self.into_lc()
+            .with(|cmds| BevyUiCommands { bg_image: Some(image.into()), ..cmds.into() })
+    }
+}
+
+// impl<'w, 's, 'a> IntoCommandLike for &'a mut Commands<'w, 's> {
+//     fn into_cmd(self) -> BevyUiCommands<'w, 's, 'a> {
+//         self.spawn_empty().into()
+//     }
+// }
+// impl<'w, 's, 'a> IntoCommandLike for &'a mut ChildBuilder<'w, 's, '_> {
+//     fn into_cmd(self) -> BevyUiCommands<'w, 's, 'a> {
+//         self.spawn_empty().into()
+//     }
+// }

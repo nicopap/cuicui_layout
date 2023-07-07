@@ -27,15 +27,18 @@
 )]
 
 mod alignment;
-// mod builder;
+pub mod bundles;
 mod direction;
+pub mod dsl;
 mod error;
 mod layout;
+mod macros;
 pub mod typed;
 
 use std::marker::PhantomData;
 
-use bevy::{ecs::query::ReadOnlyWorldQuery, prelude::*};
+use bevy::ecs::query::ReadOnlyWorldQuery;
+use bevy::prelude::*;
 use bevy_mod_sysfail::sysfail;
 
 pub use alignment::{Alignment, Distribution};
@@ -45,6 +48,20 @@ use error::Computed;
 pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
 
 use crate::layout::Layout;
+
+/// Use this camera's logical size as the root fixed-size container for
+/// `cuicui_layout`.
+///
+/// Note that it is an error to have more than a single camera with this
+/// component.
+#[derive(Component, Clone, Copy, Debug, Default)]
+#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
+pub struct LayoutRootCamera;
+
+/// Set this [`Root`] to track the [`LayoutRootCamera`]'s size.
+#[derive(Component, Clone, Copy, Debug, Default)]
+#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
+pub struct ScreenRoot;
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///

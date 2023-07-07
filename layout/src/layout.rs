@@ -396,7 +396,7 @@ pub type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
 ///    (It is also necessary to know each child's size to place them next to each-other)
 ///
 /// Done.
-pub(crate) struct Layout<'a, 'w, 's, F: ReadOnlyWorldQuery> {
+pub struct Layout<'a, 'w, 's, F: ReadOnlyWorldQuery> {
     // This container's entity
     pub(crate) this: Entity,
     pub(crate) to_update: &'a mut Query<'w, 's, &'static mut PosRect, F>,

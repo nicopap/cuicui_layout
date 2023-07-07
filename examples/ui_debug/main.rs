@@ -1,6 +1,5 @@
 use bevy::prelude::*;
-use cuicui_layout::Rule;
-use cuicui_layout_bevy_ui::{layout, traits::LayoutCommandsExt, LayoutRootCamera};
+use cuicui_layout::{dsl::LayoutCommandsExt, layout, LayoutRootCamera, Rule};
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {
@@ -67,7 +66,7 @@ fn _setup_with_macro(mut cmds: Commands, serv: Res<AssetServer>) {
 
     layout! {
         &mut cmds,
-        row(screen_root, "root", main_margin 100, align_start) {
+        row(screen_root, "root", main_margin 100., align_start) {
             column("menu", width px 300, fill_main_axis) {
                 spawn_ui(title_card, "Title card", height px 100, width %100);
                 code(let cmds) {

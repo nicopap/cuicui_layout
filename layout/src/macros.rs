@@ -1,6 +1,6 @@
-/// Dump wrapper around the [`crate::traits::LayoutCommandsExt`] trait.
+/// Dump wrapper around the [`crate::dsl::LayoutCommandsExt`] trait.
 ///
-/// See [`crate::traits::LayoutCommandsExt`] for details.
+/// See [`crate::dsl::LayoutCommandsExt`] for details.
 ///
 /// Basically, this is a way to use the methods on the dsl trait but, but reversed:
 ///
@@ -44,7 +44,8 @@
 /// ```
 /// use bevy::prelude::*;
 /// use cuicui_layout::Rule;
-/// use cuicui_layout_bevy_ui::{layout, traits::LayoutCommandsExt, LayoutRootCamera};
+/// use cuicui_layout::{layout, dsl::LayoutCommandsExt, LayoutRootCamera};
+/// # enum BevyUi {} impl cuicui_layout::dsl::IntoUiBundle<BevyUi> for &'_ str {type Target=();fn into_ui_bundle(self) {}}
 /// # fn sys(mut cmds: Commands) {
 /// # let title_card = "";
 /// let menu_buttons = ["CONTINUE", "QUIT", "LOAD"];
@@ -52,7 +53,7 @@
 /// # let _defined_using_macro = || {
 /// layout! {
 ///     &mut cmds,
-///     row(screen_root, "root", main_margin 100, align_start) {
+///     row(screen_root, "root", main_margin 100., align_start) {
 ///         column("menu", width px 300, fill_main_axis) {
 ///             spawn_ui(title_card, "Title card", height px 100, width %100);
 ///             code(let cmds) {
@@ -82,50 +83,44 @@
 /// # }
 /// ```
 ///
-/// [`LayoutCommandsExt`]: crate::traits::LayoutCommandsExt
-/// [`row`]: crate::traits::LayoutCommandsExt::row
-/// [`spawn_ui`]: crate::traits::LayoutCommandsExt::spawn_ui
-/// [`column`]: crate::traits::LayoutCommandsExt::column
+/// [`LayoutCommandsExt`]: crate::dsl::LayoutCommandsExt
+/// [`row`]: crate::dsl::LayoutCommandsExt::row
+/// [`spawn_ui`]: crate::dsl::LayoutCommandsExt::spawn_ui
+/// [`column`]: crate::dsl::LayoutCommandsExt::column
 #[rustfmt::skip]
 #[macro_export]
 macro_rules! layout {
-    (@ rule px $rule:expr) => { Rule::Fixed($rule as f32) };
-    (@ rule % $rule:expr) => { Rule::Parent($rule as f32 / 100.0) };
-    (@ arg $cmds:expr,) => { $cmds };
-    (@ arg $cmds:expr, width $kind:tt $rul:expr $(, $($t:tt)*)? ) => {
-        layout!(@ arg $cmds, $($($t)*)?).width_rule(layout!(@ rule $kind $rul))
+    (@rule px $rule:expr) => { Rule::Fixed($rule as f32) };
+    (@rule % $rule:expr) => { Rule::Parent($rule as f32 / 100.0) };
+    (@arg $cmds:expr,) => { $cmds };
+    (@arg $cmds:expr, width $kind:tt $rul:expr $(, $($t:tt)*)? ) => {
+        layout!(@arg $cmds, $($($t)*)?).width_rule(layout!(@rule $kind $rul))
     };
-    (@ arg $cmds:expr, height $kind:tt $rul:expr $(, $($t:tt)*)? ) => {
-        layout!(@ arg $cmds, $($($t)*)?).height_rule(layout!(@ rule $kind $rul))
+    (@arg $cmds:expr, height $kind:tt $rul:expr $(, $($t:tt)*)? ) => {
+        layout!(@arg $cmds, $($($t)*)?).height_rule(layout!(@rule $kind $rul))
     };
-    (@ arg $cmds:expr, main_margin $v:expr $(,$($t:tt)*)?) => {layout!(@ arg $cmds, $($($t)*)?).main_margin($v as f32)};
-    (@ arg $cmds:expr, $name:literal $(,$($t:tt)*)?)       => {layout!(@ arg $cmds, $($($t)*)?).named($name)};
-    (@ arg $cmds:expr, named $name:expr $(,$($t:tt)*)?)    => {layout!(@ arg $cmds, $($($t)*)?).named($name)};
-    (@ arg $cmds:expr, fill_main_axis $(,$($t:tt)*)?)      => {layout!(@ arg $cmds, $($($t)*)?).fill_main_axis()};
-    (@ arg $cmds:expr, screen_root $(,$($t:tt)*)?)         => {layout!(@ arg $cmds, $($($t)*)?).screen_root()};
-    (@ arg $cmds:expr, distrib_end $(,$($t:tt)*)?)         => {layout!(@ arg $cmds, $($($t)*)?).distrib_end()};
-    (@ arg $cmds:expr, align_start $(,$($t:tt)*)?)         => {layout!(@ arg $cmds, $($($t)*)?).align_start()};
-    (@ arg $cmds:expr, align_end $(,$($t:tt)*)?)           => {layout!(@ arg $cmds, $($($t)*)?).align_end()};
-    (@ arg $cmds:expr, root $(,$($t:tt)*)?)                => {layout!(@ arg $cmds, $($($t)*)?).root()};
-    (@ statement $cmds:expr, row ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
-        { layout!(@ arg $cmds, $($args)*).row( |mut cmds| { layout!(@ statement cmds, $($inner)*); })
+    (@arg $cmds:expr, $name:literal $(,$($t:tt)*)?)           => {layout!(@arg $cmds, $($($t)*)?).named($name)};
+    (@arg $cmds:expr, $method:ident $arg:expr $(,$($t:tt)*)?) => {layout!(@arg $cmds, $($($t)*)?).$method($arg)};
+    (@arg $cmds:expr, $method:ident $(,$($t:tt)*)?)           => {layout!(@arg $cmds, $($($t)*)?).$method()};
+    (@statement $cmds:expr, row ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
+        { layout!(@arg $cmds, $($args)*).row( |mut cmds| { layout!(@statement cmds, $($inner)*); })
           $(; layout!(@statement $cmds, $($t)*))? }
     };
-    (@ statement $cmds:expr, column ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
-        { layout!(@ arg $cmds, $($args)*).column( |mut cmds| { layout!(@ statement cmds, $($inner)*); })
+    (@statement $cmds:expr, column ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
+        { layout!(@arg $cmds, $($args)*).column( |mut cmds| { layout!(@statement cmds, $($inner)*); })
           $(; layout!(@statement $cmds, $($t)*))? }
     };
-    (@ statement $cmds:expr, spawn_ui ( $value:expr $(, $($args:tt)*)? ) ; $($($t:tt)+)?) => {
-        { layout!(@ arg $cmds, $($($args)*)?).spawn_ui( $value.clone())
+    (@statement $cmds:expr, spawn_ui ( $value:expr $(, $($args:tt)*)? ) ; $($($t:tt)+)?) => {
+        { layout!(@arg $cmds, $($($args)*)?).spawn_ui( $value.clone())
           $(; layout!(@statement $cmds, $($t)*))? }
     };
-    (@ statement $cmds:expr, code (let $cmds_ident:ident $(: &mut ChildBuilder)?) {$($code:tt)*}  $($($t:tt)+)?) => {
+    (@statement $cmds:expr, code (let $cmds_ident:ident $(: &mut ChildBuilder)?) {$($code:tt)*}  $($($t:tt)+)?) => {
         { let $cmds_ident = $cmds;
           $($code)*
           $(; layout!(@statement $cmds, $($t)*))? }
     };
     ($cmds:expr, $($t:tt)*) => {{
-        use $crate::traits::LayoutCommandsExt;
-        layout!(@ statement $cmds, $($t)*)
+        use $crate::dsl::LayoutCommandsExt;
+        layout!(@statement $cmds, $($t)*)
     }};
 }

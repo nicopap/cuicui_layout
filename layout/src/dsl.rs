@@ -1,15 +1,39 @@
+//! Trait extension to bring layout construction methods to [`Commands`]-like types.
+//!
+//! See the "Trait Implementations" section of [`LayoutCommands`] for details on
+//! what are [`Commands`]-like types.
+//!
+//! [`Commands`]: bevy::prelude::Commands
+#![allow(clippy::module_name_repetitions)]
+
+mod command_like;
+mod ui_bundle;
+
 use std::borrow::Cow;
 
-use bevy::{
-    ecs::system::EntityCommands,
-    prelude::{BuildChildren, ChildBuilder, Commands, Entity, Name},
-};
-use cuicui_layout::{Alignment, Container, Distribution, Flow, Oriented, Rule, Size};
-#[cfg(doc)]
-use cuicui_layout::{Node, Root};
+use bevy::prelude::{ChildBuilder, Entity, Name};
 
-use crate::bundles::{FlowBundle, IntoUiBundle, Layout, RootBundle, UiBundle};
-use crate::ScreenRoot;
+use crate::bundles::{FlowBundle, RootBundle};
+use crate::{Alignment, Container, Distribution, Flow, Oriented, Rule, Size};
+#[cfg(doc)]
+use crate::{Node, Root, ScreenRoot};
+
+pub use command_like::{CommandLike, IntoCommandLike};
+pub use ui_bundle::{IntoUiBundle, UiBundle};
+
+/// Metadata internal to [`LayoutCommands`] to manage the state of things it
+/// should be spawning.
+#[derive(Debug, Clone, Copy)]
+pub struct Layout {
+    /// Default to [`Alignment::Center`].
+    pub align: Alignment,
+    /// Default to [`Distribution::Start`].
+    pub distrib: Distribution,
+    /// The [margin](Container::margin) size.
+    pub margin: Oriented<f32>,
+    /// The inner size, defaults to [`Rule::Parent(1.0)`].
+    pub size: Size<Option<Rule>>,
+}
 
 enum RootKind {
     ScreenRoot,
@@ -18,19 +42,31 @@ enum RootKind {
 }
 
 // TODO(feat): Use similar compilation checks as in layout/src/typed.rs
-/// A wrapper around [`EntityCommands`] with additional [`cuicui_layout`]
-/// layouting informations.
-pub struct LayoutCommands<'w, 's, 'a> {
+/// A wrapper around [`EntityCommands`] with additional  layouting information.
+///
+/// [`EntityCommands`]: bevy::ecs::system::EntityCommands
+pub struct LayoutCommands<C> {
     name: Option<Cow<'static, str>>,
-    inner: EntityCommands<'w, 's, 'a>,
+    inner: C,
     layout: Layout,
     root: RootKind,
 }
-impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
-    fn new(inner: EntityCommands<'w, 's, 'a>) -> Self {
+impl<C: CommandLike> LayoutCommands<C> {
+    /// Convert this [`LayoutCommands<C>`] into a `LayoutCommands` with a different
+    /// underlying [`CommandLike`].
+    pub fn with<CC: CommandLike>(self, f: impl FnOnce(C) -> CC) -> LayoutCommands<CC> {
+        LayoutCommands {
+            name: self.name,
+            inner: f(self.inner),
+            layout: self.layout,
+            root: self.root,
+        }
+    }
+    /// Create a new default [`LayoutCommands`].
+    pub fn new(inner: impl IntoCommandLike<Cmd = C>) -> Self {
         LayoutCommands {
             name: None,
-            inner,
+            inner: inner.into_cmd(),
             layout: Layout {
                 align: Alignment::Center,
                 distrib: Distribution::Start,
@@ -52,10 +88,14 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
     fn flow(mut self, flow: Flow, f: impl FnOnce(&mut ChildBuilder)) {
         let container = self.container(flow);
         let root_bundle = || RootBundle::new(flow, self.layout);
+        let non_screen_root_bundle = || {
+            let r = RootBundle::new(flow, self.layout);
+            (r.pos_rect, r.root)
+        };
         let cmds = &mut self.inner;
         match self.root {
             RootKind::ScreenRoot => cmds.insert(root_bundle()),
-            RootKind::Root => cmds.insert(root_bundle()).remove::<ScreenRoot>(),
+            RootKind::Root => cmds.insert(non_screen_root_bundle()),
             RootKind::None => cmds.insert(FlowBundle::new(container)),
         };
         if let Some(name) = &self.name {
@@ -63,12 +103,9 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
         }
         cmds.with_children(f);
     }
-    fn spawn_ui(mut self, bundle: impl IntoUiBundle) -> Entity {
-        let mut bundle = bundle.into_ui_bundle();
-        let set_size = matches!(
-            self.layout.size,
-            Size { width: Some(_), .. } | Size { height: Some(_), .. }
-        );
+    fn spawn_ui<M>(mut self, bundle: impl IntoUiBundle<M>) -> Entity {
+        let mut bundle = IntoUiBundle::into_ui_bundle(bundle);
+        let set_size = self.layout.size.width.is_some() || self.layout.size.height.is_some();
         if let Some(name) = self.name.take() {
             self.inner.insert(Name::new(name));
         }
@@ -77,7 +114,8 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
             let rules = self.layout.size.map(|r| r.unwrap_or(Rule::Children(1.0)));
             let container = Container { rules, ..Container::compact(Flow::Horizontal) };
             let bundle_container = FlowBundle::new(container);
-            self.inner.insert(bundle_container).with_children(|cmds| {
+            self.inner.insert(bundle_container);
+            self.inner.with_children(|cmds| {
                 if self.layout.size.width.is_none() {
                     bundle.set_fixed_width();
                 }
@@ -88,7 +126,8 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
             });
             id.unwrap()
         } else {
-            self.inner.insert(bundle).id()
+            self.inner.insert(bundle);
+            self.inner.entity()
         }
     }
     fn column(self, f: impl FnOnce(&mut ChildBuilder)) {
@@ -118,16 +157,6 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
         self.layout.margin.cross = pixels;
         self
     }
-    // #[must_use]
-    // const fn cross_margin(mut self, pixels: f32) -> Self {
-    //     self.layout.margin.cross = pixels;
-    //     self
-    // }
-    // #[must_use]
-    // const fn main_margin_pct(mut self, percent: f32) -> Self;
-    // #[must_use]
-    // const fn cross_margin_pct(mut self, percent: f32) -> Self;
-
     #[must_use]
     const fn width_rule(mut self, rule: Rule) -> Self {
         self.layout.size.width = Some(rule);
@@ -168,12 +197,12 @@ impl<'w, 's, 'a> LayoutCommands<'w, 's, 'a> {
 }
 
 /// Shorthand for [`LayoutCommands`].
-pub type Lec<'w, 's, 'a> = LayoutCommands<'w, 's, 'a>;
+pub type Lc<C> = LayoutCommands<C>;
 
 // Note that the `fn method() { self.into().method() }` always calls the implementation
 // of the inherent `.method()` impl in LayoutCommands (the previous `impl` block).
 //
-// Since the trait has a `Into<Lec<'w, 's, 'a>>` bound, `self.into()` becomes `Lec`,
+// Since the trait has a `Into<Lec<>>` bound, `self.into()` becomes `Lec`,
 // and rust calls the inherent impl for the method. Even if `Lec` itself implements
 // `LayoutCommandsExt`
 //
@@ -181,84 +210,82 @@ pub type Lec<'w, 's, 'a> = LayoutCommands<'w, 's, 'a>;
 
 /// Add methods to various command types to make it easier to spawn layouts.
 #[rustfmt::skip]
-pub trait LayoutCommandsExt<'w, 's, 'a> : Into<Lec<'w, 's, 'a>> where 'w: 'a, 's: 'a {
+pub trait LayoutCommandsExt<C: CommandLike> : Sized {
+    /// Convert to a [`LayoutCommands`] this [`IntoCommandLike`].
+    fn into_lc(self) -> Lc<C>;
+
     /// Spawn this [`Node`] as a [`Node::Container`] with a single [`Node::Box`]
     /// child, a UI element.
-    fn spawn_ui<B: IntoUiBundle>(self, bundle: B) -> Entity { self.into().spawn_ui(bundle) }
+    fn spawn_ui<M>(self, bundle: impl IntoUiBundle<M>) -> Entity {
+        self.into_lc().spawn_ui(bundle)
+    }
     /// Spawn this [`Node`] as a [`Node::Container`] with children flowing vertically.
     ///
     /// `f` will then build the children of this [`Container`].
-    fn column<F: FnOnce(&mut ChildBuilder)>(self, f: F) { self.into().column(f) }
+    fn column(self, f: impl FnOnce(&mut ChildBuilder)) { self.into_lc().column(f) }
     /// Spawn this [`Node`] as a [`Node::Container`] with children flowing horizontally.
     ///
     /// `f` will then build the children of this [`Container`].
-    fn row<F: FnOnce(&mut ChildBuilder)>(self, f: F) { self.into().row(f) }
+    fn row(self, f: impl FnOnce(&mut ChildBuilder)) { self.into_lc().row(f) }
 
     /// Push children of this [`Node`] to the end of the main flow axis,
     /// the default is [`Distribution::Start`].
     ///
     /// > **Warning**: This [`Node`] **Must not** be [`Rule::Children`] on the main flow axis.
     #[must_use]
-    fn distrib_end(self) -> Lec<'w, 's, 'a> {self.into().distrib_end()}
+    fn distrib_end(self) -> Lc<C> {self.into_lc().distrib_end()}
     /// Distribute the children of this [`Node`] to fill this [`Container`]'s main flow axis.
     /// the default is [`Distribution::Start`].
     ///
     /// > **Warning**: This [`Node`] **Must not** be [`Rule::Children`] on the main flow axis.
     #[must_use]
-    fn fill_main_axis(self) -> Lec<'w, 's, 'a> {self.into().fill_main_axis()}
+    fn fill_main_axis(self) -> Lc<C> {self.into_lc().fill_main_axis()}
 
     /// Set this [`Container`]'s margin on the main flow axis.
     #[must_use]
-    fn main_margin(self, pixels: f32) -> Lec<'w, 's, 'a> {self.into().main_margin(pixels)}
+    fn main_margin(self, pixels: f32) -> Lc<C> {self.into_lc().main_margin(pixels)}
 
     /// Set this [`Container`]'s margin on the cross flow axis.
     #[must_use]
-    fn cross_margin(self, pixels: f32) -> Lec<'w, 's, 'a> {self.into().cross_margin(pixels)}
+    fn cross_margin(self, pixels: f32) -> Lc<C> {self.into_lc().cross_margin(pixels)}
 
     /// Set the width [`Rule`] of this [`Node`].
     #[must_use]
-    fn width_rule(self, rule: Rule) -> Lec<'w, 's, 'a> {self.into().width_rule(rule)}
+    fn width_rule(self, rule: Rule) -> Lc<C> {self.into_lc().width_rule(rule)}
     /// Set the height [`Rule`] of this [`Node`].
     #[must_use]
-    fn height_rule(self, rule: Rule) -> Lec<'w, 's, 'a> {self.into().height_rule(rule)}
+    fn height_rule(self, rule: Rule) -> Lc<C> {self.into_lc().height_rule(rule)}
 
     /// Use [`Alignment::Start`] for this [`Node`], the default is [`Alignment::Center`].
     #[must_use]
-    fn align_start(self) -> Lec<'w, 's, 'a> {self.into().align_start()}
+    fn align_start(self) -> Lc<C> {self.into_lc().align_start()}
     /// Use [`Alignment::End`] for this [`Node`], the default is [`Alignment::Center`].
     #[must_use]
-    fn align_end(self) -> Lec<'w, 's, 'a> {self.into().align_end()}
+    fn align_end(self) -> Lc<C> {self.into_lc().align_end()}
 
     /// Set this node as the [`ScreenRoot`], its size will follow that of the
     /// [`LayoutRootCamera`] camera.
     ///
     /// [`LayoutRootCamera`]: crate::LayoutRootCamera
     #[must_use]
-    fn screen_root(self) -> Lec<'w, 's, 'a> {self.into().screen_root()}
+    fn screen_root(self) -> Lc<C> {self.into_lc().screen_root()}
     /// Set this node as a [`Root`].
     #[must_use]
-    fn root(self) -> Lec<'w, 's, 'a> {self.into().root()}
+    fn root(self) -> Lc<C> {self.into_lc().root()}
 
     /// Set the name of this [`Node`]'s entity.
     #[must_use]
-    fn named<N: Into<Cow<'static, str>>>(self, name: N) -> Lec<'w, 's, 'a> { self.into().named(name) }
-
+    fn named<N: Into<Cow<'static, str>>>(self, name: N) -> Lc<C> { self.into_lc().named(name) }
 }
-impl<'w: 'a, 's: 'a, 'a, T: Into<Lec<'w, 's, 'a>>> LayoutCommandsExt<'w, 's, 'a> for T {}
 
-impl<'w, 's, 'a> From<&'a mut Commands<'w, 's>> for LayoutCommands<'w, 's, 'a> {
-    fn from(value: &'a mut Commands<'w, 's>) -> Self {
-        LayoutCommands::new(value.spawn_empty())
-    }
-}
-impl<'w, 's, 'a> From<EntityCommands<'w, 's, 'a>> for LayoutCommands<'w, 's, 'a> {
-    fn from(value: EntityCommands<'w, 's, 'a>) -> Self {
-        LayoutCommands::new(value)
+impl<Cmd: CommandLike> LayoutCommandsExt<Cmd> for LayoutCommands<Cmd> {
+    fn into_lc(self) -> Lc<Cmd> {
+        self
     }
 }
 
-impl<'w, 's, 'a> From<&'a mut ChildBuilder<'w, 's, '_>> for LayoutCommands<'w, 's, 'a> {
-    fn from(value: &'a mut ChildBuilder<'w, 's, '_>) -> Self {
-        LayoutCommands::new(value.spawn_empty())
+impl<Cmd: CommandLike, T: IntoCommandLike<Cmd = Cmd>> LayoutCommandsExt<Cmd> for T {
+    fn into_lc(self) -> Lc<Cmd> {
+        LayoutCommands::new(self)
     }
 }

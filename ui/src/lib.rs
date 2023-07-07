@@ -3,38 +3,20 @@
 #![allow(clippy::type_complexity, clippy::use_self, clippy::redundant_pub_crate)]
 
 use bevy::ecs::prelude::*;
-use bevy::prelude::{App, Camera, CoreSet, FromReflect, Plugin, Reflect, ReflectComponent, Style};
+use bevy::prelude::{App, Camera, CoreSet, Plugin, Style};
 use bevy_mod_sysfail::quick_sysfail;
 use content_sized::ContentSized;
-use cuicui_layout::{PosRect, Root};
+use cuicui_layout::{LayoutRootCamera, PosRect, Root};
 
 pub mod bundles;
 pub mod content_sized;
 mod debug;
-mod dsl;
-mod macros;
 
-/// Traits defined by this crate.
-pub mod traits {
-    pub use crate::bundles::IntoUiBundle;
-    pub use crate::dsl::LayoutCommandsExt;
-}
+/// Marker for [`cuicui_layout::dsl::IntoUiBundle`] to indicate this instance of the layout DSL
+/// is meant to spawn bundles from [`bevy::ui`].
+pub struct BevyUiLayout;
 
-/// Use this camera's logical size as the root fixed-size container for
-/// `cuicui_layout`.
-///
-/// Note that it is an error to have more than a single camera with this
-/// component.
-#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
-#[reflect(Component)]
-pub struct LayoutRootCamera;
-
-/// Set this [`cuicui_layout::Root`] to track the [`LayoutRootCamera`]'s size.
-#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
-#[reflect(Component)]
-pub struct ScreenRoot;
-
-/// System updating the [`ScreenRoot`] [`cuicui_layout::Node`] with the
+/// System updating the [`cuicui_layout::ScreenRoot`] [`cuicui_layout::Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.
 #[quick_sysfail]
 pub fn update_ui_camera_root(
@@ -81,11 +63,11 @@ pub fn set_layout_style(
 ///
 /// - **Manage size of text and image elements**: UI elements spawned through [`spawn_ui`]
 ///   (with the [`ContentSized`] component)
-/// - **Manage size of the [`ScreenRoot`] container**
+/// - **Manage size of the [`cuicui_layout::ScreenRoot`] container**
 /// - **Set the [`Style`] flex parameters according to [`cuicui_layout`] computed values**
 /// - **Compute [`cuicui_layout::Node`] layouts**
 ///
-/// [`spawn_ui`]: dsl::LayoutCommandsExt::spawn_ui
+/// [`spawn_ui`]: cuicui_layout::dsl::LayoutCommandsExt::spawn_ui
 /// [`ContentSized`]: content_sized::ContentSized
 pub struct Plug;
 impl Plugin for Plug {
