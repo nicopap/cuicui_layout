@@ -6,7 +6,7 @@ use std::{num::ParseFloatError, str::FromStr};
 use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
 use bevy::{
     ecs::query::ReadOnlyWorldQuery,
-    prelude::{Children, Component, Entity, Name, Query},
+    prelude::{trace, Children, Component, Entity, Name, Query},
 };
 
 const WIDTH: Flow = Flow::Horizontal;
@@ -515,6 +515,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let margin = flow.relative(margin);
         let mut offset = Oriented::new(main_offset + margin.main, 0.0);
 
+        trace!("Setting offsets of children of {}", Handle::of(self));
         let cross_align = CrossAlign::new(size, align);
         let mut iter = self.to_update.iter_many_mut(children);
         while let Some(mut space) = iter.fetch_next() {
@@ -548,6 +549,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
             Node::Axis(oriented) => parent.leaf_size(flow.absolute(oriented)).transpose(self)?,
             Node::Box(size) => parent.leaf_size(size).transpose(self)?,
         };
+        trace!("Setting size of {}", Handle::of(self));
         if let Ok(mut to_update) = self.to_update.get_mut(self.this) {
             to_update.size = size;
         }

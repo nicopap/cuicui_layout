@@ -22,10 +22,24 @@ macro_rules! text {
 fn main() {
     use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
-        .add_plugins(DefaultPlugins.set(AssetPlugin {
-            asset_folder: "../../assets".to_owned(),
-            watch_for_changes: true,
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(AssetPlugin {
+                    asset_folder: "../../assets".to_owned(),
+                    watch_for_changes: true,
+                })
+                .set(bevy::log::LogPlugin {
+                    level: bevy::log::Level::DEBUG,
+                    filter: "\
+                    cuicui_layout=trace,\
+                    gilrs_core=info,\
+                    gilrs=info,\
+                    naga=info,\
+                    wgpu=warn\
+                    "
+                    .to_string(),
+                }),
+        )
         .add_startup_system(setup)
         // .add_startup_system(random_bg.in_base_set(StartupSet::PostStartup))
         .add_plugin(WorldInspectorPlugin::default())

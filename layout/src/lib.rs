@@ -15,10 +15,6 @@
 //! everything needs to live in a root container of a fixed size.
 //!
 //! That's it! Now make a nice UI using bevy.
-//!
-//! ## TODO:
-//!
-//! * Integrate Change detection
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(
     clippy::manual_range_contains,
@@ -85,10 +81,17 @@ impl PosRect {
     }
 }
 
-// TODO:
-// - minimize recomputation using `Changed`
-// - better error handling (log::error!)
-// - maybe parallelize
+type LayoutHasChanged<F> = (
+    F,
+    Or<(With<Node>, With<Root>)>,
+    Or<(
+        Changed<Children>,
+        Changed<Node>,
+        Changed<Root>,
+        Changed<Parent>,
+    )>,
+);
+
 /// Run the layout algorithm on entities with [`Node`] and [`PosRect`] components.
 ///
 /// You may set `F` to any query filter in order to limit the layouting to a
@@ -99,7 +102,17 @@ pub fn compute_layout<F: ReadOnlyWorldQuery>(
     nodes: Query<NodeQuery, F>,
     names: Query<&'static Name>,
     roots: Query<(Entity, &'static Root, &'static Children), F>,
+    anything_changed: Query<(), LayoutHasChanged<F>>,
+    mut children_removed: RemovedComponents<Children>,
+    mut parent_removed: RemovedComponents<Parent>,
 ) -> Result<(), ComputeLayoutError> {
+    let nothing_changed = || anything_changed.is_empty();
+    let mut children_removed = || children_removed.iter().any(|e| nodes.contains(e));
+    let mut parent_removed = || parent_removed.iter().any(|e| nodes.contains(e));
+    if nothing_changed() && !children_removed() && !parent_removed() {
+        return Ok(()); // Nothing changed, we do nothing
+    }
+
     for (entity, root, children) in &roots {
         let root_container = *root.get();
         let bounds = root.get_size(entity, &names)?;
