@@ -76,7 +76,7 @@ a lot of things are going to break a lot.
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
-[`LayoutCommands`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutType.html
+[`LayoutType`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutType.html
 [`layout!`]: https://docs.rs/cuicui_layout/latest/macro.layout.html
 
 ## `cuicui_layout` crates
