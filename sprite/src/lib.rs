@@ -1,5 +1,9 @@
-//! Smooth out integration of cuicui layout with bevy, simply using
-//! render targets and a camera component marker.
+//! Make [`cuicui_layout`] useable with bevy's 2D renderer (`bevy_sprite`).
+//!
+//! Currently this crate is limited, it doesn't expose ways to manage sprites
+//! or text, in contrast to `cuicui_layout_bevy_ui`.
+//!
+//! However, it definitively will get upgraded soon enough.
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(clippy::use_self, clippy::redundant_pub_crate)]
 

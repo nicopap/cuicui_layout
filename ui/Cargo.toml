@@ -1,9 +1,9 @@
 [package]
 name = "cuicui_layout_bevy_ui"
 description = "Integration with bevy_ui for cuicui_layout"
-readme = "README.md"
-keywords = ["bevy", "layout", "ui"]
 categories = ["game-development", "gui"]
+keywords = ["bevy", "layout", "ui"]
+readme.workspace = true
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
@@ -11,9 +11,6 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
-ahash.workspace = true
-anyhow.workspace = true
-thiserror.workspace = true
 bevy_mod_sysfail.workspace = true
 bevy = { version = "0.10", default-features = false, features = ["bevy_ui"] }
 cuicui_layout.workspace = true

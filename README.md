@@ -67,32 +67,44 @@ a lot of things are going to break a lot.
       [`cuicui_layout_bevy_sprite`] is for you!
     - Using a custom renderer or want your UI to be part of the 3D environment?
       Build on top of [`cuicui_layout`] itself then!
-2. Add the chosen crate as a dependency to your crate.
-3. Use either [`LayoutCommands`] or [`layout!`] macro to build
-   a UI (text representation coming soon). The macro is just a thin wrapper
-   around the trait, and the trait itself is very easy to use, so your choice.
+2. Add the chosen crate as a dependency to your crate. `cargo add cuicui_layout_bevy_ui`
+3. Use the [`layout!`] macro to build a UI (text representation coming soon).
 4. That's it! You are now using `cuicui_layout`, congratulations!
-   Make sure to check the [`LayoutCommands`]
+   Make sure to check the [`LayoutType`]
    docs to learn the current capabilities of `cuicui_layout`.
 
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
-[`LayoutCommands`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutCommands.html
+[`LayoutCommands`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutType.html
 [`layout!`]: https://docs.rs/cuicui_layout/latest/macro.layout.html
 
 ## `cuicui_layout` crates
 
 This repository contains several crates:
 
-- `cuicui_layout` ([./layout]): The base algorithm and components, does not make any assumption
+- `cuicui_layout` ([layout](layout)): The base algorithm and components, does not make any assumption
   about how it is used, beside the requirement that layout nodes be bevy `Entitiy` and
   uses `bevy_hierarchy`.
-- `cuicui_layout_bevy_ui` ([./ui]): Integration with `bevy_ui`, including extension to `LayoutCommands`
+- `cuicui_layout_bevy_ui` ([ui](ui)): Integration with `bevy_ui`, including extension to `LayoutType`
   for `UiImage`, `Text`, background images and background colors.
-- `cuicui_layout_bevy_sprite` ([./sprite]): More bare-bone `bevy_sprite` integration.
+- `cuicui_layout_bevy_sprite` ([sprite](sprite)): More bare-bone `bevy_sprite` integration.
 
 (maybe `cuicui_layout_spec` in the future)
+
+## Why cuicui layout
+
+- Friendly algo with less things to keep in your head and good defaults.[^1]
+- Uses and takes full advantage of the bevy ECS.
+- Only controls `PosRect`, not `Transform`, you need to add a system that sets
+  `Transform` based on `PosRect`.
+- Fully flexible and extensible, can be used with `bevy_ui`, `bevy_sprite`, your own stuff.
+- Fantatstically easy to extend, like really.
+- Helpful and fully detailed error messages when things are incoherent or broken.[^1]
+  As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
+  why things do not turn out as expected.
+
+[^1]: aspirational, currently not really the case.
 
 ## Why not Flexbox
 
@@ -136,8 +148,7 @@ doesn't make conceptual sense.
 
 **Q**: What are the equivalents of `column-reverse` and `row-reverse`?
 <br>**A**: None. Use `Alignment::End` and swap your elements! Note that the `*-reverse`
-flows in flexbox are very useful for internationalization, as cultures that are not
-western have different understanding of where is the start and end of things. However,
+flows in flexbox are very useful for internationalization. However,
 when making a game, it is not enough to just swap the elements! Artistic control is
 paramount and internationalization needs to be taken as a whole in the context of the UI.
 
@@ -153,19 +164,6 @@ and whether they really do anything, so I wont' adventure an asnwer.
 
 **Q**: Why can't child container overflow their parents?
 <br>**A**: It's likely you didn't expect this, so we report it as an error.
-
-## Why cuicui layout
-
-- Friendly algo with less things to keep in your head and good defaults.[^1]
-- Uses and takes full advantage of the bevy ECS.
-- Only controls `PosRect`, not `Transform`, you need to add a system that sets
-  `Transform` based on `PosRect`.
-- Fully flexible and extensible, can be used with `bevy_ui`, `bevy_sprite`, your own stuff.
-- Helpful and fully detailed error messages when things are incoherent or broken.[^1]
-  As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
-  why things do not turn out as expected.
-
-[^1]: aspirational, currently not really the case.
 
 ## License
 
