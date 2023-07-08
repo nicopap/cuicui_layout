@@ -14,3 +14,6 @@ pre-hook:
 	cargo doc --workspace --no-deps
 	cargo clippy --workspace -- --deny clippy::all
 	cargo fmt --all -- --check
+	cargo clippy --no-default-features --package cuicui_layout_bevy_ui -- --deny clippy::all
+	cargo clippy --no-default-features --package cuicui_layout_bevy_sprite -- --deny clippy::all
+	cargo clippy --no-default-features --package cuicui_layout -- --deny clippy::all

@@ -27,6 +27,15 @@ jobs:
       - name: Check clippy
         run: cargo clippy --workspace -- --deny clippy::all
 
+      - name: Check no default features cargo cuicui_layout_bevy_ui
+        run: cargo clippy --no-default-features --package cuicui_layout_bevy_ui -- --deny clippy::all
+
+      - name: Check no default features cargo cuicui_layout_bevy_sprite
+        run: cargo clippy --no-default-features --package cuicui_layout_bevy_sprite -- --deny clippy::all
+
+      - name: Check no default features cargo cuicui_layout
+        run: cargo clippy --no-default-features --package cuicui_layout -- --deny clippy::all
+
   tests:
     name: Compile and run tests
     runs-on: ubuntu-latest
