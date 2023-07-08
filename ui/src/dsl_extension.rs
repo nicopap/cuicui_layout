@@ -1,16 +1,17 @@
 //! Bundles wrapping [`bevy::ui::node_bundles`] with additional [`cuicui_layout`]
 //! components.
+use std::ops::{Deref, DerefMut};
+
 use bevy::{
     ecs::system::EntityCommands,
-    prelude::{Bundle, ChildBuilder, Color, Commands, Handle, Image, Text, TextStyle, UiImage},
+    prelude::{Bundle, Color, Entity, Handle, Image, Text, TextStyle, UiImage},
     ui::{node_bundles as bevy_ui, BackgroundColor},
     utils::default,
 };
-use cuicui_layout::dsl::{CommandLike, IntoUiBundle, LayoutCommands, UiBundle};
+use cuicui_layout::dsl::{InsertKind, IntoUiBundle, MakeBundle, UiBundle};
 use cuicui_layout::{LeafRule, Node, PosRect, Size};
 
 use crate::content_sized::ContentSized;
-use crate::BevyUiLayout;
 
 macro_rules! impl_bundle {
     ($t:ident) => {
@@ -139,8 +140,8 @@ macro_rules! from_delegate_impl {
         from_delegate_impl!([$from, $to], |self| <$to>::from(self).into_ui_bundle());
     };
     ([$from:ty, $to:ty], |$s:ident| $delegate_adaptor:expr) => {
-        impl IntoUiBundle<BevyUiLayout> for $from {
-            type Target = <$to as IntoUiBundle<BevyUiLayout>>::Target;
+        impl IntoUiBundle<LayoutType> for $from {
+            type Target = <$to as IntoUiBundle<LayoutType>>::Target;
 
             fn into_ui_bundle($s) -> Self::Target {
                 $delegate_adaptor
@@ -160,13 +161,13 @@ from_delegate_impl!([UiImage, ImageBundle]);
 from_delegate_impl!([bevy_ui::ImageBundle, ImageBundle]);
 from_delegate_impl!([bevy_ui::TextBundle, TextBundle]);
 
-impl IntoUiBundle<BevyUiLayout> for ImageBundle {
+impl IntoUiBundle<LayoutType> for ImageBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
     }
 }
-impl IntoUiBundle<BevyUiLayout> for TextBundle {
+impl IntoUiBundle<LayoutType> for TextBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
@@ -189,97 +190,55 @@ impl UiBundle for TextBundle {
     }
 }
 
-/// Wrapper for [`EntityCommands`] to enable UI handling.
-pub struct BevyUiCommands<'w, 's, 'a> {
+/// The [`MakeBundle`] for `bevy_ui`.
+#[derive(Default)]
+pub struct LayoutType<C = cuicui_layout::dsl::LayoutType> {
+    inner: C,
     bg_color: Option<BackgroundColor>,
     bg_image: Option<UiImage>,
-    cmds: EntityCommands<'w, 's, 'a>,
 }
-
-impl<'w, 's, 'a> BevyUiCommands<'w, 's, 'a> {
-    /// Create `Self` with default values.
-    #[must_use]
-    pub const fn new(cmds: EntityCommands<'w, 's, 'a>) -> Self {
-        BevyUiCommands { bg_color: None, bg_image: None, cmds }
+impl<C> LayoutType<C> {
+    /// Set the node's background color.
+    pub fn bg(&mut self, color: Color) {
+        self.bg_color = Some(color.into());
+    }
+    /// Set the node's background image.
+    pub fn image(&mut self, image: &Handle<Image>) {
+        self.bg_image = Some(image.clone().into());
     }
 }
 
-impl<'w, 's, 'a> CommandLike for BevyUiCommands<'w, 's, 'a> {
-    fn insert(&mut self, bundle: impl Bundle) {
-        match (self.bg_color, self.bg_image.clone()) {
-            (Some(background_color), Some(image)) => self.cmds.insert((
-                bevy_ui::NodeBundle { background_color, ..default() },
-                image,
-                bundle,
-            )),
-            (Some(background_color), None) => self.cmds.insert((
-                bevy_ui::NodeBundle { background_color, ..default() },
-                bundle,
-            )),
-            (None, Some(image)) => self.cmds.insert((
+impl<C> Deref for LayoutType<C> {
+    type Target = C;
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+impl<C> DerefMut for LayoutType<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
+
+impl<C: MakeBundle> MakeBundle for LayoutType<C> {
+    fn insert(self, kind: InsertKind, cmds: &mut EntityCommands) -> Entity {
+        let id = self.inner.insert(kind, cmds);
+        match (self.bg_color, self.bg_image) {
+            (Some(background_color), Some(image)) => {
+                cmds.insert((bevy_ui::NodeBundle { background_color, ..default() }, image))
+            }
+            (Some(background_color), None) => {
+                cmds.insert(bevy_ui::NodeBundle { background_color, ..default() })
+            }
+            (None, Some(image)) => cmds.insert((
                 bevy_ui::NodeBundle { background_color: Color::WHITE.into(), ..default() },
                 image,
-                bundle,
             )),
-            (None, None) => self.cmds.insert((bevy_ui::NodeBundle::default(), bundle)),
+            (None, None) => cmds.insert(bevy_ui::NodeBundle::default()),
         };
+        id
     }
-    fn entity(&self) -> bevy::prelude::Entity {
-        self.cmds.id()
-    }
-    fn with_children(&mut self, f: impl FnOnce(&mut bevy::prelude::ChildBuilder)) {
-        self.insert(());
-        self.cmds.with_children(f);
-    }
-}
-impl<'w, 's, 'a> From<EntityCommands<'w, 's, 'a>> for BevyUiCommands<'w, 's, 'a> {
-    fn from(cmds: EntityCommands<'w, 's, 'a>) -> Self {
-        Self { cmds, bg_color: None, bg_image: None }
-    }
-}
-
-/// Add `bevy_ui` background data methods to [`LayoutCommands`].
-pub trait BevyUiCommandsExt<'w, 's, 'a, C> {
-    /// Set the node's background color.
-    fn bg(self, color: Color) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>>;
-    /// Set the node's background image.
-    fn image(self, image: &Handle<Image>) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>>;
-}
-impl<'w, 's, 'a, C> BevyUiCommandsExt<'w, 's, 'a, C> for LayoutCommands<C>
-where
-    C: CommandLike + Into<BevyUiCommands<'w, 's, 'a>>,
-    'w: 'a,
-    's: 'a,
-{
-    fn bg(self, color: Color) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
-        self.with(|cmds| BevyUiCommands { bg_color: Some(color.into()), ..cmds.into() })
-    }
-    fn image(self, image: &Handle<Image>) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
-        self.with(|cmds| BevyUiCommands {
-            bg_image: Some(image.clone().into()),
-            ..cmds.into()
-        })
-    }
-}
-
-/// This is [`cuicui_layout::dsl::IntoLayoutCommands`], but handling properly `bevy_ui`.
-pub trait IntoUiCommands<'w, 's, 'a> {
-    /// Convert to [`LayoutCommands`].
-    fn lyout(self) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>>;
-}
-impl<'w, 's, 'a> IntoUiCommands<'w, 's, 'a> for EntityCommands<'w, 's, 'a> {
-    fn lyout(self) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
-        LayoutCommands::new(self.into())
-    }
-}
-
-impl<'w, 's, 'a> IntoUiCommands<'w, 's, 'a> for &'a mut Commands<'w, 's> {
-    fn lyout(self) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
-        self.spawn_empty().lyout()
-    }
-}
-impl<'w, 's, 'a> IntoUiCommands<'w, 's, 'a> for &'a mut ChildBuilder<'w, 's, '_> {
-    fn lyout(self) -> LayoutCommands<BevyUiCommands<'w, 's, 'a>> {
-        self.spawn_empty().lyout()
+    fn ui_content_axis(&self) -> Size<bool> {
+        self.inner.ui_content_axis()
     }
 }

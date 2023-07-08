@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use cuicui_layout::{layout, LayoutRootCamera, Rule};
-use cuicui_layout_bevy_ui::dsl_extension::{BevyUiCommandsExt, IntoUiCommands};
+use cuicui_layout_bevy_ui::LayoutType;
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {
@@ -50,40 +50,7 @@ fn _random_bg(mut query: Query<(Entity, &mut BackgroundColor)>) {
         bg.0 = _color_from_entity(entity);
     }
 }
-#[allow(clippy::needless_pass_by_value)]
-fn _setup_with_macro(mut cmds: Commands, serv: Res<AssetServer>) {
-    cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
-    let title_card = serv.load::<Image, _>("logo.png");
-    let menu_buttons = [
-        "CONTINUE",
-        "NEW GAME",
-        "LOAD GAME",
-        "SETTINGS",
-        "ADDITIONAL CONTENT",
-        "CREDITS",
-        "QUIT GAME",
-    ];
-    let font = serv.load("adobe_sans.ttf");
-    let bg = serv.load("background.png");
-    let board = serv.load("board.png");
-    let button = serv.load("button.png");
 
-    layout! {
-        <> &mut cmds,
-        row(screen_root, "root", main_margin 100., align_start, image &bg) {
-            column("menu", width px 300, fill_main_axis, image &board) {
-                spawn_ui(title_card, "Title card", height px 100, width %100);
-                code(let cmds) {
-                    for n in &menu_buttons {
-                        let name = format!("{n} button");
-                        layout!(<> cmds,
-                            spawn_ui(text!(font, *n), named name, image &button, height px 30););
-                    }
-                }
-            }
-        }
-    }
-}
 #[allow(clippy::needless_pass_by_value)]
 fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
@@ -102,24 +69,21 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
     let board = serv.load("board.png");
     let button = serv.load("button.png");
 
-    let width = Rule::Fixed(310.0);
-    let t_height = Rule::Fixed(100.0);
-    let b_height = Rule::Fixed(30.0);
-
-    let aligned = cmds.lyout().image(&bg).align_start().named("root");
-
-    aligned.main_margin(100.0).screen_root().row(|cmds| {
-        let menu = cmds.lyout().image(&board).main_margin(40.0).width_rule(width);
-
-        menu.fill_main_axis().named("menu").column(|cmds| {
-            let title = cmds.lyout().width_rule(Rule::Parent(1.0)).height_rule(t_height);
-
-            title.named("Title").spawn_ui(title_card);
-            for n in &menu_buttons {
-                let button = cmds.lyout().height_rule(b_height).image(&button);
-
-                button.named(format!("{n} button")).spawn_ui(text!(font, *n));
+    layout! {
+        &mut cmds,
+        row(screen_root, "root", main_margin 100., align_start, image &bg) {
+            column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
+                spawn_ui(title_card, "Title card", height px 100, width %100);
+                code(let cmds) {
+                    for n in &menu_buttons {
+                        let name = format!("{n} button");
+                        layout!(
+                            cmds,
+                            spawn_ui(text!(font, *n), named name, image &button, height px 30);
+                        )
+                    }
+                }
             }
-        });
-    });
+        }
+    };
 }

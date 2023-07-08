@@ -155,3 +155,10 @@ struct Ui<T= ()> {
 ```
 
 This would allow infinite composition.
+
+## 6. Extensible for real.
+
+This is not enough. It also forbids the `-> Self`, since if we call a function
+from a `Deref` target, we are basically then locked  to the subset of functions
+implemented by the `Deref` target (unless we go the `.with` route, but I worry
+it would make macro haters give up the library)

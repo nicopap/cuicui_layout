@@ -2,7 +2,7 @@
 
 use bevy::prelude::{default, Bundle};
 
-use crate::{dsl, Container, Flow, Node, PosRect, Root, ScreenRoot, Size};
+use crate::{dsl, Container, Node, PosRect, Root, ScreenRoot, Size};
 
 /// A [`Root`] container node, it will always span the entire screen.
 #[derive(Bundle, Default)]
@@ -19,7 +19,7 @@ pub struct RootBundle {
 impl RootBundle {
     /// Create a [`RootBundle`] based on given [`dsl::Layout`].
     #[must_use]
-    pub fn new(flow: Flow, dsl::Layout { align, distrib, margin, .. }: dsl::Layout) -> Self {
+    pub fn new(dsl::Layout { align, distrib, margin, flow, .. }: dsl::Layout) -> Self {
         RootBundle {
             pos_rect: default(),
             root: Root::new(Size::ZERO, flow, align, distrib, flow.absolute(margin)),

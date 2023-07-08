@@ -1,5 +1,7 @@
 //! The `cuicui_layout` algorithm.
 
+use std::{num::ParseFloatError, str::FromStr};
+
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
 use bevy::{
@@ -358,6 +360,32 @@ pub enum Rule {
 
     /// The container's size is equal to precisely `f32` pixels.
     Fixed(f32),
+}
+impl FromStr for Rule {
+    type Err = Option<ParseFloatError>;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if let Some(pixels) = s.strip_suffix("px") {
+            let pixels = pixels.parse()?;
+            if pixels < 0.0 {
+                return Err(None);
+            }
+            Ok(Self::Fixed(pixels))
+        } else if let Some(percents) = s.strip_suffix('%') {
+            let percents: f32 = percents.parse()?;
+            if percents > 100.0 || percents < 0.0 {
+                return Err(None);
+            }
+            Ok(Self::Parent(percents / 100.0))
+        } else if let Some(child_ratio) = s.strip_suffix('*') {
+            let ratio: f32 = child_ratio.parse()?;
+            if ratio > 1.0 || ratio < 0.0 {
+                return Err(None);
+            }
+            Ok(Self::Children(ratio))
+        } else {
+            Err(None)
+        }
+    }
 }
 impl Rule {
     /// Compute effective size, given a potentially set parent container size.

@@ -11,11 +11,7 @@ use cuicui_layout::{LayoutRootCamera, PosRect, Root};
 pub mod content_sized;
 pub mod dsl_extension;
 
-pub use dsl_extension::{BevyUiCommandsExt, IntoUiCommands};
-
-/// Marker for [`cuicui_layout::dsl::IntoUiBundle`] to indicate this instance of the layout DSL
-/// is meant to spawn bundles from [`bevy::ui`].
-pub struct BevyUiLayout;
+pub use dsl_extension::LayoutType;
 
 /// System updating the [`cuicui_layout::ScreenRoot`] [`cuicui_layout::Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.
@@ -68,7 +64,7 @@ pub fn set_layout_style(
 /// - **Set the [`Style`] flex parameters according to [`cuicui_layout`] computed values**
 /// - **Compute [`cuicui_layout::Node`] layouts**
 ///
-/// [`spawn_ui`]: cuicui_layout::dsl::LayoutCommands::spawn_ui
+/// [`spawn_ui`]: cuicui_layout::dsl::MakeBundle::spawn_ui
 /// [`ContentSized`]: content_sized::ContentSized
 pub struct Plug;
 impl Plugin for Plug {

@@ -39,6 +39,8 @@ fn main() {
         .run();
 }
 
+type LayoutType = cuicui_layout::dsl::LayoutType;
+
 #[allow(clippy::type_complexity)]
 fn setup_debug(
     mut cmds: Commands,
