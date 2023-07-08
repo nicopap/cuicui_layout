@@ -9,17 +9,20 @@ use bevy::{
     prelude::{Children, Component, Entity, Name, Query},
 };
 
+const WIDTH: Flow = Flow::Horizontal;
+const HEIGHT: Flow = Flow::Vertical;
+
 use crate::{
     alignment::{Alignment, CrossAlign, Distribution},
     direction::{Flow, Oriented, Size},
     error::{self, Computed, Handle},
     PosRect,
 };
-impl Size<Result<f32, Entity>> {
-    fn unwrap(self, queries: &Layout<impl ReadOnlyWorldQuery>) -> Result<Size<f32>, error::Why> {
+impl<T> Size<Result<T, Entity>> {
+    fn unwrap(self, queries: &Layout<impl ReadOnlyWorldQuery>) -> Result<Size<T>, error::Why> {
         let err = |flow, e: Entity| error::Why::bad_rule(flow, e, queries);
-        let width = self.width.map_err(|e| err("width", e))?;
-        let height = self.height.map_err(|e| err("height", e))?;
+        let width = self.width.map_err(|e| err(WIDTH, e))?;
+        let height = self.height.map_err(|e| err(HEIGHT, e))?;
         Ok(Size { width, height })
     }
 }
@@ -43,7 +46,7 @@ impl Size<Computed> {
             if *width < 2. * margin.width {
                 return Err(error::Why::TooMuchMargin {
                     this: Handle::of(queries),
-                    axis: "width",
+                    axis: WIDTH,
                     margin: margin.width,
                     this_size: *width,
                 });
@@ -51,7 +54,7 @@ impl Size<Computed> {
             if margin.width.is_sign_negative() {
                 return Err(error::Why::NegativeMargin {
                     this: Handle::of(queries),
-                    axis: "width",
+                    axis: WIDTH,
                     margin: margin.width,
                 });
             }
@@ -61,7 +64,7 @@ impl Size<Computed> {
             if *height < 2. * margin.height {
                 return Err(error::Why::TooMuchMargin {
                     this: Handle::of(queries),
-                    axis: "height",
+                    axis: HEIGHT,
                     margin: margin.height,
                     this_size: *height,
                 });
@@ -69,7 +72,7 @@ impl Size<Computed> {
             if margin.height.is_sign_negative() {
                 return Err(error::Why::NegativeMargin {
                     this: Handle::of(queries),
-                    axis: "height",
+                    axis: HEIGHT,
                     margin: margin.height,
                 });
             }
@@ -83,12 +86,11 @@ impl Size<Computed> {
         Container { rules, margin, .. }: &Container,
         queries: &Layout<impl ReadOnlyWorldQuery>,
     ) -> Result<Self, error::Why> {
-        let mut bounds = Size {
+        let bounds = Size {
             width: rules.width.inside(self.width, queries.this),
             height: rules.height.inside(self.height, queries.this),
         };
-
-        // return on error
+        let mut bounds = bounds.unwrap(queries)?;
         bounds.set_margin(*margin, queries)?;
 
         Ok(bounds)
@@ -315,16 +317,6 @@ pub enum LeafRule {
     /// The container's size is equal to precisely `f32` pixels.
     Fixed(f32),
 }
-impl LeafRule {
-    /// Compute effective size, given a potentially set parent container size.
-    fn inside(self, bound: Computed) -> Result<f32, Entity> {
-        match (self, bound) {
-            (LeafRule::Parent(ratio), Computed::Valid(value)) => Ok(value * ratio),
-            (LeafRule::Parent(_), Computed::ChildDefined(_, parent)) => Err(parent),
-            (LeafRule::Fixed(fixed), _) => Ok(fixed),
-        }
-    }
-}
 impl Default for LeafRule {
     fn default() -> Self {
         LeafRule::Parent(1.0)
@@ -361,6 +353,11 @@ pub enum Rule {
     /// The container's size is equal to precisely `f32` pixels.
     Fixed(f32),
 }
+impl Default for Rule {
+    fn default() -> Self {
+        Rule::Children(1.0)
+    }
+}
 impl FromStr for Rule {
     type Err = Option<ParseFloatError>;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -387,26 +384,28 @@ impl FromStr for Rule {
         }
     }
 }
-impl Rule {
+
+impl LeafRule {
     /// Compute effective size, given a potentially set parent container size.
-    fn inside(self, bound: Computed, this: Entity) -> Computed {
-        use Computed::{ChildDefined, Valid};
-        match (self, bound) {
-            (Rule::Parent(ratio), Valid(value)) => Valid(value * ratio),
-            (Rule::Parent(_), ChildDefined(_, parent)) => todo!(
-                "Proper error handling\n\
-                Container {parent:?} is child-dependent, yet its child {this:?} depends on its \
-                size.\nThis is an unsolvable circular dependency!"
-            ),
-            (Rule::Fixed(fixed), _) => Valid(fixed),
-            (Rule::Children(ratio), ChildDefined(_, parent)) => ChildDefined(ratio, parent),
-            (Rule::Children(ratio), _) => ChildDefined(ratio, this),
+    fn inside(self, parent_size: Computed) -> Result<f32, Entity> {
+        match (self, parent_size) {
+            (LeafRule::Parent(ratio), Computed::Valid(value)) => Ok(value * ratio),
+            (LeafRule::Parent(_), Computed::ChildDefined(_, parent)) => Err(parent),
+            (LeafRule::Fixed(fixed), _) => Ok(fixed),
         }
     }
 }
-impl Default for Rule {
-    fn default() -> Self {
-        Rule::Children(1.0)
+impl Rule {
+    /// Compute effective size, given a potentially set parent container size.
+    fn inside(self, parent_size: Computed, this: Entity) -> Result<Computed, Entity> {
+        use Computed::{ChildDefined, Valid};
+        match (self, parent_size) {
+            (Rule::Parent(ratio), Valid(value)) => Ok(Valid(value * ratio)),
+            (Rule::Parent(_), ChildDefined(_, parent)) => Err(parent),
+            (Rule::Fixed(fixed), _) => Ok(Valid(fixed)),
+            (Rule::Children(ratio), ChildDefined(_, parent)) => Ok(ChildDefined(ratio, parent)),
+            (Rule::Children(ratio), _) => Ok(ChildDefined(ratio, this)),
+        }
     }
 }
 
@@ -546,7 +545,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
                 this: Handle::of(self),
                 size,
                 node_children_count,
-                dir_name: "width",
+                axis: WIDTH,
                 child_size: child_size.width,
             });
         }
@@ -555,7 +554,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
                 this: Handle::of(self),
                 size,
                 node_children_count,
-                dir_name: "height",
+                axis: HEIGHT,
                 child_size: child_size.height,
             });
         }

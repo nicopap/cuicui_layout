@@ -8,7 +8,7 @@ use bevy::{
 use bevy_mod_sysfail::FailureMode;
 use thiserror::Error;
 
-use crate::{direction::Size, layout::Layout};
+use crate::{direction::Axis, direction::Size, layout::Layout};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum Computed {
@@ -75,27 +75,28 @@ pub(crate) enum Why {
     )]
     ChildlessContainer(Handle),
     #[error(
-        "{this} needs to know its {axis}, \
-        but {parent}, an ancestor of {this}, doesn't have a defined {axis}.   \
-        Try specifying the {axis} of any container between {parent} and {this} \
-        (included)"
+        "The rule of {this}'s {axis} depend on {parent}'s {axis}, \
+        but the rule of {axis} of {parent} depends on {this}'s {axis}!   \
+        It's impossible to make sense of this circular dependency!   \
+        Use different rules on {axis} for any container between {parent} and {this} \
+        (included) to fix this issue."
     )]
-    ParentIsStretch {
+    CyclicRule {
         this: Handle,
         parent: Handle,
-        axis: &'static str,
-        // TODO: include a "because Stretch/Ratio" explanation
+        axis: Axis,
     },
     #[error(
-        "Yo container {this} of size {size} contains more stuff than it possibly can!   \
-         It has {node_children_count} items of total {dir_name} {child_size}.   \
-         You gotta either make it larger or reduce the size of things within it."
+        "Node {this} of inner size (excluding margin) {size} has a {axis} \
+        too small to contain its children!   \
+        There are {node_children_count} children of total {axis} {child_size}px.   \
+        You gotta either make it larger or reduce the size of things within it."
     )]
     ContainerOverflow {
         this: Handle,
         size: Size<f32>,
         node_children_count: u32,
-        dir_name: &'static str,
+        axis: Axis,
         child_size: f32,
     },
     #[error(
@@ -104,7 +105,7 @@ pub(crate) enum Why {
     )]
     NegativeMargin {
         this: Handle,
-        axis: &'static str,
+        axis: Axis,
         margin: f32,
     },
     #[error(
@@ -114,7 +115,7 @@ pub(crate) enum Why {
     )]
     TooMuchMargin {
         this: Handle,
-        axis: &'static str,
+        axis: Axis,
         margin: f32,
         this_size: f32,
     },
@@ -122,11 +123,11 @@ pub(crate) enum Why {
 
 impl Why {
     pub(crate) fn bad_rule(
-        axis: &'static str,
+        axis: Axis,
         parent: Entity,
         queries: &Layout<impl ReadOnlyWorldQuery>,
     ) -> Self {
-        Why::ParentIsStretch {
+        Why::CyclicRule {
             this: Handle::of(queries),
             parent: Handle::of_entity(parent, queries.names),
             axis,
@@ -147,7 +148,7 @@ impl FailureMode for ComputeLayoutError {
 
     fn identify(&self) -> Self::ID {
         let (Why::ChildlessContainer(this)
-        | Why::ParentIsStretch { this, .. }
+        | Why::CyclicRule { this, .. }
         | Why::ContainerOverflow { this, .. }
         | Why::NegativeMargin { this, .. }
         | Why::TooMuchMargin { this, .. }) = &self.0;

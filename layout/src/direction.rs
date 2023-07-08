@@ -4,6 +4,9 @@ use std::fmt;
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect};
 
+/// A synonymous for [`Flow`].
+pub type Axis = Flow;
+
 /// A `T` that applies to the `width` and `height` of something.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
@@ -83,6 +86,15 @@ impl<T: Copy> Oriented<T> {
     /// Create an [`Oriented`] for given `main` and `cross` `T`.
     pub const fn new(main: T, cross: T) -> Self {
         Self { main, cross }
+    }
+}
+
+impl fmt::Display for Flow {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Flow::Horizontal => f.write_str("width"),
+            Flow::Vertical => f.write_str("height"),
+        }
     }
 }
 
