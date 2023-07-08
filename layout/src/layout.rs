@@ -44,7 +44,6 @@ impl Size<Computed> {
         queries: &Layout<impl ReadOnlyWorldQuery>,
     ) -> Result<(), error::Why> {
         if let Computed::Valid(width) = &mut self.width {
-            // TODO(feat): This is where I'd set the margin
             if *width < 2. * margin.width {
                 return Err(error::Why::TooMuchMargin {
                     this: Handle::of(queries),
@@ -109,7 +108,6 @@ impl Size<Computed> {
 /// Parameters of a container, ie: a node that contains other nodes.
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
-// TODO(clean): Split out `size` so that I can re-use it in `Root`
 pub struct Container {
     /// The axis on which the nodes in this containers are arranged.
     pub flow: Flow,
