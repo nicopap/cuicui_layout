@@ -19,7 +19,9 @@ use crate::{
     PosRect,
 };
 impl<T> Size<Result<T, Entity>> {
-    fn unwrap(self, queries: &Layout<impl ReadOnlyWorldQuery>) -> Result<Size<T>, error::Why> {
+    /// Go from a `Size<Result<T, Entity>>` to a `Result<Size<T>, error::Why>`.
+    /// Assumes the error is a [`error::Why::CyclicRule`].
+    fn transpose(self, queries: &Layout<impl ReadOnlyWorldQuery>) -> Result<Size<T>, error::Why> {
         let err = |flow, e: Entity| error::Why::bad_rule(flow, e, queries);
         let width = self.width.map_err(|e| err(WIDTH, e))?;
         let height = self.height.map_err(|e| err(HEIGHT, e))?;
@@ -90,7 +92,7 @@ impl Size<Computed> {
             width: rules.width.inside(self.width, queries.this),
             height: rules.height.inside(self.height, queries.this),
         };
-        let mut bounds = bounds.unwrap(queries)?;
+        let mut bounds = bounds.transpose(queries)?;
         bounds.set_margin(*margin, queries)?;
 
         Ok(bounds)
@@ -463,7 +465,6 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         if children.is_empty() {
             unreachable!("A bevy bug caused the `bevy_hierarchy::Children` component to be empty")
         }
-        let margin = flow.relative(margin);
         let mut child_size = Oriented { main: 0.0, cross: 0.0 };
         let mut children_count = 0;
 
@@ -493,6 +494,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
             Distribution::End => (size.main - child_size.main, 0.0),
         };
 
+        let margin = flow.relative(margin);
         let mut offset = Oriented::new(main_offset + margin.main, 0.0);
 
         let cross_align = CrossAlign::new(size, align);
@@ -525,8 +527,8 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
                 }
                 None => return Err(error::Why::ChildlessContainer(Handle::of(self))),
             },
-            Node::Axis(oriented) => parent.leaf_size(flow.absolute(oriented)).unwrap(self)?,
-            Node::Box(size) => parent.leaf_size(size).unwrap(self)?,
+            Node::Axis(oriented) => parent.leaf_size(flow.absolute(oriented)).transpose(self)?,
+            Node::Box(size) => parent.leaf_size(size).transpose(self)?,
         };
         if let Ok(mut to_update) = self.to_update.get_mut(self.this) {
             to_update.size = size;

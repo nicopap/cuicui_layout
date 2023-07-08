@@ -1,10 +1,9 @@
 //! enums for main axis and cross axis alignment.
 
-use crate::Oriented;
-#[cfg(doc)]
-use crate::Rule;
 #[cfg(feature = "reflect")]
 use bevy::prelude::{FromReflect, Reflect};
+
+use crate::Oriented;
 
 /// The cross axis alignment. Aka alignment.
 ///
@@ -60,10 +59,6 @@ pub enum Alignment {
 
 /// The main axis alignment. Aka distribution.
 ///
-/// Note that [`Distribution::FillMain`] and [`Distribution::End`] requires
-/// a parent with a known size (ie: the container's main axis constraint
-/// must not be [`Rule::Children`]).
-///
 /// The following suposes an [`Alignment::Start`].
 ///
 /// ```text
@@ -87,21 +82,9 @@ pub enum Distribution {
     Start,
 
     /// Items are distributed evenly, with no space left on the sides of the container.
-    ///
-    /// > **Note**: This requires a known parent container main axis size.
-    /// > Use [`Distribution::Start`] if you don't know it!
-    /// >
-    /// > If the parent container's constraint on the main axis is [`Rule::Children`],
-    /// > `cuicui_layout` will log an error message.
     FillMain,
 
     /// All item will be clumped together at the right/bottom.
-    ///
-    /// > **Note**: This requires a known parent container main axis size.
-    /// > Use [`Distribution::Start`] if you don't know it!
-    /// >
-    /// > If the parent container's constraint on the main axis is [`Rule::Children`],
-    /// > `cuicui_layout` will log an error message.
     End,
 }
 

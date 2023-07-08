@@ -33,11 +33,11 @@ pub struct Oriented<T> {
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
 pub enum Flow {
-    /// Children are arranged on the horizontal axis.
+    /// Children are arranged on the horizontal axis. May also be "width".
     #[default]
     Horizontal,
 
-    /// Children are arranged on the vertical axis.
+    /// Children are arranged on the vertical axis. May also be "height".
     Vertical,
 }
 impl Flow {
