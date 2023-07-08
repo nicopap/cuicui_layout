@@ -221,15 +221,33 @@ impl Root {
         };
         Size { width, height }
     }
-    /// Get the fixed size of this [`Root`] container
+    /// Get the fixed size of this [`Root`] container.
+    ///
+    /// # Panics
+    /// If one of the axis is unfixed.
+    ///
+    /// Normally, it is impossible to construct a `Root` with unfixed axis,
+    /// but it is possible to accomplish it by modifying `Root` through reflection.
     #[must_use]
-    #[allow(clippy::missing_panics_doc)] // panic is used over unreachable for const-ness
     pub const fn size(&self) -> Size<f32> {
         use Rule::Fixed;
         let Size { width: Fixed(width), height: Fixed(height) } = self.0.rules else {
-            panic!("Can't construct a `Root` with non-fixed size");
+            panic!("A Root container had an unfixed axis");
         };
         Size { width, height }
+    }
+    pub(crate) fn get_size(
+        &self,
+        entity: Entity,
+        names: &Query<&Name>,
+    ) -> Result<Size<f32>, error::Why> {
+        use Rule::Fixed;
+        let Size { width: Fixed(width), height: Fixed(height) } = self.0.rules else {
+            let width_fix = matches!(self.0.rules.width, Fixed(_));
+            let axis = if width_fix { HEIGHT } else { WIDTH };
+            return Err(error::Why::invalid_root(axis, entity, names));
+        };
+        Ok(Size { width, height })
     }
     /// Create a new [`Root`] with given parameters.
     #[must_use]

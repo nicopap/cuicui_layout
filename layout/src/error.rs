@@ -69,6 +69,8 @@ impl fmt::Display for Handle {
 }
 #[derive(Clone, Debug, PartialEq, Error)]
 pub(crate) enum Why {
+    #[error("Both axes of a `Root` container must be `Rule::Fixed`! {this}'s {axis} is not!")]
+    InvalidRoot { this: Handle, axis: Axis },
     #[error(
         "{0}'s `Node` is a `Container`, yet it has no children! Use `Node::Box` or `Node::Axis` \
         for terminal nodes!"
@@ -133,6 +135,10 @@ impl Why {
             axis,
         }
     }
+
+    pub(crate) fn invalid_root(axis: Axis, entity: Entity, names: &Query<&Name>) -> Self {
+        Why::InvalidRoot { this: Handle::of_entity(entity, names), axis }
+    }
 }
 /// An error caused by a bad layout.
 #[derive(Debug, Error)]
@@ -151,6 +157,7 @@ impl FailureMode for ComputeLayoutError {
         | Why::CyclicRule { this, .. }
         | Why::ContainerOverflow { this, .. }
         | Why::NegativeMargin { this, .. }
+        | Why::InvalidRoot { this, .. }
         | Why::TooMuchMargin { this, .. }) = &self.0;
         this.clone()
     }

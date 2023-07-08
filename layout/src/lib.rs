@@ -101,15 +101,15 @@ pub fn compute_layout<F: ReadOnlyWorldQuery>(
     roots: Query<(Entity, &'static Root, &'static Children), F>,
 ) -> Result<(), ComputeLayoutError> {
     for (entity, root, children) in &roots {
-        let bounds = root.size();
+        let root_container = *root.get();
+        let bounds = root.get_size(entity, &names)?;
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size = bounds;
         }
-        let root = *root.get();
         let mut layout = Layout::new(entity, &mut to_update, &nodes, &names);
         let mut bounds: Size<Computed> = bounds.into();
-        bounds.set_margin(root.margin, &layout)?;
-        layout.container(root, children, bounds)?;
+        bounds.set_margin(root_container.margin, &layout)?;
+        layout.container(root_container, children, bounds)?;
     }
     Ok(())
 }
