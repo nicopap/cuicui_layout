@@ -208,21 +208,33 @@ impl Why {
 #[error(transparent)]
 pub struct ComputeLayoutError(#[from] Why);
 
+/// Uniquely identifies an error
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub enum ErrorId {
+    ChildlessContainer(Handle),
+    CyclicRule(Handle),
+    ContainerOverflow(Handle),
+    NegativeMargin(Handle),
+    InvalidRoot(Handle),
+    TooMuchMargin(Handle),
+}
+
 impl FailureMode for ComputeLayoutError {
     fn log_level(&self) -> bevy_mod_sysfail::LogLevel {
         bevy_mod_sysfail::LogLevel::Error
     }
 
-    type ID = Handle;
+    type ID = ErrorId;
 
     fn identify(&self) -> Self::ID {
-        let (Why::ChildlessContainer(this)
-        | Why::CyclicRule { this, .. }
-        | Why::ContainerOverflow { this, .. }
-        | Why::NegativeMargin { this, .. }
-        | Why::InvalidRoot { this, .. }
-        | Why::TooMuchMargin { this, .. }) = &self.0;
-        this.clone()
+        match &self.0 {
+            Why::ChildlessContainer(this) => ErrorId::ChildlessContainer(this.clone()),
+            Why::CyclicRule { this, .. } => ErrorId::CyclicRule(this.clone()),
+            Why::ContainerOverflow { this, .. } => ErrorId::ContainerOverflow(this.clone()),
+            Why::NegativeMargin { this, .. } => ErrorId::NegativeMargin(this.clone()),
+            Why::InvalidRoot { this, .. } => ErrorId::InvalidRoot(this.clone()),
+            Why::TooMuchMargin { this, .. } => ErrorId::TooMuchMargin(this.clone()),
+        }
     }
     fn display(&self) -> Option<String> {
         Some(self.to_string())
