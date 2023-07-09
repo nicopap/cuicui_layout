@@ -48,9 +48,9 @@
 /// The layout arguments are:
 /// - `"<string literal>"`: Set the name of the UI node to spawn.
 /// - `named <expr>`: Set the name of the UI node to spawn to value of `expr`
-/// - `[height|width] [px|%|*] <expr>`: Set the node's height/width to value of `expr`,
+/// - `[height|width] [px|%|^] <expr>`: Set the node's height/width to value of `expr`,
 ///   If `px`, it is a fixed size container, while `%` is in percent of the parent,
-///   And `*` is how many time larger that children.
+///   And `^` is how many time larger that children.
 /// - `[main_margin|cross_margin] <expr>`: Add a fixed pixel size margin
 ///   on the main/cross axis to value of `expr`.
 /// - `[align_start|align_end]`: Align the content of the container to the start/end of it.
@@ -203,7 +203,7 @@
 macro_rules! layout {
     (@rule px $rule:expr) => { Rule::Fixed($rule as f32) };
     (@rule % $rule:expr) => { Rule::Parent($rule as f32 / 100.0) };
-    (@rule * $rule:expr) => { Rule::Children($rule) };
+    (@rule ^ $rule:expr) => { Rule::Children($rule) };
 
     (@arg_end $($t:tt)*) => { $($t)* };
     (@args [$($call:tt)*] $d_ty:ty, $($args:tt)*) => {
