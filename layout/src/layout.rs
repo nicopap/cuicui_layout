@@ -261,20 +261,6 @@ impl Root {
         let rules = Size::new(Fixed(width), Fixed(height));
         Root(Container { flow, align, distrib, rules, margin })
     }
-    /// Create a [`Root`] container where children are center-aligned and
-    /// fill this container on the `flow` main axis.
-    #[must_use]
-    pub const fn stretch(bounds: Size<f32>, flow: Flow) -> Self {
-        let distrib = Distribution::FillMain;
-        Root::new(bounds, flow, Alignment::Center, distrib, Size::ZERO)
-    }
-    /// Create a [`Root`] container where children are compactly bunched at the
-    /// start of the main and cross axis.
-    #[must_use]
-    pub const fn compact(bounds: Size<f32>, flow: Flow) -> Self {
-        let distrib = Distribution::Start;
-        Root::new(bounds, flow, Alignment::Start, distrib, Size::ZERO)
-    }
 }
 
 /// A [`Component`] integrating the attached [`Entity`] into the `cuicui_layout`
