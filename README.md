@@ -10,9 +10,14 @@ A dumb layout algorithm you can rely on, built for and with bevy.
 <details><summary><h2>The Cyberpunk 2077 showcase</h2></summary>
 
 For some reasons, the Cyberpunk main menu has become the 7GUI of bevy, so here
-is the Cyberpunk main menu using `cuicui_layout`.
+is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 
-https://github.com/nicopap/cuicui_layout/assets/26321040/8a51f9a9-ffa7-4b60-a2ad-3947ff718e27
+<video controls>
+  <source
+    src="https://github.com/nicopap/cuicui_layout/assets/26321040/8a51f9a9-ffa7-4b60-a2ad-3947ff718e27.mp4"
+    type="video/mp4"
+  />
+</video>
 
 ### Code
 
@@ -34,15 +39,14 @@ let board = serv.load("board.png");
 let button = serv.load("button.png");
 
 layout! {
-    <> &mut cmds,
+    &mut cmds,
     row(screen_root, "root", main_margin 100., align_start, image &bg) {
         column("menu", width px 300, fill_main_axis, image &board) {
             spawn_ui(title_card, "Title card", height px 100, width %100);
             code(let cmds) {
                 for n in &menu_buttons {
                     let name = format!("{n} button");
-                    layout!(<> cmds,
-                        spawn_ui(text!(font, *n), named name, image &button, height px 30););
+                    layout!(cmds, spawn_ui(*n, named name, image &button, height px 30););
                 }
             }
         }
@@ -78,11 +82,14 @@ a lot of things are going to break a lot.
    Make sure to check the [`LayoutType`]
    docs to learn the current capabilities of `cuicui_layout`.
 
+Please note that `cuicui_layout` won't magically make sprite components work in
+UI nodes.
+
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
 [`LayoutType`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutType.html
-[`layout!`]: https://docs.rs/cuicui_layout/latest/macro.layout.html
+[`layout!`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/macro.layout.html
 
 ## `cuicui_layout` crates
 
@@ -93,9 +100,19 @@ This repository contains several crates:
   uses `bevy_hierarchy`.
 - `cuicui_layout_bevy_ui` ([ui](ui)): Integration with `bevy_ui`, including extension to `LayoutType`
   for `UiImage`, `Text`, background images and background colors.
-- `cuicui_layout_bevy_sprite` ([sprite](sprite)): More bare-bone `bevy_sprite` integration.
+- `cuicui_layout_bevy_sprite` ([sprite](sprite)): `bevy_sprite` integration, supports
+  `Mesh2dHandle`, `Sprite` and `Text2d`. This isn't as good as the `bevy_ui`-based integration
+  when it comes to content-driven sizes, but otherwise should work very much like the `bevy_ui`
+  integration.
 
 (maybe `cuicui_layout_spec` in the future)
+
+## Cargo features
+
+- `cuicui_layout_bevy_sprite/sprite_text` (on by default): implement content-sized layout nodes
+  for `Text2dBundle`.
+- `cuicui_layout/reflect` (on by default): Derive `bevy_reflect` traits for cuicui_layout
+  types & register them.
 
 ## Why cuicui layout
 

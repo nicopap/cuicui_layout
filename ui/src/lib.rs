@@ -3,6 +3,11 @@
 //! Import this crate's `LayoutType` and use [`cuicui_layout::layout!`] with
 //! it to have a fully working UI library.
 //!
+//! It contains:
+//! * A [`dsl_extension`] to use with the [`cuicui_layout::layout!`] macro.
+//! * A [`content_sized::ContentSized`] component to update node sizes
+//!   based on `UiImage` and `Text` size.
+//!
 //! # Example
 //!
 //! ```
@@ -12,37 +17,34 @@
 //! // if you import this      vvvvvvvvvv
 //! use cuicui_layout_bevy_ui::LayoutType;
 //!
-//! fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
-//!     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
+//! # fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
+//! cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
 //!
-//!     let title_card = serv.load::<Image, _>("logo.png");
-//!     let menu_buttons = [ "CONTINUE", "NEW GAME" ];
-//!     let bg = serv.load("background.png");
-//!     let board = serv.load("board.png");
-//!     let button = serv.load("button.png");
+//! let title_card = serv.load::<Image, _>("logo.png");
+//! let menu_buttons = [ "CONTINUE", "NEW GAME" ];
+//! let bg = serv.load("background.png");
+//! let board = serv.load("board.png");
+//! let button = serv.load("button.png");
 //!
-//!     layout! {
-//!         &mut cmds,
-//!         // Notice the `image` argument                          vvvvvvvvv
-//!         row(screen_root, "root", main_margin 100., align_start, image &bg) {
-//!             column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
-//!                 spawn_ui(title_card, "Title card", height px 100, width %100);
-//!                 code(let cmds) {
-//!                     for n in &menu_buttons {
-//!                         let name = format!("{n} button");
-//!                         layout!(
-//!                             cmds,
-//!                             spawn_ui(n, named name, image &button, height px 30);
-//!                         )
-//!                     }
+//! layout! {
+//!     &mut cmds,
+//!     // Notice the `image` argument                          vvvvvvvvv
+//!     row(screen_root, "root", main_margin 100., align_start, image &bg) {
+//!         column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
+//!             spawn_ui(title_card, "Title card", height px 100, width %100);
+//!             code(let cmds) {
+//!                 for n in &menu_buttons {
+//!                     let name = format!("{n} button");
+//!                     layout!(cmds, spawn_ui(n, named name, image &button, height px 30);)
 //!                 }
 //!             }
 //!         }
-//!     };
-//! }
+//!     }
+//! };
+//! # }
 //! ```
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(clippy::type_complexity, clippy::use_self, clippy::redundant_pub_crate)]
+#![allow(clippy::use_self, clippy::redundant_pub_crate)]
 
 use bevy::ecs::prelude::*;
 use bevy::prelude::{App, Camera, CoreSet, Plugin, Style};

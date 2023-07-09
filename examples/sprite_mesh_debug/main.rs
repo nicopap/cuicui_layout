@@ -10,6 +10,7 @@ use cuicui_layout::{
     layout, Node, PosRect, Root, Rule, Size,
 };
 use cuicui_layout_bevy_sprite as render;
+use cuicui_layout_bevy_sprite::LayoutType;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
 
@@ -39,9 +40,6 @@ fn main() {
         .run();
 }
 
-type LayoutType = cuicui_layout::dsl::LayoutType;
-
-#[allow(clippy::type_complexity)]
 fn setup_debug(
     mut cmds: Commands,
     nodes: Query<Entity, Or<(With<Node>, With<Root>)>>,

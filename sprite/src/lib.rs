@@ -1,7 +1,9 @@
 //! Make [`cuicui_layout`] useable with bevy's 2D renderer (`bevy_sprite`).
 //!
-//! Currently this crate is limited, it doesn't expose ways to manage sprites
-//! or text, in contrast to `cuicui_layout_bevy_ui`.
+//! It contains:
+//! * A [`dsl_extension`] to use with the [`cuicui_layout::layout!`] macro.
+//! * A [`content_sized::ContentSized`] component to update node sizes
+//!   based on sprite, text2d or mesh2d size.
 //!
 //! However, it definitively will get upgraded soon enough.
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
@@ -13,6 +15,11 @@ use bevy::{
 };
 use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::{LayoutRootCamera, Root, ScreenRoot};
+
+pub mod content_sized;
+pub mod dsl_extension;
+
+pub use dsl_extension::LayoutType;
 
 /// Create a [`Root`] container as the screen root, its size will dyamically
 /// follow the size of the viewport of camera marked iwth [`LayoutRootCamera`].
@@ -64,7 +71,6 @@ impl UiCameraBundle {
 /// System updating the [`ScreenRoot`] [`cuicui_layout`] [`Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.
 #[quick_sysfail]
-#[allow(clippy::type_complexity)]
 pub fn update_ui_camera_root(
     ui_cameras: Query<(&Camera, &RenderLayers), (With<LayoutRootCamera>, Changed<Camera>)>,
     mut roots: Query<(&mut Root, &RenderLayers), With<ScreenRoot>>,
@@ -79,6 +85,3 @@ pub fn update_ui_camera_root(
         }
     }
 }
-// TODO:
-// Compute the Static (and likely offset) of sprites and meshes (including
-// rotation)
