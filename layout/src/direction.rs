@@ -80,12 +80,22 @@ impl<T> Size<T> {
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Size<U> {
         Size { width: f(self.width), height: f(self.height) }
     }
+    /// Go from `&Size<T>` to `Size<&T>`.
+    pub const fn as_ref(&self) -> Size<&T> {
+        let Self { width, height } = self;
+        Size { width, height }
+    }
 }
 
 impl<T: Copy> Oriented<T> {
     /// Create an [`Oriented`] for given `main` and `cross` `T`.
     pub const fn new(main: T, cross: T) -> Self {
         Self { main, cross }
+    }
+    /// Go from `&Oriented<T>` to `Oriented<&T>`.
+    pub const fn as_ref(&self) -> Oriented<&T> {
+        let Self { main, cross } = self;
+        Oriented { main, cross }
     }
 }
 

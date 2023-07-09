@@ -122,7 +122,7 @@ This repository contains several crates:
   `Transform` based on `PosRect`.
 - Fully flexible and extensible, can be used with `bevy_ui`, `bevy_sprite`, your own stuff.
 - Fantatstically easy to extend, like really.
-- Helpful and fully detailed error messages when things are incoherent or broken.[^1]
+- Helpful and fully detailed error messages when things are incoherent or broken.
   As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
   why things do not turn out as expected.
 

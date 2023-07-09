@@ -7,6 +7,7 @@ use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
 use bevy::{
     ecs::query::ReadOnlyWorldQuery,
     prelude::{trace, Children, Component, Entity, Name, Query},
+    utils::FloatOrd,
 };
 
 const WIDTH: Flow = Flow::Horizontal;
@@ -15,7 +16,7 @@ const HEIGHT: Flow = Flow::Vertical;
 use crate::{
     alignment::{Alignment, CrossAlign, Distribution},
     direction::{Flow, Oriented, Size},
-    error::{self, Computed, Handle},
+    error::{self, Computed, Handle, Relative},
     PosRect,
 };
 impl<T> Size<Result<T, Entity>> {
@@ -322,6 +323,18 @@ impl Node {
     pub fn fixed(size: Size<f32>) -> Self {
         Node::Box(size.map(LeafRule::Fixed))
     }
+    const fn parent_rule(&self, flow: Flow, axis: Flow) -> Option<f32> {
+        match self {
+            Node::Container(Container { rules, .. }) => {
+                axis.relative(rules.as_ref()).main.parent_rule()
+            }
+            Node::Axis(oriented) => {
+                let rules = flow.absolute(oriented.as_ref());
+                axis.relative(rules).main.parent_rule()
+            }
+            Node::Box(rules) => axis.relative(rules.as_ref()).main.parent_rule(),
+        }
+    }
 }
 
 /// A constraint on an axis of a terminal `Node` (ie: doesn't have a `Children` constraint).
@@ -412,8 +425,21 @@ impl LeafRule {
             (LeafRule::Fixed(fixed), _) => Ok(fixed),
         }
     }
+
+    const fn parent_rule(self) -> Option<f32> {
+        match self {
+            LeafRule::Parent(ratio) => Some(ratio),
+            LeafRule::Fixed(_) => None,
+        }
+    }
 }
 impl Rule {
+    const fn parent_rule(self) -> Option<f32> {
+        match self {
+            Rule::Parent(ratio) => Some(ratio),
+            Rule::Children(_) | Rule::Fixed(_) => None,
+        }
+    }
     /// Compute effective size, given a potentially set parent container size.
     fn inside(self, parent_size: Computed, this: Entity) -> Result<Computed, Entity> {
         use Computed::{ChildDefined, Valid};
@@ -478,11 +504,8 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         // Size of this container
         computed_size: Size<Computed>,
     ) -> Result<Size<f32>, error::Why> {
-        if children.is_empty() {
-            unreachable!("A bevy bug caused the `bevy_hierarchy::Children` component to be empty")
-        }
         let mut child_size = Oriented { main: 0.0, cross: 0.0 };
-        let mut children_count = 0;
+        let mut children_count: u32 = 0;
 
         let this_entity = self.this;
         for (this, node, children) in self.nodes.iter_many(children) {
@@ -495,13 +518,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         self.this = this_entity;
 
         let size = flow.relative(computed_size).with_children(child_size);
-
-        // Error on overflow (TODO(clean): consider logging instead)
-        self.validate_size(
-            children_count,
-            flow.absolute(child_size),
-            flow.absolute(size),
-        )?;
+        self.validate_size(children, flow, child_size, size)?;
 
         let count = children_count.saturating_sub(1).max(1) as f32;
         let (main_offset, space_between) = match distrib {
@@ -556,28 +573,37 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
 
     fn validate_size(
         &self,
-        node_children_count: u32,
-        child_size: Size<f32>,
-        size: Size<f32>,
+        children: &Children,
+        flow: Flow,
+        oriented_child_size: Oriented<f32>,
+        oriented_size: Oriented<f32>,
     ) -> Result<(), error::Why> {
-        if child_size.width > size.width {
-            return Err(error::Why::ContainerOverflow {
-                this: Handle::of(self),
-                size,
-                node_children_count,
-                axis: WIDTH,
-                child_size: child_size.width,
-            });
+        let child_size = flow.absolute(oriented_child_size);
+        let size = flow.absolute(oriented_size);
+
+        if child_size.width <= size.width && child_size.height <= size.height {
+            return Ok(());
         }
-        if child_size.height > size.height {
-            return Err(error::Why::ContainerOverflow {
-                this: Handle::of(self),
-                size,
-                node_children_count,
-                axis: HEIGHT,
-                child_size: child_size.height,
-            });
-        }
-        Ok(())
+        let width_too_large = child_size.width > size.width;
+        let axis = if width_too_large { WIDTH } else { HEIGHT };
+        let largest_child = children.iter().max_by_key(|e| {
+            let Ok(PosRect { size, .. }) = self.to_update.get(**e) else { return FloatOrd(0.0); };
+            FloatOrd(if width_too_large { size.width } else { size.height })
+        });
+        let relative_size = children.iter().filter_map(|e| {
+            let node = self.nodes.get(*e).ok()?;
+            node.1.parent_rule(flow, axis)
+        });
+        let relative_size = relative_size.sum();
+        let largest_child = *largest_child.unwrap();
+        Err(error::Why::ContainerOverflow {
+            this: Handle::of(self),
+            size,
+            axis,
+            node_children_count: u32::try_from(self.nodes.iter_many(children).count()).unwrap(),
+            child_size: axis.relative(child_size).main,
+            largest_child: Handle::of_entity(largest_child, self.names),
+            child_relative_size: Relative::of(axis, flow, relative_size),
+        })
     }
 }

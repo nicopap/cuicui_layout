@@ -17,6 +17,7 @@
 //! That's it! Now make a nice UI using bevy.
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(
+    clippy::match_bool,
     clippy::manual_range_contains,
     clippy::use_self,
     clippy::redundant_pub_crate

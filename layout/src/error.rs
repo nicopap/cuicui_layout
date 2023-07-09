@@ -67,6 +67,65 @@ impl fmt::Display for Handle {
         }
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum RelativeAxis {
+    Main,
+    Cross,
+}
+
+impl RelativeAxis {
+    fn of(reference: Axis, axis: Axis) -> Self {
+        match reference == axis {
+            true => RelativeAxis::Main,
+            false => RelativeAxis::Cross,
+        }
+    }
+}
+
+impl fmt::Display for RelativeAxis {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Main => f.write_str("main"),
+            Self::Cross => f.write_str("cross"),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Relative {
+    size: f32,
+    axis: RelativeAxis,
+    absolute: Axis,
+}
+impl Relative {
+    pub(crate) fn of(reference: Axis, axis: Axis, size: f32) -> Self {
+        Relative {
+            size,
+            axis: RelativeAxis::of(reference, axis),
+            absolute: reference,
+        }
+    }
+}
+
+impl fmt::Display for Relative {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.size > 0.5 {
+            let larger = self.size > 1.0;
+            write!(
+                f,
+                "- children have a total relative size on the parent's {} \
+                axis of {:0}% of the parent's {}.{}",
+                self.axis,
+                self.size * 100.0,
+                self.absolute,
+                if larger { " This is larger than the parent!" } else { "" },
+            )?;
+        }
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Error)]
 pub(crate) enum Why {
     #[error("Both axes of a `Root` container must be `Rule::Fixed`! {this}'s {axis} is not!")]
@@ -89,16 +148,20 @@ pub(crate) enum Why {
         axis: Axis,
     },
     #[error(
-        "Node {this} of inner size (excluding margin) {size} has a {axis} \
-        too small to contain its children!   \
-        There are {node_children_count} children of total {axis} {child_size}px.   \
-        You gotta either make it larger or reduce the size of things within it."
+        "Node {this}'s {axis} is overflowed by its children!\n\
+        Notes:\n\
+        - {this}'s inner size (excluding margins) is {size}\n\
+        - There are {node_children_count} children of total {axis} {child_size}px.\n\
+        - The largest child is {largest_child}\n\
+        {child_relative_size}"
     )]
     ContainerOverflow {
         this: Handle,
         size: Size<f32>,
+        largest_child: Handle,
         node_children_count: u32,
         axis: Axis,
+        child_relative_size: Relative,
         child_size: f32,
     },
     #[error(
