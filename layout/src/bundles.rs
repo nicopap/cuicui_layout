@@ -20,9 +20,10 @@ impl RootBundle {
     /// Create a [`RootBundle`] based on given [`dsl::Layout`].
     #[must_use]
     pub fn new(dsl::Layout { align, distrib, margin, flow, .. }: dsl::Layout) -> Self {
+        let size = Size::all(f32::MAX);
         RootBundle {
             pos_rect: default(),
-            root: Root::new(Size::ZERO, flow, align, distrib, flow.absolute(margin)),
+            root: Root::new(size, flow, align, distrib, flow.absolute(margin)),
             screen_root: ScreenRoot,
         }
     }
