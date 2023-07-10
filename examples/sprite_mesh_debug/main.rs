@@ -29,16 +29,20 @@ fn color_from_entity(entity: Entity) -> Color {
 }
 
 fn main() {
-    use bevy_inspector_egui::quick::WorldInspectorPlugin;
+    // use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
-        .add_plugins(DefaultPlugins)
-        .add_startup_system(setup)
-        .add_startup_system(setup_debug.in_base_set(StartupSet::PostStartup))
-        .add_plugin(WorldInspectorPlugin::default())
-        .add_plugin(cuicui_layout::Plug::new())
-        .add_system(cuicui_layout::update_transforms)
-        .add_system(render::update_ui_camera_root)
-        .add_system(stretch_boxes)
+        .add_plugins((DefaultPlugins, cuicui_layout::Plug::new()))
+        .add_systems(Startup, setup)
+        .add_systems(PostStartup, setup_debug)
+        // .add_plugin(WorldInspectorPlugin::default())
+        .add_systems(
+            Update,
+            (
+                cuicui_layout::update_transforms,
+                render::update_ui_camera_root,
+                stretch_boxes,
+            ),
+        )
         .run();
 }
 

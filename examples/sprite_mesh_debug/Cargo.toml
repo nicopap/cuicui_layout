@@ -14,5 +14,4 @@ path = "main.rs"
 cuicui_dsl.workspace = true
 cuicui_layout.workspace = true
 cuicui_layout_bevy_sprite.workspace = true
-bevy-inspector-egui = "0.18.3"
-bevy = { version = "0.10", features = ["png", "x11", "bevy_asset", "bevy_render", "bevy_sprite" ] }
+bevy = { version = "0.11", features = ["png", "x11", "bevy_asset", "bevy_render", "bevy_sprite" ] }

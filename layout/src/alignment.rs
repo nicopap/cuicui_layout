@@ -1,7 +1,7 @@
 //! enums for main axis and cross axis alignment.
 
 #[cfg(feature = "reflect")]
-use bevy::prelude::{FromReflect, Reflect};
+use bevy::prelude::Reflect;
 
 use crate::Oriented;
 
@@ -38,7 +38,7 @@ use crate::Oriented;
 /// |▔▔▔▔▔▔▔▔▔▔▔|▔▔▔▔▔▔▔▔▔▔▔|▔▔▔▔▔▔▔▔▔▔▔|
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub enum Alignment {
     /// The items within the container are all aligned to the top or left.
     ///
@@ -74,7 +74,7 @@ pub enum Alignment {
 /// ▕    ⁞    ▏ | ▕█   ⁞    ▏ | ▕█   ⁞    ▏ |
 /// ```
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 #[doc(alias = "justification")]
 pub enum Distribution {
     /// All item will be clumped together at the left/top.

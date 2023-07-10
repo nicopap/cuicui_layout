@@ -17,6 +17,6 @@ reflect = []
 [dependencies]
 anyhow = "1"
 thiserror = "1"
-bevy_mod_sysfail = "2"
-bevy = { version = "0.10", default-features = false }
+bevy_mod_sysfail.workspace = true
+bevy = { version = "0.11", default-features = false }
 cuicui_dsl.workspace = true

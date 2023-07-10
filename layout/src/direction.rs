@@ -2,14 +2,14 @@
 use std::fmt;
 
 #[cfg(feature = "reflect")]
-use bevy::prelude::{FromReflect, Reflect};
+use bevy::prelude::Reflect;
 
 /// A synonymous for [`Flow`].
 pub type Axis = Flow;
 
 /// A `T` that applies to the `width` and `height` of something.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub struct Size<T> {
     /// `T` on the horizontal axis.
     pub width: T,
@@ -19,7 +19,7 @@ pub struct Size<T> {
 
 /// Similar to [`Size`], but relative to a [`Flow`] direction.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub struct Oriented<T> {
     /// `T` on the same axis as the [`Flow`].
     pub main: T,
@@ -31,7 +31,7 @@ pub struct Oriented<T> {
 ///
 /// [`Container`]: crate::Container
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub enum Flow {
     /// Children are arranged on the horizontal axis. May also be "width".
     #[default]

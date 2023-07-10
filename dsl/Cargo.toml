@@ -12,4 +12,4 @@ repository.workspace = true
 
 [dependencies]
 # workspace.winnow = true
-bevy = { version = "0.10", default-features = false }
+bevy = { version = "0.11", default-features = false }

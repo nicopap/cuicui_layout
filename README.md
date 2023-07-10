@@ -192,6 +192,7 @@ and whether they really do anything, so I wont' adventure an asnwer.
 
 | bevy | latest supporting version      |
 |------|-------|
+| 0.11 | 0.4.0 |
 | 0.10 | 0.3.0 |
 
 ## License

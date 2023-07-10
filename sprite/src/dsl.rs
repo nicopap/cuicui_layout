@@ -1,12 +1,10 @@
 //! Bundles wrapping [`bevy::sprite`] bundles with additional [`cuicui_layout`]
 //! components.
-use std::ops::{Deref, DerefMut};
-
 #[cfg(feature = "sprite_text")]
 use bevy::text::{Text, Text2dBundle, TextStyle};
 use bevy::{
     ecs::system::EntityCommands,
-    prelude::{Bundle, Color, Entity, Handle, Image, SpatialBundle},
+    prelude::{Bundle, Color, Deref, DerefMut, Entity, Handle, Image, SpatialBundle},
     sprite,
     utils::default,
 };
@@ -194,8 +192,9 @@ impl UiBundle for TextBundle {
 }
 
 /// The [`DslBundle`] for `bevy_ui`.
-#[derive(Default)]
+#[derive(Default, Deref, DerefMut)]
 pub struct Sprite<C = cuicui_layout::dsl::LayoutDsl> {
+    #[deref]
     inner: C,
     bg_color: Option<Color>,
     bg_image: Option<Handle<Image>>,
@@ -208,18 +207,6 @@ impl<C> Sprite<C> {
     /// Set the node's background image.
     pub fn image(&mut self, image: &Handle<Image>) {
         self.bg_image = Some(image.clone());
-    }
-}
-
-impl<C> Deref for Sprite<C> {
-    type Target = C;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-impl<C> DerefMut for Sprite<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }
 

@@ -20,8 +20,8 @@ repository = "https://github.com/nicopap/cuicui_layout"
 [workspace.dependencies]
 ahash = "0.8"
 anyhow = "1"
-bevy_mod_sysfail = "2"
-bevy-inspector-egui = "0.18.3"
+bevy_mod_sysfail = "3"
+# bevy-inspector-egui = "0.18.3"
 thiserror = "1"
 # winnow = "0.4.9"
 

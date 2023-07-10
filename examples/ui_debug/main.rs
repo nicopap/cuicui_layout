@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use std::time::Duration;
+
+use bevy::{asset::ChangeWatcher, prelude::*};
 use cuicui_dsl::dsl;
 use cuicui_layout::{dsl_functions::*, LayoutRootCamera};
 use cuicui_layout_bevy_ui::Ui as Dsl;
@@ -21,13 +23,14 @@ macro_rules! text {
 }
 
 fn main() {
-    use bevy_inspector_egui::quick::WorldInspectorPlugin;
+    // use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
-        .add_plugins(
+        .add_plugins((
+            cuicui_layout_bevy_ui::Plug,
             DefaultPlugins
                 .set(AssetPlugin {
                     asset_folder: "../../assets".to_owned(),
-                    watch_for_changes: true,
+                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
                 })
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::INFO,
@@ -41,11 +44,10 @@ fn main() {
                     "
                     .to_string(),
                 }),
-        )
-        .add_startup_system(setup)
+        ))
+        .add_systems(Startup, setup)
         // .add_startup_system(random_bg.in_base_set(StartupSet::PostStartup))
-        .add_plugin(WorldInspectorPlugin::default())
-        .add_plugin(cuicui_layout_bevy_ui::Plug)
+        // .add_plugin(WorldInspectorPlugin::default())
         .run();
 }
 

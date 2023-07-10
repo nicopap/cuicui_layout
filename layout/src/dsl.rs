@@ -1,10 +1,8 @@
 //! The [`LayoutDsl`] type used to bring layout bundles to the [`cuicui_dsl::dsl`] macro.
 
-use std::ops::{Deref, DerefMut};
-
-use bevy::prelude::{BuildChildren, Component, Entity};
+use bevy::prelude::{BuildChildren, Component, Deref, DerefMut, Entity};
 #[cfg(feature = "reflect")]
-use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
+use bevy::prelude::{Reflect, ReflectComponent};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
 use crate::bundles::{FlowBundle, RootBundle};
@@ -19,8 +17,11 @@ pub use crate::ui_bundle::{IntoUiBundle, UiBundle};
 /// its native content.
 #[derive(Component, Clone, Copy, Debug, Default)]
 #[component(storage = "SparseSet")]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
-pub struct ContentSized(pub Size<bool>);
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
+pub struct ContentSized {
+    /// `true` for axis that are sized by the content.
+    pub managed_axis: Size<bool>,
+}
 
 /// Metadata internal to [`LayoutDsl`] to manage the state of things it
 /// should be spawning.
@@ -73,22 +74,12 @@ enum RootKind {
 /// A wrapper around [`EntityCommands`] with additional  layouting information.
 ///
 /// [`EntityCommands`]: bevy::ecs::system::EntityCommands
-#[derive(Default)]
+#[derive(Default, Deref, DerefMut)]
 pub struct LayoutDsl<T = BaseDsl> {
+    #[deref]
     inner: T,
     root: RootKind,
     layout: Layout,
-}
-impl<T> Deref for LayoutDsl<T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-impl<T> DerefMut for LayoutDsl<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
 }
 
 impl<C: DslBundle> LayoutDsl<C> {

@@ -3,7 +3,7 @@
 use std::{num::ParseFloatError, str::FromStr};
 
 #[cfg(feature = "reflect")]
-use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
+use bevy::prelude::{Reflect, ReflectComponent};
 use bevy::{
     ecs::query::ReadOnlyWorldQuery,
     prelude::{trace, Children, Component, Entity, Name, Query},
@@ -108,7 +108,7 @@ impl Size<Computed> {
 
 /// Parameters of a container, ie: a node that contains other nodes.
 #[derive(Clone, Copy, PartialEq, Debug)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub struct Container {
     /// The axis on which the nodes in this containers are arranged.
     pub flow: Flow,
@@ -202,7 +202,7 @@ impl Container {
 ///
 /// Unlike a [`Container`], a `Root` always has a fixed `size`, (`bounds`).
 #[derive(Component, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct Root(Container);
 impl Root {
     /// Get the [`Container`] in `Self`.
@@ -266,7 +266,7 @@ impl Root {
 /// A [`Component`] integrating the attached [`Entity`] into the `cuicui_layout`
 /// layouting algorithm.
 #[derive(Component, Clone, Copy, Debug)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub enum Node {
     /// This container holds other `Node`s, it is an error for a `Container`
     /// to not have children.
@@ -325,7 +325,7 @@ impl Node {
 
 /// A constraint on an axis of a terminal `Node` (ie: doesn't have a `Children` constraint).
 #[derive(Clone, Copy, PartialEq, Debug)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub enum LeafRule {
     /// The container's size is equal to its parent's size  times `f32`.
     /// (may not be above 1)
@@ -342,7 +342,7 @@ impl Default for LeafRule {
 
 /// A constraint on an axis of containers.
 #[derive(Clone, Copy, PartialEq, Debug)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub enum Rule {
     /// The container's size is equal to the total size of all its children
     /// times `f32`. (may not be below 1).

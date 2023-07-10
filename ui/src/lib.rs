@@ -48,7 +48,7 @@
 #![allow(clippy::use_self, clippy::redundant_pub_crate)]
 
 use bevy::ecs::prelude::*;
-use bevy::prelude::{App, Camera, CoreSet, Plugin, Style};
+use bevy::prelude::{App, Camera, Plugin, Style};
 use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::{dsl::ContentSized, LayoutRootCamera, PosRect, Root};
 
@@ -82,18 +82,18 @@ pub fn set_layout_style(
     use bevy::ui::{PositionType, Val};
     query.for_each_mut(|(mut style, pos)| {
         style.position_type = PositionType::Absolute;
-        style.position.left = Val::Px(pos.pos().x);
-        style.position.top = Val::Px(pos.pos().y);
+        style.left = Val::Px(pos.pos().x);
+        style.top = Val::Px(pos.pos().y);
 
         let width = Val::Px(pos.size().width);
-        style.min_size.width = width;
-        style.max_size.width = width;
-        style.size.width = width;
+        style.min_width = width;
+        style.max_width = width;
+        style.width = width;
 
         let height = Val::Px(pos.size().height);
-        style.min_size.height = height;
-        style.max_size.height = height;
-        style.size.height = height;
+        style.min_height = height;
+        style.max_height = height;
+        style.height = height;
     });
 }
 
@@ -113,17 +113,15 @@ pub fn set_layout_style(
 pub struct Plug;
 impl Plugin for Plug {
     fn build(&self, app: &mut App) {
+        use bevy::prelude::{PostUpdate, Update};
         use bevy::ui::UiSystem;
         use cuicui_layout::Systems::ComputeLayout;
-        use CoreSet::PostUpdate;
 
-        app.add_plugin(cuicui_layout::Plug::new())
-            .add_system(content_sized::update.before(ComputeLayout))
-            .add_system(update_ui_camera_root.before(ComputeLayout))
-            .add_system(
-                set_layout_style
-                    .before(UiSystem::Flex)
-                    .in_base_set(PostUpdate),
-            );
+        app.add_plugins(cuicui_layout::Plug::new())
+            .add_systems(
+                Update,
+                (content_sized::update, update_ui_camera_root).before(ComputeLayout),
+            )
+            .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout));
     }
 }

@@ -1,10 +1,8 @@
 //! Bundles wrapping [`bevy::ui::node_bundles`] with additional [`cuicui_layout`]
 //! components.
-use std::ops::{Deref, DerefMut};
-
 use bevy::{
     ecs::system::EntityCommands,
-    prelude::{Bundle, Color, Entity, Handle, Image, Text, TextStyle, UiImage},
+    prelude::{Bundle, Color, Deref, DerefMut, Entity, Handle, Image, Text, TextStyle, UiImage},
     ui::{node_bundles as bevy_ui, BackgroundColor},
     utils::default,
 };
@@ -107,30 +105,31 @@ impl IntoUiBundle<Ui> for TextBundle {
 }
 impl UiBundle for ImageBundle {
     fn width_content_sized_enabled(&mut self) {
-        self.content_size.0.width = true;
+        self.content_size.managed_axis.width = true;
     }
     fn height_content_sized_enabled(&mut self) {
-        self.content_size.0.height = true;
+        self.content_size.managed_axis.height = true;
     }
     fn content_sized(&self) -> bool {
-        self.content_size.0.width || self.content_size.0.height
+        self.content_size.managed_axis.width || self.content_size.managed_axis.height
     }
 }
 impl UiBundle for TextBundle {
     fn width_content_sized_enabled(&mut self) {
-        self.content_size.0.width = true;
+        self.content_size.managed_axis.width = true;
     }
     fn height_content_sized_enabled(&mut self) {
-        self.content_size.0.height = true;
+        self.content_size.managed_axis.height = true;
     }
     fn content_sized(&self) -> bool {
-        self.content_size.0.width || self.content_size.0.height
+        self.content_size.managed_axis.width || self.content_size.managed_axis.height
     }
 }
 
 /// The [`DslBundle`] for `bevy_ui`.
-#[derive(Default)]
+#[derive(Default, Deref, DerefMut)]
 pub struct Ui<C = cuicui_layout::dsl::LayoutDsl> {
+    #[deref]
     inner: C,
     bg_color: Option<BackgroundColor>,
     bg_image: Option<UiImage>,
@@ -143,18 +142,6 @@ impl<C> Ui<C> {
     /// Set the node's background image.
     pub fn image(&mut self, image: &Handle<Image>) {
         self.bg_image = Some(image.clone().into());
-    }
-}
-
-impl<C> Deref for Ui<C> {
-    type Target = C;
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-impl<C> DerefMut for Ui<C> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
     }
 }
 

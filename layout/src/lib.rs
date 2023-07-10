@@ -40,9 +40,9 @@ use std::marker::PhantomData;
 
 use bevy::ecs::prelude::*;
 use bevy::ecs::query::ReadOnlyWorldQuery;
-use bevy::prelude::{App, Children, Name, Parent, Plugin, Transform, Vec2};
+use bevy::prelude::{App, Children, Name, Parent, Plugin, Transform, Update, Vec2};
 #[cfg(feature = "reflect")]
-use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
+use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
 
 use error::Computed;
@@ -62,12 +62,12 @@ use crate::layout::Layout;
 /// Note that it is an error to have more than a single camera with this
 /// component.
 #[derive(Component, Clone, Copy, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct LayoutRootCamera;
 
 /// Set this [`Root`] to track the [`LayoutRootCamera`]'s size.
 #[derive(Component, Clone, Copy, Debug, Default)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect), reflect(Component))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct ScreenRoot;
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
@@ -75,7 +75,7 @@ pub struct ScreenRoot;
 /// Note that `Pos` will always be **relative to** the top left position of the
 /// containing node.
 #[derive(Component, Clone, Copy, Default, PartialEq)]
-#[cfg_attr(feature = "reflect", derive(Reflect, FromReflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
 pub struct PosRect {
     size: Size<f32>,
     pos: Size<f32>,
@@ -175,7 +175,7 @@ impl Plug<()> {
 
 impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
     fn build(&self, app: &mut App) {
-        app.add_system(compute_layout::<F>.in_set(Systems::ComputeLayout));
+        app.add_systems(Update, compute_layout::<F>.in_set(Systems::ComputeLayout));
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()
