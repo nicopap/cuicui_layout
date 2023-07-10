@@ -188,6 +188,12 @@ and whether they really do anything, so I wont' adventure an asnwer.
 **Q**: Why can't child container overflow their parents?
 <br>**A**: It's likely you didn't expect this, so we report it as an error.
 
+### Version matrix
+
+| bevy | latest supporting version      |
+|------|-------|
+| 0.10 | 0.3.0 |
+
 ## License
 
 Licensed under either of
