@@ -11,7 +11,7 @@ members = [
 
 [workspace.package]
 edition = "2021"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Nicola Papale"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -25,7 +25,7 @@ bevy-inspector-egui = "0.18.3"
 thiserror = "1"
 # winnow = "0.4.9"
 
-cuicui_layout = { version = "0.2.0", path = "./layout" }
-cuicui_layout_bevy_sprite = { version = "0.2.0", path = "./sprite" }
-cuicui_layout_bevy_ui = { version = "0.2.0", path = "./ui" }
-cuicui_dsl = { version = "0.2.0", path = "./dsl" }
+cuicui_layout = { version = "0.3.0", path = "./layout" }
+cuicui_layout_bevy_sprite = { version = "0.3.0", path = "./sprite" }
+cuicui_layout_bevy_ui = { version = "0.3.0", path = "./ui" }
+cuicui_dsl = { version = "0.3.0", path = "./dsl" }
