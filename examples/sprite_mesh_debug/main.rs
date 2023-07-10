@@ -5,12 +5,14 @@ use bevy::{
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::RenderLayers},
     sprite::MaterialMesh2dBundle,
 };
+use cuicui_dsl::dsl;
 use cuicui_layout::{
     dsl::{IntoUiBundle, UiBundle},
-    layout, Node, PosRect, Root, Rule, Size,
+    dsl_functions::*,
+    Node, PosRect, Root, Size,
 };
 use cuicui_layout_bevy_sprite as render;
-use cuicui_layout_bevy_sprite::LayoutType;
+use cuicui_layout_bevy_sprite::Sprite as Dsl;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
 
@@ -23,7 +25,7 @@ fn color_from_entity(entity: Entity) -> Color {
     entity.hash(&mut hasher);
 
     let hue = hasher.finish() as f32 * U64_TO_DEGREES;
-    Color::hsla(hue, 0.8, 0.5, 0.5)
+    Color::hsl(hue, 0.8, 0.5)
 }
 
 fn main() {
@@ -124,10 +126,7 @@ impl IntoUiBundle<Space> for Space {
         }
     }
 }
-impl UiBundle for ElementBundle {
-    fn set_fixed_width(&mut self) {}
-    fn set_fixed_height(&mut self) {}
-}
+impl UiBundle for ElementBundle {}
 
 fn setup(mut cmds: Commands) {
     cmds.spawn(Camera2dBundle {
@@ -136,11 +135,11 @@ fn setup(mut cmds: Commands) {
         ..default()
     });
     cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
-    layout! {
+    dsl! {
         &mut cmds,
         column("root", screen_root, fill_main_axis, main_margin 50., cross_margin 100.) {
             spawn_ui(Space(10), "spacer1");
-            row("horiz_cont1", fill_main_axis, height ^1.0) {
+            row("horiz_cont1", fill_main_axis, width pct(85), height child(1.5), main_margin 30.) {
                 spawn_ui(Fixed(10, 10), "h1_1_fix");
                 spawn_ui(Fixed(30, 10), "h1_2_fix");
                 spawn_ui(Fixed(50, 20), "h1_3_fix");
@@ -149,19 +148,19 @@ fn setup(mut cmds: Commands) {
             }
             spawn_ui(Fixed(10, 20), "fix1");
             spawn_ui(Fixed(40, 30), "fix2");
-            row("horiz_cont2", height ^1.0) {
+            row("horiz_cont2", height child(1.5), main_margin 30.) {
                 spawn_ui(Fixed(10, 14), "h2_1_fix");
                 spawn_ui(Fixed(12, 12), "h2_2_fix");
                 spawn_ui(Fixed(14, 10), "h2_3_fix");
             }
-            row("horiz_cont3", fill_main_axis, height ^1.) {
+            row("horiz_cont3", fill_main_axis, width pct(100), height child(1.5), main_margin 30.) {
                 spawn_ui(Space(4), "spacer5");
                 // row("horiz_cont4", fill_main) {
                 //     spawn_ui(Fixed(10, 14), "h4_1" );
                 //     spawn_ui(Fixed(12, 12), "h4_2" );
                 //     spawn_ui(Fixed(14, 10), "h4_3" );
                 // }
-                column("vert_cont1", height ^1., width ^1.) {
+                column("vert_cont1", align_start, fill_main_axis, height child(1.5), main_margin 30., cross_margin 5.0) {
                     spawn_ui(Fixed(10, 21), "v1_1_fix");
                     spawn_ui(Fixed(12, 12), "v1_2_fix");
                     spawn_ui(Fixed(14, 20), "v1_3_fix");
@@ -169,7 +168,7 @@ fn setup(mut cmds: Commands) {
                     spawn_ui(Fixed(18, 12), "v1_5_fix");
                     spawn_ui(Fixed(20, 20), "v1_6_fix");
                 }
-                row("horiz_inner", height ^1., width ^1.) {
+                row("horiz_inner", distrib_end, height child(1.5), main_margin 30., cross_margin 5.0) {
                     spawn_ui(Fixed(10, 21), "v2_1_fix");
                     spawn_ui(Fixed(12, 12), "v2_2_fix");
                     spawn_ui(Fixed(14, 20), "v2_3_fix");
@@ -177,7 +176,7 @@ fn setup(mut cmds: Commands) {
                     spawn_ui(Fixed(18, 12), "v2_5_fix");
                     spawn_ui(Fixed(20, 20), "v2_6_fix");
                 }
-                column("vert_cont3", height ^1., width ^1.) {
+                column("vert_cont3", align_end, height child(1.5), main_margin 30., cross_margin 5.0) {
                     spawn_ui(Fixed(10, 21), "v3_1_fix");
                     spawn_ui(Fixed(12, 12), "v3_2_fix");
                     spawn_ui(Fixed(14, 20), "v3_3_fix");

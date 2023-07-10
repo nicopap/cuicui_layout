@@ -136,8 +136,9 @@ pub(crate) enum Why {
     )]
     ChildlessContainer(Handle),
     #[error(
-        "The rule of {this}'s {axis} depend on {parent}'s {axis}, \
-        but the rule of {axis} of {parent} depends on {this}'s {axis}!   \
+        "Cyclic rule definition detected!\n\
+        - {this} depends on PARENT {parent} on {axis}\n\
+        - {parent} depends on CHILD {this} on {axis}\n\
         It's impossible to make sense of this circular dependency!   \
         Use different rules on {axis} for any container between {parent} and {this} \
         (included) to fix this issue."

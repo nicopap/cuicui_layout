@@ -12,6 +12,7 @@ path = "main.rs"
 
 [dependencies]
 ahash.workspace = true
+cuicui_dsl.workspace = true
 cuicui_layout.workspace = true
 cuicui_layout_bevy_ui.workspace = true
 bevy-inspector-egui.workspace = true

@@ -1,21 +1,20 @@
 //! Make [`cuicui_layout`] useable with bevy's UI library (`bevy_ui`).
 //!
-//! Import this crate's `LayoutType` and use [`cuicui_layout::layout!`] with
+//! Import this crate's [`DslBundle`] and use [`cuicui_dsl::dsl!`] with
 //! it to have a fully working UI library.
 //!
 //! It contains:
-//! * A [`dsl_extension`] to use with the [`cuicui_layout::layout!`] macro.
-//! * A [`content_sized::ContentSized`] component to update node sizes
-//!   based on `UiImage` and `Text` size.
+//! * A [`dsl`] to use with the [`cuicui_dsl::dsl!`] macro.
 //!
 //! # Example
 //!
 //! ```
 //! use bevy::prelude::*;
-//! use cuicui_layout::{layout, LayoutRootCamera, Rule};
-//! // layout! will use this crate's extensions to cuicui_layout's default LayoutType
-//! // if you import this      vvvvvvvvvv
-//! use cuicui_layout_bevy_ui::LayoutType;
+//! use cuicui_layout::{dsl, LayoutRootCamera, Rule};
+//! // dsl! will use this crate's extensions to DslBundle
+//! // if you import this      vvvvvvvvvvvvvv
+//! use cuicui_layout_bevy_ui::dsl::Ui as Dsl;
+//! use cuicui_layout::dsl_functions::{px, pct};
 //!
 //! # fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 //! cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
@@ -26,16 +25,16 @@
 //! let board = serv.load("board.png");
 //! let button = serv.load("button.png");
 //!
-//! layout! {
+//! dsl! {
 //!     &mut cmds,
 //!     // Notice the `image` argument                          vvvvvvvvv
 //!     row(screen_root, "root", main_margin 100., align_start, image &bg) {
-//!         column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
-//!             spawn_ui(title_card, "Title card", height px 100, width %100);
+//!         column("menu", width px(310), main_margin 40., fill_main_axis, image &board) {
+//!             spawn_ui(title_card, "Title card", height px(100), width pct(100));
 //!             code(let cmds) {
 //!                 for n in &menu_buttons {
 //!                     let name = format!("{n} button");
-//!                     layout!(cmds, spawn_ui(n, named name, image &button, height px 30);)
+//!                     dsl!(cmds, spawn_ui(*n, named name, image &button, height px(30));)
 //!                 }
 //!             }
 //!         }
@@ -43,19 +42,20 @@
 //! };
 //! # }
 //! ```
+//!
+//! [`DslBundle`]: cuicui_dsl::DslBundle
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(clippy::use_self, clippy::redundant_pub_crate)]
 
 use bevy::ecs::prelude::*;
 use bevy::prelude::{App, Camera, CoreSet, Plugin, Style};
 use bevy_mod_sysfail::quick_sysfail;
-use content_sized::ContentSized;
-use cuicui_layout::{LayoutRootCamera, PosRect, Root};
+use cuicui_layout::{dsl::ContentSized, LayoutRootCamera, PosRect, Root};
 
 pub mod content_sized;
-pub mod dsl_extension;
+pub mod dsl;
 
-pub use dsl_extension::LayoutType;
+pub use dsl::Ui;
 
 /// System updating the [`cuicui_layout::ScreenRoot`] [`cuicui_layout::Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.
@@ -108,8 +108,8 @@ pub fn set_layout_style(
 /// - **Set the [`Style`] flex parameters according to [`cuicui_layout`] computed values**
 /// - **Compute [`cuicui_layout::Node`] layouts**
 ///
-/// [`spawn_ui`]: cuicui_layout::dsl::MakeBundle::spawn_ui
-/// [`ContentSized`]: content_sized::ContentSized
+/// [`spawn_ui`]: cuicui_layout::dsl::LayoutDsl::spawn_ui
+/// [`ContentSized`]: cuicui_layout::ContentSized
 pub struct Plug;
 impl Plugin for Plug {
     fn build(&self, app: &mut App) {
@@ -120,8 +120,6 @@ impl Plugin for Plug {
         app.add_plugin(cuicui_layout::Plug::new())
             .add_system(content_sized::update.before(ComputeLayout))
             .add_system(update_ui_camera_root.before(ComputeLayout))
-            .add_system(content_sized::add.after(ComputeLayout))
-            .add_system(content_sized::clear.after(ComputeLayout))
             .add_system(
                 set_layout_style
                     .before(UiSystem::Flex)

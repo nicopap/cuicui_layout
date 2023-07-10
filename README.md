@@ -22,6 +22,8 @@ is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 ### Code
 
 ```rust
+use cuicui_layout::dsl::LayoutDsl as Dsl;
+
 cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
 let menu_buttons = [
     "CONTINUE",
@@ -38,20 +40,20 @@ let bg = serv.load("background.png");
 let board = serv.load("board.png");
 let button = serv.load("button.png");
 
-layout! {
+dsl! {
     &mut cmds,
     row(screen_root, "root", main_margin 100., align_start, image &bg) {
-        column("menu", width px 300, fill_main_axis, image &board) {
-            spawn_ui(title_card, "Title card", height px 100, width %100);
+        column("menu", width px(310), height pct(100), main_margin 40., fill_main_axis, image &board) {
+            spawn_ui(title_card, "Title card", height px(100), width pct(100));
             code(let cmds) {
                 for n in &menu_buttons {
                     let name = format!("{n} button");
-                    layout!(cmds, spawn_ui(*n, named name, image &button, height px 30););
+                    dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(30));)
                 }
             }
         }
     }
-}
+};
 ```
 
 </details>
@@ -89,23 +91,22 @@ UI nodes.
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
 [`LayoutType`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutType.html
-[`layout!`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/macro.layout.html
+[`layout!`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.layout.html
 
 ## `cuicui_layout` crates
 
 This repository contains several crates:
 
+- `cuicui_dsl` ([dsl](dsl)): The `dsl!` macro and `DslBundle`.
 - `cuicui_layout` ([layout](layout)): The base algorithm and components, does not make any assumption
   about how it is used, beside the requirement that layout nodes be bevy `Entitiy` and
-  uses `bevy_hierarchy`.
-- `cuicui_layout_bevy_ui` ([ui](ui)): Integration with `bevy_ui`, including extension to `LayoutType`
+  uses `bevy_hierarchy`. Exports a `LayoutDsl` to use with the `dsl!` macro.
+- `cuicui_layout_bevy_ui` ([ui](ui)): Integration with `bevy_ui`, including extension to `UiDsl`
   for `UiImage`, `Text`, background images and background colors.
 - `cuicui_layout_bevy_sprite` ([sprite](sprite)): `bevy_sprite` integration, supports
   `Mesh2dHandle`, `Sprite` and `Text2d`. This isn't as good as the `bevy_ui`-based integration
   when it comes to content-driven sizes, but otherwise should work very much like the `bevy_ui`
   integration.
-
-(maybe `cuicui_layout_spec` in the future)
 
 ## Cargo features
 
@@ -139,7 +140,7 @@ will always have extremely slow visual feedback.
 Flexbox has too many parameters and depends on implicit properties of UI elements,
 it is not possible to emulate it in your head.
 
-cuicui's layout in contrast to Flexbox is easy to fit in your head.
+cuicui's layout, in contrast to Flexbox is easy to fit in your head.
 In fact, I will forecefully push cuicui's layout algorithm in your head
 in two short bullet points.
 

@@ -1,7 +1,7 @@
 .PHONY: check run pre-hook
 
 check:
-	cargo clippy --no-default-features --package cuicui_layout_bevy_sprite -- --deny clippy::all
+	cargo clippy -- --deny clippy::all
 
 run:
 	# cargo test
@@ -11,7 +11,7 @@ run:
 
 pre-hook:
 	cargo test
-	cargo doc --workspace --no-deps
+	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 	cargo clippy --workspace -- --deny clippy::all
 	cargo fmt --all -- --check
 	cargo clippy --no-default-features --package cuicui_layout_bevy_ui -- --deny clippy::all

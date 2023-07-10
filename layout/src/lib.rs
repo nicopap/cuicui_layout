@@ -20,7 +20,8 @@
     clippy::match_bool,
     clippy::manual_range_contains,
     clippy::use_self,
-    clippy::redundant_pub_crate
+    clippy::redundant_pub_crate,
+    clippy::module_name_repetitions
 )]
 
 mod alignment;
@@ -29,18 +30,28 @@ mod direction;
 pub mod dsl;
 mod error;
 mod layout;
-mod macros;
+pub mod ui_bundle;
 
+/// Functions to simplify using [`dsl::LayoutDsl`].
+pub mod dsl_functions {
+    pub use crate::dsl::{child, pct, px};
+}
 use std::marker::PhantomData;
 
+use bevy::ecs::prelude::*;
 use bevy::ecs::query::ReadOnlyWorldQuery;
-use bevy::prelude::*;
+use bevy::prelude::{App, Children, Name, Parent, Plugin, Transform, Vec2};
+#[cfg(feature = "reflect")]
+use bevy::prelude::{FromReflect, Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
 
-pub use alignment::{Alignment, Distribution};
-pub use direction::{Flow, Oriented, Size};
-pub use error::ComputeLayoutError;
 use error::Computed;
+
+pub use alignment::{Alignment, Distribution};
+pub use cuicui_dsl::{dsl, DslBundle};
+pub use direction::{Flow, Oriented, Size};
+pub use dsl::ContentSized;
+pub use error::ComputeLayoutError;
 pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
 
 use crate::layout::Layout;
@@ -168,16 +179,17 @@ impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()
-            .register_type::<Rule>()
             .register_type::<Container>()
-            .register_type::<Flow>()
+            .register_type::<ContentSized>()
             .register_type::<Distribution>()
+            .register_type::<Flow>()
             .register_type::<Node>()
             .register_type::<Oriented<LeafRule>>()
             .register_type::<PosRect>()
             .register_type::<Root>()
-            .register_type::<Size<Rule>>()
+            .register_type::<Rule>()
             .register_type::<Size<f32>>()
-            .register_type::<Size<LeafRule>>();
+            .register_type::<Size<LeafRule>>()
+            .register_type::<Size<Rule>>();
     }
 }

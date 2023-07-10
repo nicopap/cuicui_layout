@@ -1,6 +1,6 @@
 [package]
-name = "cuicui_layout"
-description = "A layout algorithm for bevy and made to be understood by humans"
+name = "cuicui_dsl"
+description = "An easily-extensible macro to spawn things in bevy"
 categories = ["game-development", "gui"]
 keywords = ["bevy", "layout", "ui"]
 readme.workspace = true
@@ -10,13 +10,6 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[features]
-default = ["reflect"]
-reflect = []
-
 [dependencies]
-anyhow = "1"
-thiserror = "1"
-bevy_mod_sysfail = "2"
+# workspace.winnow = true
 bevy = { version = "0.10", default-features = false }
-cuicui_dsl.workspace = true

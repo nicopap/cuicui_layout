@@ -2,11 +2,11 @@
 resolver = "2"
 exclude = ["assets/", "design_docs/"]
 members = [
+  "examples/*",
+  "layout",
   "sprite",
   "ui",
-  "layout",
-  # "spec",
-  "examples/*",
+  "dsl",
 ]
 
 [workspace.package]
@@ -23,7 +23,9 @@ anyhow = "1"
 bevy_mod_sysfail = "2"
 bevy-inspector-egui = "0.18.3"
 thiserror = "1"
+# winnow = "0.4.9"
 
 cuicui_layout = { version = "0.2.0", path = "./layout" }
 cuicui_layout_bevy_sprite = { version = "0.2.0", path = "./sprite" }
 cuicui_layout_bevy_ui = { version = "0.2.0", path = "./ui" }
+cuicui_dsl = { version = "0.2.0", path = "./dsl" }

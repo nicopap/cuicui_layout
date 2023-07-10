@@ -1,6 +1,7 @@
 use bevy::prelude::*;
-use cuicui_layout::{layout, LayoutRootCamera, Rule};
-use cuicui_layout_bevy_ui::LayoutType;
+use cuicui_dsl::dsl;
+use cuicui_layout::{dsl_functions::*, LayoutRootCamera};
+use cuicui_layout_bevy_ui::Ui as Dsl;
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {
@@ -29,13 +30,14 @@ fn main() {
                     watch_for_changes: true,
                 })
                 .set(bevy::log::LogPlugin {
-                    level: bevy::log::Level::DEBUG,
+                    level: bevy::log::Level::INFO,
                     filter: "\
-                    cuicui_layout=trace,\
+                    cuicui_layout=debug,\
                     gilrs_core=info,\
                     gilrs=info,\
                     naga=info,\
-                    wgpu=warn\
+                    wgpu=error,\
+                    wgpu_hal=error\
                     "
                     .to_string(),
                 }),
@@ -83,18 +85,15 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
     let board = serv.load("board.png");
     let button = serv.load("button.png");
 
-    layout! {
+    dsl! {
         &mut cmds,
         row(screen_root, "root", main_margin 100., align_start, image &bg) {
-            column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
-                spawn_ui(title_card, "Title card", height px 100, width %100);
+            column("menu", width px(310), height pct(100), main_margin 40., fill_main_axis, image &board) {
+                spawn_ui(title_card, "Title card", height px(100), width pct(100));
                 code(let cmds) {
                     for n in &menu_buttons {
                         let name = format!("{n} button");
-                        layout!(
-                            cmds,
-                            spawn_ui(text!(font, *n), named name, image &button, height px 30);
-                        )
+                        dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(30));)
                     }
                 }
             }

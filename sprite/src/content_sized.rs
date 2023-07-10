@@ -25,31 +25,13 @@
 #[cfg(feature = "sprite_text")]
 use bevy::text::Text2dBounds;
 use bevy::{
-    ecs::prelude::{
-        AnyOf, Changed, Commands, Component, Entity, Or, Query, ReflectComponent, Res, With,
-        Without,
-    },
+    ecs::prelude::{AnyOf, Changed, Or, Query, Res, With},
     ecs::query::WorldQuery,
     math::Vec3Swizzles,
     prelude::{Assets, Handle, Image, Mesh, Vec2},
-    reflect::{FromReflect, Reflect},
     sprite::{Mesh2dHandle, Sprite},
 };
-use cuicui_layout::{LeafRule, Node, Size};
-
-/// Dynamically update the [`Node::Box`] rules fixed values of UI entities with
-/// either the [`Sprite`] or [`Text2dBounds`] component.
-#[derive(Component, Clone, Copy, Debug, Default, Reflect, FromReflect)]
-#[component(storage = "SparseSet")]
-#[reflect(Component)]
-pub struct ContentSized;
-
-const fn width_fixed(node: &Node) -> bool {
-    matches!(node, Node::Box(Size { width: LeafRule::Fixed(_), .. }))
-}
-const fn height_fixed(node: &Node) -> bool {
-    matches!(node, Node::Box(Size { height: LeafRule::Fixed(_), .. }))
-}
+use cuicui_layout::{ContentSized, LeafRule, Node, Size};
 
 /// [`WorldQuery`] for entities that can be sized based on [`bevy::sprite`]
 /// components (such as [`Sprite`]).
@@ -92,38 +74,6 @@ impl SpriteSizeItem<'_> {
         let text_bounds = self.item.2.map(|t| t.size);
         text_bounds.or_else(|| self.common_get(meshes, images))
     }
-}
-
-/// Add [`ContentSized`] to [`Node`] entities when one of their axis
-/// is [`LeafRule::Fixed`].
-#[allow(clippy::needless_pass_by_value)]
-pub fn add(
-    mut cmds: Commands,
-    maybe_add_size: Query<(Entity, &Node), (SpriteSize, Without<ContentSized>, Changed<Node>)>,
-) {
-    maybe_add_size.for_each(|(entity, node)| {
-        let fixed_width = width_fixed(node);
-        let fixed_height = height_fixed(node);
-        if fixed_height || fixed_width {
-            cmds.entity(entity).insert(ContentSized);
-        }
-    });
-}
-
-/// Remove [`ContentSized`] from [`Node`] entities when none of their axis
-/// is [`LeafRule::Fixed`].
-#[allow(clippy::needless_pass_by_value)]
-pub fn clear(
-    mut cmds: Commands,
-    maybe_remove_size: Query<(Entity, &Node), (SpriteSize, Changed<Node>)>,
-) {
-    maybe_remove_size.for_each(|(entity, node)| {
-        let fixed_width = width_fixed(node);
-        let fixed_height = height_fixed(node);
-        if !fixed_height && !fixed_width {
-            cmds.entity(entity).remove::<ContentSized>();
-        }
-    });
 }
 
 #[cfg(feature = "sprite_text")]

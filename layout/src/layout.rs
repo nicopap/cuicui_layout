@@ -403,6 +403,15 @@ impl FromStr for Rule {
 }
 
 impl LeafRule {
+    pub(crate) fn from_rule(rule: Option<Rule>) -> Self {
+        match rule {
+            // TODO(err)
+            Some(Rule::Children(_)) => todo!("Proper error handling here"),
+            Some(Rule::Fixed(v)) => Self::Fixed(v),
+            Some(Rule::Parent(v)) => Self::Parent(v),
+            None => Self::Parent(1.),
+        }
+    }
     /// Compute effective size, given a potentially set parent container size.
     fn inside(self, parent_size: Computed) -> Result<f32, Entity> {
         match (self, parent_size) {

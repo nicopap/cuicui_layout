@@ -1,11 +1,8 @@
 //! Make [`cuicui_layout`] useable with bevy's 2D renderer (`bevy_sprite`).
 //!
 //! It contains:
-//! * A [`dsl_extension`] to use with the [`cuicui_layout::layout!`] macro.
-//! * A [`content_sized::ContentSized`] component to update node sizes
-//!   based on sprite, text2d or mesh2d size.
 //!
-//! However, it definitively will get upgraded soon enough.
+//! * [`cuicui_dsl::DslBundle`] implementation ([`Sprite`]) to use with the [`cuicui_layout::dsl!`] macro.
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(clippy::use_self, clippy::redundant_pub_crate)]
 
@@ -17,9 +14,9 @@ use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::{LayoutRootCamera, Root, ScreenRoot};
 
 pub mod content_sized;
-pub mod dsl_extension;
+pub mod dsl;
 
-pub use dsl_extension::LayoutType;
+pub use dsl::Sprite;
 
 /// Create a [`Root`] container as the screen root, its size will dyamically
 /// follow the size of the viewport of camera marked iwth [`LayoutRootCamera`].

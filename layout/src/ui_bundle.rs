@@ -1,3 +1,7 @@
+//! Define [`UiBundle`] a trait to extend bevy [`Bundle`] with layout
+//! constraint properties.
+#![allow(clippy::module_name_repetitions)]
+
 use bevy::prelude::Bundle;
 
 /// A bevy [`Bundle`] that can be spawned as a `cuicui_layout` terminal node.
@@ -7,16 +11,16 @@ use bevy::prelude::Bundle;
 ///
 /// This includes images and text, not much else.
 pub trait UiBundle: Bundle {
-    /// Mark this [`UiBundle`]'s width as fixed to the dynamic size of what
-    /// it contains.
-    ///
-    /// This will be the size of an image or text.
-    fn set_fixed_width(&mut self);
-    /// Mark this [`UiBundle`]'s height as fixed to the dynamic size of what
-    /// it contains.
-    ///
-    /// This will be the size of an image or text.
-    fn set_fixed_height(&mut self);
+    /// Mark this [`UiBundle`]'s width as determined by the its content.
+    fn width_content_sized_enabled(&mut self) {}
+
+    /// Mark this [`UiBundle`]'s height as determined by the its content.
+    fn height_content_sized_enabled(&mut self) {}
+
+    /// Whether this [`UiBundle`] should know its own size.
+    fn content_sized(&self) -> bool {
+        false
+    }
 }
 
 /// Something that can be converted into [`UiBundle`].
@@ -33,6 +37,6 @@ pub trait IntoUiBundle<Marker> {
 
 /// Dummy implementation, does nothing, useful for testing.
 impl UiBundle for () {
-    fn set_fixed_width(&mut self) {}
-    fn set_fixed_height(&mut self) {}
+    fn width_content_sized_enabled(&mut self) {}
+    fn height_content_sized_enabled(&mut self) {}
 }

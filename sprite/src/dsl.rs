@@ -10,10 +10,9 @@ use bevy::{
     sprite,
     utils::default,
 };
-use cuicui_layout::dsl::{InsertKind, IntoUiBundle, MakeBundle, UiBundle};
+use cuicui_dsl::DslBundle;
+use cuicui_layout::dsl::{ContentSized, IntoUiBundle, UiBundle};
 use cuicui_layout::{LeafRule, Node, PosRect, Size};
-
-use crate::content_sized::ContentSized;
 
 /// An image leaf node wrapping a [`bevy::sprite::SpriteBundle`].
 ///
@@ -138,8 +137,8 @@ macro_rules! from_delegate_impl {
         from_delegate_impl!([$from, $to], |self| <$to>::from(self).into_ui_bundle());
     };
     ([$from:ty, $to:ty], |$s:ident| $delegate_adaptor:expr) => {
-        impl IntoUiBundle<LayoutType> for $from {
-            type Target = <$to as IntoUiBundle<LayoutType>>::Target;
+        impl IntoUiBundle<Sprite> for $from {
+            type Target = <$to as IntoUiBundle<Sprite>>::Target;
 
             fn into_ui_bundle($s) -> Self::Target {
                 $delegate_adaptor
@@ -163,45 +162,45 @@ from_delegate_impl!([Text2dBundle, TextBundle]);
 from_delegate_impl!([Handle<Image>, SpriteBundle]);
 from_delegate_impl!([sprite::SpriteBundle, SpriteBundle]);
 
-impl IntoUiBundle<LayoutType> for SpriteBundle {
+impl IntoUiBundle<Sprite> for SpriteBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
     }
 }
 #[cfg(feature = "sprite_text")]
-impl IntoUiBundle<LayoutType> for TextBundle {
+impl IntoUiBundle<Sprite> for TextBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
     }
 }
 impl UiBundle for SpriteBundle {
-    fn set_fixed_width(&mut self) {
+    fn width_content_sized_enabled(&mut self) {
         self.mut_box_size().width = LeafRule::Fixed(1.0);
     }
-    fn set_fixed_height(&mut self) {
+    fn height_content_sized_enabled(&mut self) {
         self.mut_box_size().height = LeafRule::Fixed(1.0);
     }
 }
 #[cfg(feature = "sprite_text")]
 impl UiBundle for TextBundle {
-    fn set_fixed_width(&mut self) {
+    fn width_content_sized_enabled(&mut self) {
         self.mut_box_size().width = LeafRule::Fixed(1.0);
     }
-    fn set_fixed_height(&mut self) {
+    fn height_content_sized_enabled(&mut self) {
         self.mut_box_size().height = LeafRule::Fixed(1.0);
     }
 }
 
-/// The [`MakeBundle`] for `bevy_ui`.
+/// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default)]
-pub struct LayoutType<C = cuicui_layout::dsl::LayoutType> {
+pub struct Sprite<C = cuicui_layout::dsl::LayoutDsl> {
     inner: C,
     bg_color: Option<Color>,
     bg_image: Option<Handle<Image>>,
 }
-impl<C> LayoutType<C> {
+impl<C> Sprite<C> {
     /// Set the node's background color.
     pub fn bg(&mut self, color: Color) {
         self.bg_color = Some(color);
@@ -212,22 +211,22 @@ impl<C> LayoutType<C> {
     }
 }
 
-impl<C> Deref for LayoutType<C> {
+impl<C> Deref for Sprite<C> {
     type Target = C;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
-impl<C> DerefMut for LayoutType<C> {
+impl<C> DerefMut for Sprite<C> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.inner
     }
 }
 
-impl<C: MakeBundle> MakeBundle for LayoutType<C> {
-    fn insert(self, kind: InsertKind, cmds: &mut EntityCommands) -> Entity {
-        let id = self.inner.insert(kind, cmds);
-        match (self.bg_color, self.bg_image) {
+impl<C: DslBundle> DslBundle for Sprite<C> {
+    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+        let id = self.inner.insert(cmds);
+        match (self.bg_color.take(), self.bg_image.take()) {
             (Some(color), Some(texture)) => {
                 let sprite = sprite::Sprite { color, ..default() };
                 cmds.insert(sprite::SpriteBundle { sprite, texture, ..default() })
@@ -240,8 +239,5 @@ impl<C: MakeBundle> MakeBundle for LayoutType<C> {
             (None, None) => cmds.insert(SpatialBundle::default()),
         };
         id
-    }
-    fn ui_content_axis(&self) -> Size<bool> {
-        self.inner.ui_content_axis()
     }
 }
