@@ -3,7 +3,7 @@
 use bevy::{
     ecs::system::EntityCommands,
     prelude::{Bundle, Color, Deref, DerefMut, Entity, Handle, Image, Text, TextStyle, UiImage},
-    ui::{node_bundles as bevy_ui, BackgroundColor},
+    ui::{node_bundles as bevy_ui, BackgroundColor, BorderColor, UiRect, Val},
     utils::default,
 };
 use cuicui_dsl::DslBundle;
@@ -133,8 +133,19 @@ pub struct Ui<C = cuicui_layout::dsl::LayoutDsl> {
     inner: C,
     bg_color: Option<BackgroundColor>,
     bg_image: Option<UiImage>,
+    border_color: Option<BorderColor>,
+    border_px: Option<u16>,
 }
 impl<C> Ui<C> {
+    /// Set the node's border width, in pixels. Note that this is only visual and has
+    /// no effect on the `cuicui_layout` algorithm.
+    pub fn border_px(&mut self, pixels: u16) {
+        self.border_px = Some(pixels);
+    }
+    /// Set the node's border color.
+    pub fn border(&mut self, color: Color) {
+        self.border_color = Some(color.into());
+    }
     /// Set the node's background color.
     pub fn bg(&mut self, color: Color) {
         self.bg_color = Some(color.into());
@@ -148,18 +159,22 @@ impl<C> Ui<C> {
 impl<C: DslBundle> DslBundle for Ui<C> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         let id = self.inner.insert(cmds);
-        match (self.bg_color.take(), self.bg_image.take()) {
-            (Some(background_color), Some(image)) => {
-                cmds.insert((bevy_ui::NodeBundle { background_color, ..default() }, image))
-            }
-            (Some(background_color), None) => {
-                cmds.insert(bevy_ui::NodeBundle { background_color, ..default() })
-            }
-            (None, Some(image)) => cmds.insert((
-                bevy_ui::NodeBundle { background_color: Color::WHITE.into(), ..default() },
-                image,
-            )),
-            (None, None) => cmds.insert(bevy_ui::NodeBundle::default()),
+        let mut node_bundle = bevy_ui::NodeBundle::default();
+        if self.bg_image.is_some() {
+            node_bundle.background_color = Color::WHITE.into();
+        }
+        if let Some(background_color) = self.bg_color.take() {
+            node_bundle.background_color = background_color;
+        }
+        if let Some(border_color) = self.border_color.take() {
+            node_bundle.border_color = border_color;
+        }
+        if let Some(pixels) = self.border_px {
+            node_bundle.style.border = UiRect::all(Val::Px(f32::from(pixels)));
+        }
+        match self.bg_image.take() {
+            Some(image) => cmds.insert((node_bundle, image)),
+            None => cmds.insert(node_bundle),
         };
         id
     }
