@@ -2,21 +2,24 @@ use std::time::Duration;
 
 use bevy::{asset::ChangeWatcher, prelude::*};
 use cuicui_dsl::dsl;
-use cuicui_layout::{dsl_functions::*, LayoutRootCamera};
+use cuicui_layout::{
+    dsl_functions::{pct, px},
+    LayoutRootCamera,
+};
 use cuicui_layout_bevy_ui::Ui as Dsl;
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {
         Text::from_section($value, TextStyle {
             font: $handle.clone(),
-            font_size: 32.0,
+            font_size: 30.0,
             ..Default::default()
         })
     };
     ($handle:expr, $($tail:tt)*) => {
         Text::from_section(format!($($tail)*), TextStyle {
             font: $handle.clone(),
-            font_size: 32.0,
+            font_size: 30.0,
             ..Default::default()
         })
     };
@@ -95,7 +98,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
                 code(let cmds) {
                     for n in &menu_buttons {
                         let name = format!("{n} button");
-                        dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(30));)
+                        dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(30)););
                     }
                 }
             }

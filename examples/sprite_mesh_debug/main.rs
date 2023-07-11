@@ -8,7 +8,7 @@ use bevy::{
 use cuicui_dsl::dsl;
 use cuicui_layout::{
     dsl::{IntoUiBundle, UiBundle},
-    dsl_functions::*,
+    dsl_functions::{child, pct},
     Node, PosRect, Root, Size,
 };
 use cuicui_layout_bevy_sprite as render;
@@ -115,6 +115,7 @@ struct Space(i8);
 impl IntoUiBundle<Fixed> for Fixed {
     type Target = ElementBundle;
     fn into_ui_bundle(self) -> Self::Target {
+        #[allow(clippy::cast_precision_loss)]
         ElementBundle {
             node: Node::fixed(Size::new(self.0 as f32, self.1 as f32)),
             ..default()
@@ -125,7 +126,7 @@ impl IntoUiBundle<Space> for Space {
     type Target = ElementBundle;
     fn into_ui_bundle(self) -> Self::Target {
         ElementBundle {
-            node: Node::spacer_percent(self.0 as f32).unwrap(),
+            node: Node::spacer_percent(f32::from(self.0)).unwrap(),
             ..default()
         }
     }

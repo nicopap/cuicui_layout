@@ -327,11 +327,11 @@ impl Node {
 #[derive(Clone, Copy, PartialEq, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
 pub enum LeafRule {
-    /// The container's size is equal to its parent's size  times `f32`.
+    /// The box's size is equal to its parent's size  times `f32`.
     /// (may not be above 1)
     Parent(f32),
 
-    /// The container's size is equal to precisely `f32` pixels.
+    /// The box's size is equal to precisely `f32` pixels.
     Fixed(f32),
 }
 impl Default for LeafRule {

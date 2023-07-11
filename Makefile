@@ -1,7 +1,10 @@
+CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery \
+	--warn clippy::needless-pass-by-value \
+	--allow clippy::use-self
 .PHONY: check run pre-hook
 
 check:
-	cargo clippy -- --deny clippy::all
+	cargo clippy $(CLIPPY_ARGS)
 
 run:
 	# cargo test
@@ -12,8 +15,8 @@ run:
 pre-hook:
 	cargo test
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
-	cargo clippy --workspace -- --deny clippy::all
+	cargo clippy --workspace $(CLIPPY_ARGS)
 	cargo fmt --all -- --check
-	cargo clippy --no-default-features --package cuicui_layout_bevy_ui -- --deny clippy::all
-	cargo clippy --no-default-features --package cuicui_layout_bevy_sprite -- --deny clippy::all
-	cargo clippy --no-default-features --package cuicui_layout -- --deny clippy::all
+	cargo clippy --no-default-features --package cuicui_layout_bevy_ui $(CLIPPY_ARGS)
+	cargo clippy --no-default-features --package cuicui_layout_bevy_sprite $(CLIPPY_ARGS)
+	cargo clippy --no-default-features --package cuicui_layout $(CLIPPY_ARGS)
