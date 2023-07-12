@@ -6,7 +6,7 @@ use cuicui_layout::{
     dsl_functions::{pct, px},
     LayoutRootCamera,
 };
-use cuicui_layout_bevy_ui::Ui as Dsl;
+use cuicui_layout_bevy_ui::UiDsl as Dsl;
 
 macro_rules! text {
     ($handle:expr, $value:expr) => {

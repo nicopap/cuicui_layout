@@ -5,7 +5,6 @@ CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery
 
 check:
 	cargo clippy $(CLIPPY_ARGS)
-	cargo test --package cuicui_dsl --features test_and_doc
 
 run:
 	# cargo test

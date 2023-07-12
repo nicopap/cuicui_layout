@@ -12,7 +12,7 @@ use cuicui_layout::{
     Node, PosRect, Root, Size,
 };
 use cuicui_layout_bevy_sprite as render;
-use cuicui_layout_bevy_sprite::Sprite as Dsl;
+use cuicui_layout_bevy_sprite::SpriteDsl as Dsl;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
 

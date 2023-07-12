@@ -23,7 +23,7 @@ is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 
 ```rust
 use bevy::prelude::*;
-use cuicui_layout_bevy_ui::dsl::Ui as Dsl;
+use cuicui_layout_bevy_ui::UiDsl as Dsl;
 use cuicui_layout::{LayoutRootCamera, dsl, dsl_functions::{px, pct}};
 
 fn setup(mut cmds: Commands, serv: Res<AssetServer>) {

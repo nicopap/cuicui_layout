@@ -4,7 +4,11 @@
 //!
 //! * [`cuicui_dsl::DslBundle`] implementation ([`Sprite`]) to use with the [`cuicui_layout::dsl!`] macro.
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(clippy::use_self, clippy::redundant_pub_crate)]
+#![allow(
+    clippy::use_self,
+    clippy::redundant_pub_crate,
+    clippy::module_name_repetitions
+)]
 
 use bevy::{
     prelude::*,
@@ -16,7 +20,7 @@ use cuicui_layout::{LayoutRootCamera, Root, ScreenRoot};
 pub mod content_sized;
 pub mod dsl;
 
-pub use dsl::Sprite;
+pub use dsl::SpriteDsl;
 
 /// Create a [`Root`] container as the screen root, its size will dyamically
 /// follow the size of the viewport of camera marked iwth [`LayoutRootCamera`].

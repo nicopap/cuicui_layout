@@ -12,8 +12,8 @@
 //! use bevy::prelude::*;
 //! use cuicui_layout::{dsl, LayoutRootCamera, Rule};
 //! // dsl! will use this crate's extensions to DslBundle
-//! // if you import this      vvvvvvvvvvvvvv
-//! use cuicui_layout_bevy_ui::dsl::Ui as Dsl;
+//! // if you import this      vvvvvvvvvvvv
+//! use cuicui_layout_bevy_ui::UiDsl as Dsl;
 //! use cuicui_layout::dsl_functions::{px, pct};
 //!
 //! # fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
@@ -45,7 +45,11 @@
 //!
 //! [`DslBundle`]: cuicui_dsl::DslBundle
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(clippy::use_self, clippy::redundant_pub_crate)]
+#![allow(
+    clippy::use_self,
+    clippy::redundant_pub_crate,
+    clippy::module_name_repetitions
+)]
 
 #[cfg(doctest)]
 #[doc = include_str!("../../README.md")]
@@ -59,7 +63,7 @@ use cuicui_layout::{dsl::ContentSized, LayoutRootCamera, PosRect, Root};
 pub mod content_sized;
 pub mod dsl;
 
-pub use dsl::Ui;
+pub use dsl::UiDsl;
 
 /// System updating the [`cuicui_layout::ScreenRoot`] [`cuicui_layout::Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.

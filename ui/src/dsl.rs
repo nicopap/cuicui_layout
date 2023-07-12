@@ -70,8 +70,8 @@ macro_rules! from_delegate_impl {
         from_delegate_impl!([$from, $to], |self| <$to>::from(self).into_ui_bundle());
     };
     ([$from:ty, $to:ty], |$s:ident| $delegate_adaptor:expr) => {
-        impl IntoUiBundle<Ui> for $from {
-            type Target = <$to as IntoUiBundle<Ui>>::Target;
+        impl IntoUiBundle<UiDsl> for $from {
+            type Target = <$to as IntoUiBundle<UiDsl>>::Target;
 
             fn into_ui_bundle($s) -> Self::Target {
                 $delegate_adaptor
@@ -91,13 +91,13 @@ from_delegate_impl!([UiImage, ImageBundle]);
 from_delegate_impl!([bevy_ui::ImageBundle, ImageBundle]);
 from_delegate_impl!([bevy_ui::TextBundle, TextBundle]);
 
-impl IntoUiBundle<Ui> for ImageBundle {
+impl IntoUiBundle<UiDsl> for ImageBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
     }
 }
-impl IntoUiBundle<Ui> for TextBundle {
+impl IntoUiBundle<UiDsl> for TextBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
@@ -128,7 +128,7 @@ impl UiBundle for TextBundle {
 
 /// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default, Deref, DerefMut)]
-pub struct Ui<C = cuicui_layout::dsl::LayoutDsl> {
+pub struct UiDsl<C = cuicui_layout::dsl::LayoutDsl> {
     #[deref]
     inner: C,
     bg_color: Option<BackgroundColor>,
@@ -136,7 +136,7 @@ pub struct Ui<C = cuicui_layout::dsl::LayoutDsl> {
     border_color: Option<BorderColor>,
     border_px: Option<u16>,
 }
-impl<C> Ui<C> {
+impl<C> UiDsl<C> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.
     pub fn border_px(&mut self, pixels: u16) {
@@ -156,7 +156,7 @@ impl<C> Ui<C> {
     }
 }
 
-impl<C: DslBundle> DslBundle for Ui<C> {
+impl<C: DslBundle> DslBundle for UiDsl<C> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         let id = self.inner.insert(cmds);
         let mut node_bundle = bevy_ui::NodeBundle::default();
