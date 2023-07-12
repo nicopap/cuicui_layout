@@ -162,7 +162,7 @@ impl<C: DslBundle> LayoutDsl<C> {
     pub fn spawn_ui<M>(
         &mut self,
         ui_bundle: impl IntoUiBundle<M>,
-        mut cmds: EntityCommands,
+        cmds: &mut EntityCommands,
     ) -> Entity {
         use LeafRule::{Fixed, Parent};
         let mut ui_bundle = ui_bundle.into_ui_bundle();

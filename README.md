@@ -22,7 +22,11 @@ is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 ### Code
 
 ```rust
-use cuicui_layout::dsl::LayoutDsl as Dsl;
+use bevy::prelude::*;
+use cuicui_layout_bevy_ui::dsl::Ui as Dsl;
+use cuicui_layout::{LayoutRootCamera, dsl, dsl_functions::{px, pct}};
+
+fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 
 cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
 let menu_buttons = [
@@ -35,7 +39,6 @@ let menu_buttons = [
     "QUIT GAME",
 ];
 let title_card = serv.load::<Image, _>("logo.png");
-let font = serv.load("adobe_sans.ttf");
 let bg = serv.load("background.png");
 let board = serv.load("board.png");
 let button = serv.load("button.png");
@@ -48,12 +51,13 @@ dsl! {
             code(let cmds) {
                 for n in &menu_buttons {
                     let name = format!("{n} button");
-                    dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(30));)
+                    dsl!(cmds, spawn_ui(*n, named name, image &button, height px(30));)
                 }
             }
         }
     }
 };
+}
 ```
 
 </details>

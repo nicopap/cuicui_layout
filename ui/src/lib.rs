@@ -47,6 +47,10 @@
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(clippy::use_self, clippy::redundant_pub_crate)]
 
+#[cfg(doctest)]
+#[doc = include_str!("../../README.md")]
+pub struct TestWorkspaceReadme;
+
 use bevy::ecs::prelude::*;
 use bevy::prelude::{App, Camera, Plugin, Style};
 use bevy_mod_sysfail::quick_sysfail;

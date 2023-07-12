@@ -3,12 +3,16 @@ name = "cuicui_dsl"
 description = "An easily-extensible macro to spawn things in bevy"
 categories = ["game-development", "gui"]
 keywords = ["bevy", "layout", "ui"]
-readme.workspace = true
+readme = "README.md"
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
+
+[features]
+default = []
+test_and_doc = ["bevy/bevy_render", "bevy/bevy_asset"]
 
 [dependencies]
 # workspace.winnow = true

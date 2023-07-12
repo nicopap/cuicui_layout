@@ -1,18 +1,14 @@
-//! Bevy entity hierarchies will never be this easy!
-//!
-//! Use the [`dsl!`] macro in conbination with any type that implements
-//! [`DslBundle`] to spawn entities using a concise yet extensible and explicit
-//! syntax.
+/*!
+[`dsl!`]: dsl
+[`DslBundle`]: DslBundle
+*/
+#![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::match_bool,
-    clippy::manual_range_contains,
-    clippy::use_self,
-    clippy::redundant_pub_crate,
-    clippy::module_name_repetitions
-)]
+#![allow(clippy::use_self, clippy::module_name_repetitions)]
 
-mod macros;
+/// This exports the dummy impls we make to test the documentation on the macro.
+#[doc(hidden)]
+pub mod macros;
 
 use bevy::prelude::{BuildChildren, ChildBuilder, Entity};
 use std::borrow::Cow;

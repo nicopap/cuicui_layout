@@ -45,5 +45,8 @@ jobs:
       - name: Install alsa and udev
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
 
-      - name: Run tests
-        run: cargo test
+      - name: Run cuicui_dsl test
+        run: cargo test --package cuicui_dsl --features test_and_doc
+
+      - name: Run other tests
+        run: cargo test --workspace --exclude cuicui_dsl
