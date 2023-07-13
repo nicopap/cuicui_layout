@@ -42,7 +42,7 @@ use bevy::ecs::component::Tick;
 use bevy::ecs::prelude::*;
 use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::ecs::system::SystemChangeTick;
-use bevy::prelude::{App, Children, Name, Parent, Plugin, Transform, Update, Vec2};
+use bevy::prelude::{App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
@@ -183,7 +183,7 @@ pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Chang
     }
 }
 
-/// Systems added by [`Plug`].
+/// Systems added by [`Plugin`].
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub enum Systems {
     /// The layouting system, [`compute_layout`].
@@ -205,21 +205,21 @@ pub enum Systems {
 ///
 /// When the `"reflect"` feature is enabled, also register all the layouting
 /// types used by `cuicui_layout`.
-pub struct Plug<F = ()>(PhantomData<fn(F)>);
-impl Plug<()> {
+pub struct Plugin<F = ()>(PhantomData<fn(F)>);
+impl Plugin<()> {
     /// Layout all relevant entities, without filters.
     #[must_use]
     pub const fn new() -> Self {
-        Plug(PhantomData)
+        Plugin(PhantomData)
     }
     /// Layout entities with the provided filters.
     #[must_use]
-    pub const fn filter<F: ReadOnlyWorldQuery + 'static>() -> Plug<F> {
-        Plug(PhantomData)
+    pub const fn filter<F: ReadOnlyWorldQuery + 'static>() -> Plugin<F> {
+        Plugin(PhantomData)
     }
 }
 
-impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
+impl<F: ReadOnlyWorldQuery + 'static> BevyPlugin for Plugin<F> {
     fn build(&self, app: &mut App) {
         app.configure_set(
             Update,

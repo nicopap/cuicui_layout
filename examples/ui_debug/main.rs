@@ -47,7 +47,7 @@ fn main() {
                     "
                     .to_string(),
                 }),
-            cuicui_layout_bevy_ui::Plug,
+            cuicui_layout_bevy_ui::Plugin,
             WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)

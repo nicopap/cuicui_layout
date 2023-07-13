@@ -56,7 +56,7 @@
 pub struct TestWorkspaceReadme;
 
 use bevy::ecs::prelude::*;
-use bevy::prelude::{App, Camera, Plugin, Style};
+use bevy::prelude::{App, Camera, Plugin as BevyPlugin, Style};
 use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::{AppContentSizeExt, LayoutRootCamera, PosRect, Root};
 
@@ -115,14 +115,14 @@ pub fn set_layout_style(mut query: Query<(&mut Style, &PosRect), Changed<PosRect
 ///
 /// [`spawn_ui`]: cuicui_layout::dsl::LayoutDsl::spawn_ui
 /// [`ContentSized`]: cuicui_layout::ContentSized
-pub struct Plug;
-impl Plugin for Plug {
+pub struct Plugin;
+impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
         use bevy::prelude::{PostUpdate, Update};
         use bevy::ui::UiSystem;
         use cuicui_layout::Systems::ComputeLayout;
 
-        app.add_plugins(cuicui_layout::Plug::new())
+        app.add_plugins(cuicui_layout::Plugin::new())
             .add_content_sized::<content_sized::UiContentSize>()
             .add_systems(Update, update_ui_camera_root.before(ComputeLayout))
             .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout));
