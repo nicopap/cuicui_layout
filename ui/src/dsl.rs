@@ -30,6 +30,7 @@ pub struct ImageBundle {
     pub calculated_size: ContentSize,
     pub image: UiImage,
     pub image_size: UiImageSize,
+    pub bg: BackgroundColor,
 }
 
 /// A text leaf node wrapping a [`bevy_ui::TextBundle`].
@@ -63,6 +64,7 @@ impl From<bevy_ui::ImageBundle> for ImageBundle {
             calculated_size: value.calculated_size,
             image_size: value.image_size,
             image: value.image,
+            bg: Color::WHITE.into(),
         }
     }
 }
@@ -163,7 +165,7 @@ impl<C: DslBundle> DslBundle for UiDsl<C> {
             node_bundle.style.border = UiRect::all(Val::Px(f32::from(pixels)));
         }
         match self.bg_image.take() {
-            Some(image) => cmds.insert((node_bundle, image)),
+            Some(image) => cmds.insert(ImageBundle::from(image)).insert(node_bundle),
             None => cmds.insert(node_bundle),
         };
         id
