@@ -25,7 +25,9 @@
 )]
 
 use bevy::ecs::{component::Tick, prelude::*, system::SystemChangeTick};
-use bevy::prelude::{App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2};
+use bevy::prelude::{
+    debug, App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2,
+};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
@@ -153,6 +155,8 @@ pub fn compute_layout(
     mut last_layout_change: ResMut<LastLayoutChange>,
     system_tick: SystemChangeTick,
 ) -> Result<(), ComputeLayoutError> {
+    debug!("Computing layout");
+    last_layout_change.tick = Some(system_tick.this_run());
     for (entity, root, children) in &roots {
         let root_container = *root.get();
         let bounds = root.get_size(entity, &names)?;
@@ -164,7 +168,6 @@ pub fn compute_layout(
         bounds.set_margin(root_container.margin, &layout)?;
         layout.container(root_container, children, bounds)?;
     }
-    last_layout_change.tick = Some(system_tick.this_run());
     Ok(())
 }
 /// Update transform of things that have a `PosRect` component.
