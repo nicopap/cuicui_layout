@@ -5,7 +5,7 @@ use bevy::{
         schedule::SystemSetConfig,
         system::{assert_is_system, StaticSystemParam, SystemParam},
     },
-    prelude::{App, Parent, Update},
+    prelude::{debug, error, trace, App, Parent, Update},
 };
 use bevy_mod_sysfail::{sysfail, FailureMode, LogLevel};
 use thiserror::Error;
@@ -106,17 +106,23 @@ where
     for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
 {
     assert_is_system(compute_content_size::<S>);
+    debug!(
+        "Computing content-sized nodes for {}",
+        bevy::utils::get_short_name(std::any::type_name::<S>())
+    );
 
     for (entity, parent, node, components) in &to_set {
         if !node.content_sized() {
             continue;
         }
+        trace!("Computing size of a node with constraints: {node:?}");
         let size = node_content_size(parent, node, &to_set)?;
         let computed = compute_param.compute_content(components, size);
         let computed = Size {
             width: size.width.is_none().then_some(computed.width),
             height: size.height.is_none().then_some(computed.height),
         };
+        trace!("It is: {computed:?}");
         to_update.push((entity, computed));
     }
     for (node, computed) in to_update.drain(..) {
@@ -196,9 +202,15 @@ fn set_node_content_size(mut node: Mut<Node>, new: Size<Option<f32>>) {
         unreachable!("bad");
     };
     if let (LeafRule::Fixed(to_update, true), Some(new)) = (&mut size.width, new.width) {
+        if new.is_nan() {
+            error!("Some computed width was NAN, this will break the layouting algo");
+        }
         *to_update = new;
     }
     if let (LeafRule::Fixed(to_update, true), Some(new)) = (&mut size.height, new.height) {
+        if new.is_nan() {
+            error!("Some computed height was NAN, this will break the layouting algo");
+        }
         *to_update = new;
     }
 }
