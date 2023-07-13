@@ -31,7 +31,7 @@ fn color_from_entity(entity: Entity) -> Color {
 fn main() {
     // use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
-        .add_plugins((DefaultPlugins, cuicui_layout::Plugin::new()))
+        .add_plugins((DefaultPlugins, cuicui_layout::Plugin))
         .add_systems(Startup, setup)
         .add_systems(PostStartup, setup_debug)
         // .add_plugin(WorldInspectorPlugin::default())

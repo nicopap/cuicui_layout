@@ -36,11 +36,9 @@ mod layout;
 pub mod dsl_functions {
     pub use crate::dsl::{child, pct, px};
 }
-use std::marker::PhantomData;
 
 use bevy::ecs::component::Tick;
 use bevy::ecs::prelude::*;
-use bevy::ecs::query::ReadOnlyWorldQuery;
 use bevy::ecs::system::SystemChangeTick;
 use bevy::prelude::{App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2};
 #[cfg(feature = "reflect")]
@@ -96,21 +94,15 @@ impl PosRect {
 }
 
 /// Stores the tick of the last time [`compute_layout::<F>`] ran.
-#[derive(Resource)]
-pub struct LastLayoutChange<F> {
+#[derive(Resource, Default)]
+pub struct LastLayoutChange {
     tick: Option<Tick>,
-    _f: PhantomData<fn(F)>,
 }
-impl<F> LastLayoutChange<F> {
+impl LastLayoutChange {
     /// The last time [`compute_layout<F>`] ran.
     #[must_use]
     pub const fn tick(&self) -> Option<Tick> {
         self.tick
-    }
-}
-impl<F> Default for LastLayoutChange<F> {
-    fn default() -> Self {
-        Self { tick: None, _f: PhantomData }
     }
 }
 
@@ -124,10 +116,10 @@ type LayoutRef = (
 // TODO(bug): We need to .or_else this with the updates on `ComputeContentSize`
 /// A run condition to tell whether it's necessary to recompute layout.
 #[allow(clippy::needless_pass_by_value, clippy::must_use_candidate)]
-pub fn require_layout_recompute<F: ReadOnlyWorldQuery + 'static>(
-    nodes: Query<NodeQuery, F>,
-    anything_changed: Query<LayoutRef, (F, Or<(With<Node>, With<Root>)>)>,
-    last_layout_change: Res<LastLayoutChange<F>>,
+pub fn require_layout_recompute(
+    nodes: Query<NodeQuery>,
+    anything_changed: Query<LayoutRef, Or<(With<Node>, With<Root>)>>,
+    last_layout_change: Res<LastLayoutChange>,
     system_tick: SystemChangeTick,
     mut children_removed: RemovedComponents<Children>,
     mut parent_removed: RemovedComponents<Parent>,
@@ -153,12 +145,12 @@ pub fn require_layout_recompute<F: ReadOnlyWorldQuery + 'static>(
 /// You may set `F` to any query filter in order to limit the layouting to a
 /// subset of layout entities.
 #[sysfail(log(level = "error"))]
-pub fn compute_layout<F: ReadOnlyWorldQuery + 'static>(
-    mut to_update: Query<&'static mut PosRect, F>,
-    nodes: Query<NodeQuery, F>,
+pub fn compute_layout(
+    mut to_update: Query<&'static mut PosRect>,
+    nodes: Query<NodeQuery>,
     names: Query<&'static Name>,
-    roots: Query<(Entity, &'static Root, &'static Children), F>,
-    mut last_layout_change: ResMut<LastLayoutChange<F>>,
+    roots: Query<(Entity, &'static Root, &'static Children)>,
+    mut last_layout_change: ResMut<LastLayoutChange>,
     system_tick: SystemChangeTick,
 ) -> Result<(), ComputeLayoutError> {
     for (entity, root, children) in &roots {
@@ -205,33 +197,21 @@ pub enum Systems {
 ///
 /// When the `"reflect"` feature is enabled, also register all the layouting
 /// types used by `cuicui_layout`.
-pub struct Plugin<F = ()>(PhantomData<fn(F)>);
-impl Plugin<()> {
-    /// Layout all relevant entities, without filters.
-    #[must_use]
-    pub const fn new() -> Self {
-        Plugin(PhantomData)
-    }
-    /// Layout entities with the provided filters.
-    #[must_use]
-    pub const fn filter<F: ReadOnlyWorldQuery + 'static>() -> Plugin<F> {
-        Plugin(PhantomData)
-    }
-}
+pub struct Plugin;
 
-impl<F: ReadOnlyWorldQuery + 'static> BevyPlugin for Plugin<F> {
+impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
         app.configure_set(
             Update,
-            Systems::ComputeLayout.run_if(require_layout_recompute::<F>),
+            Systems::ComputeLayout.run_if(require_layout_recompute),
         )
         .add_systems(
             Update,
-            compute_layout::<F>
+            compute_layout
                 .in_set(Systems::ComputeLayout)
                 .after(Systems::ContentSizedCompute),
         )
-        .init_resource::<LastLayoutChange<F>>();
+        .init_resource::<LastLayoutChange>();
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()

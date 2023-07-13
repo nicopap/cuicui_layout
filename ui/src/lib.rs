@@ -122,7 +122,7 @@ impl BevyPlugin for Plugin {
         use bevy::ui::UiSystem;
         use cuicui_layout::Systems::ComputeLayout;
 
-        app.add_plugins(cuicui_layout::Plugin::new())
+        app.add_plugins(cuicui_layout::Plugin)
             .add_content_sized::<content_sized::UiContentSize>()
             .add_systems(Update, update_ui_camera_root.before(ComputeLayout))
             .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout));
