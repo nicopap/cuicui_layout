@@ -23,13 +23,16 @@
 #[cfg(feature = "sprite_text")]
 use bevy::text::{Font, Text, Text2dBounds, TextPipeline};
 use bevy::{
-    ecs::prelude::{AnyOf, Res},
-    ecs::{query::QueryItem, system::SystemParam},
+    ecs::prelude::*,
+    ecs::{query::QueryItem, schedule::SystemSetConfig, system::SystemParam},
     math::Vec3Swizzles,
     prelude::{Assets, Handle, Image, Mesh, Vec2},
     sprite::Mesh2dHandle,
 };
-use cuicui_layout::{ComputeContentParam, ComputeContentSize, Size};
+use cuicui_layout::{
+    require_layout_recompute, ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
+    Node, Size,
+};
 
 #[derive(SystemParam)]
 pub(crate) struct SpriteContentSize<'w> {
@@ -49,6 +52,28 @@ impl ComputeContentParam for SpriteContentSize<'static> {
 
     #[cfg(not(feature = "sprite_text"))]
     type Components = AnyOf<(&'static Handle<Image>, &'static Mesh2dHandle)>;
+
+    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig {
+        use bevy::ecs::schedule::common_conditions as cond;
+
+        fn changed<C: Component>(q: Query<(), (Changed<C>, With<Node>)>) -> bool {
+            !q.is_empty()
+        }
+
+        #[cfg(feature = "sprite_text")]
+        let cond = cond::resource_changed::<Assets<Font>>()
+            .or_else(cond::resource_changed::<Assets<Font>>())
+            .or_else(changed::<Text>)
+            .or_else(changed::<Text2dBounds>);
+        #[cfg(not(feature = "sprite_text"))]
+        let cond = || true;
+
+        let cond = cond
+            .or_else(changed::<Handle<Image>>)
+            .or_else(changed::<Mesh2dHandle>);
+
+        label.run_if(require_layout_recompute.or_else(cond))
+    }
 }
 type OptSize = Size<Option<f32>>;
 impl SpriteContentSize<'_> {

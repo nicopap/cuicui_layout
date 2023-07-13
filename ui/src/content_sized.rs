@@ -3,12 +3,15 @@
 //!
 //! This relies on the [`bevy::ui::Node`] component.
 use bevy::{
-    ecs::{prelude::*, system::SystemParam},
+    ecs::{prelude::*, schedule::SystemSetConfig, system::SystemParam},
     prelude::{trace, Assets, Vec2},
     text::{Font, Text, TextPipeline},
     ui::widget::UiImageSize,
 };
-use cuicui_layout::{ComputeContentParam, ComputeContentSize, Size};
+use cuicui_layout::{
+    require_layout_recompute, ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
+    Node, Size,
+};
 
 #[derive(SystemParam)]
 pub(crate) struct UiContentSize<'w> {
@@ -16,6 +19,15 @@ pub(crate) struct UiContentSize<'w> {
 }
 impl ComputeContentParam for UiContentSize<'static> {
     type Components = AnyOf<(&'static Text, &'static UiImageSize)>;
+
+    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig {
+        use bevy::ecs::schedule::common_conditions as cond;
+
+        let cond = cond::resource_changed::<Assets<Font>>()
+            .or_else(|c: Query<(), (Changed<UiImageSize>, With<Node>)>| !c.is_empty());
+
+        label.run_if(require_layout_recompute.or_else(cond))
+    }
 }
 impl UiContentSize<'_> {
     /// Due to a regression in bevy 0.11, it is now impossible to access

@@ -24,12 +24,22 @@
     clippy::module_name_repetitions
 )]
 
+use bevy::ecs::{component::Tick, prelude::*, system::SystemChangeTick};
+use bevy::prelude::{App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2};
+#[cfg(feature = "reflect")]
+use bevy::prelude::{Reflect, ReflectComponent};
+use bevy_mod_sysfail::sysfail;
+
+use crate::layout::Layout;
+use error::Computed;
+
 mod alignment;
 pub mod bundles;
 mod content_sized;
 mod direction;
 pub mod dsl;
 mod error;
+mod labels;
 mod layout;
 
 /// Functions to simplify using [`dsl::LayoutDsl`].
@@ -37,24 +47,14 @@ pub mod dsl_functions {
     pub use crate::dsl::{child, pct, px};
 }
 
-use bevy::ecs::component::Tick;
-use bevy::ecs::prelude::*;
-use bevy::ecs::system::SystemChangeTick;
-use bevy::prelude::{App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2};
-#[cfg(feature = "reflect")]
-use bevy::prelude::{Reflect, ReflectComponent};
-use bevy_mod_sysfail::sysfail;
-
 pub use alignment::{Alignment, Distribution};
 pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};
 pub use cuicui_dsl::{dsl, DslBundle};
 pub use direction::{Flow, Oriented, Size};
 pub use dsl::LayoutDsl;
 pub use error::ComputeLayoutError;
+pub use labels::{ComputeLayout, ComputeLayoutSet, ContentSizedComputeSystem};
 pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
-
-use crate::layout::Layout;
-use error::Computed;
 
 /// Use this camera's logical size as the root fixed-size container for
 /// `cuicui_layout`.
@@ -175,22 +175,6 @@ pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Chang
     }
 }
 
-/// Systems added by [`Plugin`].
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
-pub enum Systems {
-    /// The layouting system, [`compute_layout`].
-    ComputeLayout,
-    /// When [`ComputeContentSize::compute_content`]  is evaulated.
-    /// [`add_content_sized`] automatically adds the relevant systems to this set.
-    ///
-    /// It is part of the [`Self::ComputeLayout`] set, but this happens just
-    /// before computing [`compute_layout`], setting the content-sized
-    /// informations.
-    ///
-    /// [`add_content_sized`]: AppContentSizeExt::add_content_sized
-    ContentSizedCompute,
-}
-
 /// Add the [`compute_layout`] system to the bevy `Update` set.
 ///
 /// ## Features
@@ -201,17 +185,13 @@ pub struct Plugin;
 
 impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.configure_set(
-            Update,
-            Systems::ComputeLayout.run_if(require_layout_recompute),
-        )
-        .add_systems(
+        app.init_resource::<LastLayoutChange>().add_systems(
             Update,
             compute_layout
-                .in_set(Systems::ComputeLayout)
-                .after(Systems::ContentSizedCompute),
-        )
-        .init_resource::<LastLayoutChange>();
+                .run_if(require_layout_recompute)
+                .in_set(ComputeLayout)
+                .in_set(ComputeLayoutSet),
+        );
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()

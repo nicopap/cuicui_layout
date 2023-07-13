@@ -70,3 +70,33 @@ individual item sizes.
 
 I'll opt for this, since I know it's possible to implement and I'm already
 familiar with the pattern
+
+# Let user control when content-size computation runs
+
+Ideally, we let user define a `Condition` in ComputeContentParam, then
+`or_else` it with `require_layout_recompute`.
+
+But we can't? Since `AppContentSizeExt` is independent from `layout::Plugin`.
+
+A possibility is to move `AppContentSizeExt` to the `Plugin`.
+
+Another is to not conditionally run `compute_content_size`.
+
+## But how to specify the condition?
+
+Problem is: can't name a `Condition` instance (or at least, it would be
+too complicated). So I can't just define a `const CONDITION: impl Condition`
+in the `ComputeContentParam` trait.
+
+Could have been as easy as a function returning `-> impl Condition`, but saddly
+this is not stable rust yet.
+
+I considered defining the condition as a static method on `ComputeContentParam`
+(`fn active_condition(world: &World) -> bool;`) but this doesn't work either.
+
+Need also to build the condition every call.
+
+Inversion of control doesn't work, since returned type is unique.
+
+So the current solution is to give the implementor the responsability of
+adding the condition for the system, by passing it the label.

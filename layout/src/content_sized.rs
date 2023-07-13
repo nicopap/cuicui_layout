@@ -2,12 +2,16 @@ use bevy::{
     ecs::{
         prelude::*,
         query::{ROQueryItem, ReadOnlyWorldQuery, WorldQuery},
+        schedule::SystemSetConfig,
         system::{assert_is_system, StaticSystemParam, SystemParam},
     },
     prelude::{App, Parent, Update},
 };
 
-use crate::{direction::Axis, Container, LeafRule, Node, Size, Systems};
+use crate::{
+    direction::Axis, ComputeLayout, ComputeLayoutSet, Container, ContentSizedComputeSystem,
+    LeafRule, Node, Size,
+};
 
 /// Extends [`App`] to support adding [`ComputeContentSize`].
 pub trait AppContentSizeExt {
@@ -30,12 +34,15 @@ impl AppContentSizeExt for App {
     where
         for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
     {
+        let set = ContentSizedComputeSystem::<S>::default();
         self.add_systems(
             Update,
             compute_content_size::<S>
-                .in_set(Systems::ComputeLayout)
-                .in_set(Systems::ContentSizedCompute),
+                .in_set(ComputeLayoutSet)
+                .in_set(set),
         );
+        self.configure_set(Update, S::condition(set));
+        self.configure_set(Update, ComputeLayout.after(set));
         self
     }
 }
@@ -48,12 +55,19 @@ pub trait ComputeContentParam: SystemParam + 'static
 where
     for<'w, 's> Self::Item<'w, 's>: ComputeContentSize<Components = Self::Components>,
 {
-    /// Same as [`ComputeContentSize::Components`]. Make sure to copy the type
-    /// here!
+    /// Same as [`ComputeContentSize::Components`]. Make sure to copy the type here!
     type Components: ReadOnlyWorldQuery + 'static;
+
+    /// Run condition for when to re-compute content-sized values.
+    ///
+    /// I wish you could just do `-> impl Condition` but this isn't stable in rust.
+    ///
+    /// Note that you should consider adding `.or_else(require_layout_recompute)`
+    /// to your condition, as update to node size might influence computed-size
+    /// axis size.
+    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig;
 }
 
-// TODO(feat): How bad is this? Should we add support for a filter of sort?
 /// A [`SystemParam`] to compute the size of content-sized layout [`Node`]s.
 pub trait ComputeContentSize: SystemParam {
     /// Components of the thing which content affect the node's size.
@@ -114,7 +128,7 @@ fn compute_content_size<S: ComputeContentParam>(
 struct BadRule;
 
 // TODO(bug): This breaks when the source of size is `Root`.
-// Note: This is tail-recursive, but I'm not sure how much that maters.
+// (unrelated) Note: This is tail-recursive, but I'm not sure how much that maters.
 fn parent_size<Wq: WorldQuery>(
     ratio: f32,
     axis: Axis,
