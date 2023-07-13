@@ -46,6 +46,26 @@ impl UiContentSize<'_> {
         measure.map_or(Vec2::ZERO, |m| m.compute_size(bounds))
     }
 }
+fn compute_image_size(size: Vec2, set_size: Size<Option<f32>>) -> Vec2 {
+    let mut size = match (set_size.width, set_size.height) {
+        (None, None) => size,
+        (Some(width), None) => Vec2::new(width, width * size.y / size.x),
+        (None, Some(height)) => Vec2::new(height * size.x / size.y, height),
+        (Some(_), Some(_)) => unreachable!(
+            "This is a bug in cuicui_layout, \
+                the API promises that compute_content is never call with two set values"
+        ),
+    };
+    // `UiImageSize` is NaN when the image is not loaded yet. This messes
+    // with cuicui_layout which is picky about errors.
+    if size.x.is_nan() {
+        size.x = 0.;
+    }
+    if size.y.is_nan() {
+        size.y = 0.;
+    }
+    size
+}
 impl ComputeContentSize for UiContentSize<'_> {
     type Components = AnyOf<(&'static Text, &'static UiImageSize)>;
 
@@ -60,15 +80,11 @@ impl ComputeContentSize for UiContentSize<'_> {
             set_size.height.unwrap_or(inf),
         );
         let bevy_ui = match components {
-            (Some(text), None) => {
-                trace!("Ui Text content size to re-compute");
-                self.bounds(text, size_vec)
+            (Some(text), _) => self.bounds(text, size_vec),
+            (None, Some(image)) => compute_image_size(image.size(), set_size),
+            (None, None) => {
+                unreachable!("This is a bevy bug: AnyOf should at least have one element")
             }
-            (None, Some(image)) => {
-                trace!("UiImage content size to re-compute");
-                image.size()
-            }
-            _ => unreachable!("This is a bevy bug"),
         };
         bevy_ui.into()
     }
