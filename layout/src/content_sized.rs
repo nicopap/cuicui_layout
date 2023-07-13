@@ -7,6 +7,8 @@ use bevy::{
     },
     prelude::{App, Parent, Update},
 };
+use bevy_mod_sysfail::{sysfail, FailureMode, LogLevel};
+use thiserror::Error;
 
 use crate::{
     direction::Axis, ComputeLayout, ComputeLayoutSet, Container, ContentSizedComputeSystem,
@@ -94,11 +96,13 @@ type ParentQuery<'w, 's, Wq> =
 // TODO(perf): instead of storing in `to_update` and inserting everything
 // afterward, we should Split `to_set` in two. This would also fix the `Root`
 // problem.
+#[sysfail(log(level = "error"))]
 fn compute_content_size<S: ComputeContentParam>(
     compute_param: StaticSystemParam<S>,
     mut to_set: ParentQuery<S::Components>,
     mut to_update: Local<Vec<(Entity, Size<Option<f32>>)>>,
-) where
+) -> Result<(), BadRule>
+where
     for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
 {
     assert_is_system(compute_content_size::<S>);
@@ -107,9 +111,7 @@ fn compute_content_size<S: ComputeContentParam>(
         if !node.content_sized() {
             continue;
         }
-        let Ok(size) = node_content_size(parent, node, &to_set) else {
-            continue;
-        };
+        let size = node_content_size(parent, node, &to_set)?;
         let computed = compute_param.compute_content(components, size);
         let computed = Size {
             width: size.width.is_none().then_some(computed.width),
@@ -122,10 +124,26 @@ fn compute_content_size<S: ComputeContentParam>(
         let node = unsafe { to_set.get_component_mut::<Node>(node).unwrap_unchecked() };
         set_node_content_size(node, computed);
     }
+    Ok(())
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Error)]
+#[error("Bad rule, couldn't compute content sizes")]
 struct BadRule;
+
+impl FailureMode for BadRule {
+    type ID = ();
+
+    fn log_level(&self) -> LogLevel {
+        LogLevel::Warn
+    }
+
+    fn identify(&self) {}
+
+    fn display(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+}
 
 // TODO(bug): This breaks when the source of size is `Root`.
 // (unrelated) Note: This is tail-recursive, but I'm not sure how much that maters.
