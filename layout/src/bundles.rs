@@ -2,7 +2,7 @@
 
 use bevy::prelude::{default, Bundle};
 
-use crate::{dsl, Container, Node, PosRect, Root, ScreenRoot, Size};
+use crate::{dsl, Container, LeafRule, Node, PosRect, Root, ScreenRoot, Size};
 
 /// A [`Root`] container node, it will always span the entire screen.
 #[derive(Bundle, Default)]
@@ -29,19 +29,23 @@ impl RootBundle {
     }
 }
 
-/// A container node, meant to hold one or several other UI elements.
+/// A layout node, may be terminal or contain other nodes.
 #[derive(Bundle, Default)]
-pub struct FlowBundle {
+pub struct LayoutBundle {
     /// The positional component.
     pub pos_rect: PosRect,
-    /// The set of rules this node follows, it should be [`Node::Container`].
-    pub container: Node,
+    /// The set of rules this node follows.
+    pub node: Node,
 }
-impl FlowBundle {
+impl LayoutBundle {
     /// A container meant to hold other [`Node`].
     #[must_use]
-    pub fn new(container: Container) -> Self {
-        let container = Node::Container(container);
-        Self { container, ..default() }
+    pub fn node(container: Container) -> Self {
+        Self { node: Node::Container(container), ..default() }
+    }
+    /// A set-size leaf node.
+    #[must_use]
+    pub fn boxy(size: Size<LeafRule>) -> Self {
+        Self { node: Node::Box(size), ..default() }
     }
 }

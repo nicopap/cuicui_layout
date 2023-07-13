@@ -3,11 +3,10 @@
 use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
-use crate::bundles::{FlowBundle, RootBundle};
-use crate::Node;
+use crate::bundles::{LayoutBundle, RootBundle};
 use crate::{Alignment, Container, Distribution, Flow, LeafRule, Oriented, Rule, Size};
 #[cfg(doc)]
-use crate::{Root, ScreenRoot};
+use crate::{Node, Root, ScreenRoot};
 
 /// Something that can be converted into a bevy [`Bundle`].
 ///
@@ -60,6 +59,10 @@ pub trait IntoUiBundle<Marker> {
     /// Since `Target` is inserted _after_ the [`Node`] component, you can
     /// overwrite it by including it in the bundle.
     fn into_ui_bundle(self) -> Self::Target;
+}
+impl IntoUiBundle<()> for () {
+    type Target = ();
+    fn into_ui_bundle(self) {}
 }
 
 /// Metadata internal to [`LayoutDsl`] to manage the state of things it
@@ -119,11 +122,13 @@ pub struct LayoutDsl<T = BaseDsl> {
     inner: T,
     root: RootKind,
     layout: Layout,
+    set_flow: bool,
 }
 
 impl<C: DslBundle> LayoutDsl<C> {
     /// Set the flow direction of a container node.
     pub fn flow(&mut self, flow: Flow) {
+        self.set_flow = true;
         self.layout.flow = flow;
     }
     /// Spawn this [`Node`] as a [`Node::Container`] with children flowing vertically.
@@ -202,12 +207,15 @@ impl<C: DslBundle> LayoutDsl<C> {
     ) -> Entity {
         let ui_bundle = ui_bundle.into_ui_bundle();
         let size = self.layout.size.map(LeafRule::from_rule);
-        cmds.insert(Node::Box(size)).insert(ui_bundle).id()
+        cmds.insert(LayoutBundle::boxy(size)).insert(ui_bundle).id()
     }
 }
 impl<C: DslBundle> DslBundle for LayoutDsl<C> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         self.inner.insert(cmds);
+        if !self.set_flow {
+            return self.spawn_ui((), cmds);
+        }
         let container = self.layout.container();
         let root_bundle = || RootBundle::new(self.layout);
         let non_screen_root_bundle = || {
@@ -217,7 +225,7 @@ impl<C: DslBundle> DslBundle for LayoutDsl<C> {
         match self.root {
             RootKind::ScreenRoot => cmds.insert(root_bundle()),
             RootKind::Root => cmds.insert(non_screen_root_bundle()),
-            RootKind::None => cmds.insert(FlowBundle::new(container)),
+            RootKind::None => cmds.insert(LayoutBundle::node(container)),
         };
         cmds.id()
     }
