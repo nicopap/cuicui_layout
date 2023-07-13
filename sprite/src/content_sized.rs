@@ -62,13 +62,14 @@ impl ComputeContentParam for SpriteContentSize<'static> {
 
         #[cfg(feature = "sprite_text")]
         let cond = cond::resource_changed::<Assets<Font>>()
-            .or_else(cond::resource_changed::<Assets<Font>>())
             .or_else(changed::<Text>)
             .or_else(changed::<Text2dBounds>);
         #[cfg(not(feature = "sprite_text"))]
         let cond = || true;
 
         let cond = cond
+            .or_else(cond::resource_changed::<Assets<Image>>())
+            .or_else(cond::resource_changed::<Assets<Mesh>>())
             .or_else(changed::<Handle<Image>>)
             .or_else(changed::<Mesh2dHandle>);
 

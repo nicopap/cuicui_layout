@@ -24,7 +24,8 @@ impl ComputeContentParam for UiContentSize<'static> {
         use bevy::ecs::schedule::common_conditions as cond;
 
         let cond = cond::resource_changed::<Assets<Font>>()
-            .or_else(|c: Query<(), (Changed<UiImageSize>, With<Node>)>| !c.is_empty());
+            .or_else(|c: Query<(), (Changed<UiImageSize>, With<Node>)>| !c.is_empty())
+            .or_else(|c: Query<(), (Changed<Text>, With<Node>)>| !c.is_empty());
 
         label.run_if(require_layout_recompute.or_else(cond))
     }
