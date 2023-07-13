@@ -1,7 +1,7 @@
 use bevy::{
     ecs::{
         prelude::*,
-        query::{ROQueryItem, ReadOnlyWorldQuery, WorldQuery},
+        query::{ROQueryItem, ReadOnlyWorldQuery},
         schedule::SystemSetConfig,
         system::{assert_is_system, StaticSystemParam, SystemParam},
     },
@@ -12,8 +12,10 @@ use thiserror::Error;
 
 use crate::{
     direction::Axis, ComputeLayout, ComputeLayoutSet, Container, ContentSizedComputeSystem,
-    LeafRule, Node, Size,
+    LeafRule, Node, Root, Rule, Size,
 };
+
+type Result<T> = std::result::Result<T, BadRule>;
 
 /// Extends [`App`] to support adding [`ComputeContentSize`].
 pub trait AppContentSizeExt {
@@ -90,18 +92,18 @@ pub trait ComputeContentSize: SystemParam {
     ) -> Size<f32>;
 }
 
-type ParentQuery<'w, 's, Wq> =
-    Query<'w, 's, (Entity, Option<&'static Parent>, &'static mut Node, Wq)>;
+type BasicQuery<'w, 's, C> = Query<'w, 's, (Entity, Option<&'static Parent>, C)>;
+type NodesQuery<'w, 's> = BasicQuery<'w, 's, AnyOf<(&'static Node, &'static Root)>>;
+type ComputeQuery<'w, 's, N, S> = BasicQuery<'w, 's, (N, <S as ComputeContentParam>::Components)>;
+type ReadQuery<'w, 's, S> = ComputeQuery<'w, 's, &'static Node, S>;
+type WriteQuery<'w, 's, S> = ComputeQuery<'w, 's, &'static mut Node, S>;
 
-// TODO(perf): instead of storing in `to_update` and inserting everything
-// afterward, we should Split `to_set` in two. This would also fix the `Root`
-// problem.
 #[sysfail(log(level = "error"))]
 fn compute_content_size<S: ComputeContentParam>(
     compute_param: StaticSystemParam<S>,
-    mut to_set: ParentQuery<S::Components>,
+    mut p: ParamSet<((NodesQuery, ReadQuery<S>), WriteQuery<S>)>,
     mut to_update: Local<Vec<(Entity, Size<Option<f32>>)>>,
-) -> Result<(), BadRule>
+) -> Result<()>
 where
     for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
 {
@@ -111,12 +113,13 @@ where
         bevy::utils::get_short_name(std::any::type_name::<S>())
     );
 
-    for (entity, parent, node, components) in &to_set {
+    let (nodes, requires_update) = p.p0();
+    for (entity, parent, (node, components)) in &requires_update {
         if !node.content_sized() {
             continue;
         }
         trace!("Computing size of a node with constraints: {node:?}");
-        let size = node_content_size(parent, node, &to_set)?;
+        let size = node_content_size(parent, node, &nodes)?;
         let computed = compute_param.compute_content(components, size);
         let computed = Size {
             width: size.width.is_none().then_some(computed.width),
@@ -125,6 +128,7 @@ where
         trace!("It is: {computed:?}");
         to_update.push((entity, computed));
     }
+    let mut to_set = p.p1();
     for (node, computed) in to_update.drain(..) {
         // SAFETY: due to the above, this can only be valid
         let node = unsafe { to_set.get_component_mut::<Node>(node).unwrap_unchecked() };
@@ -139,62 +143,51 @@ struct BadRule;
 
 impl FailureMode for BadRule {
     type ID = ();
-
+    fn identify(&self) {}
     fn log_level(&self) -> LogLevel {
         LogLevel::Warn
     }
-
-    fn identify(&self) {}
-
     fn display(&self) -> Option<String> {
         Some(self.to_string())
     }
 }
 
-// TODO(bug): This breaks when the source of size is `Root`.
-// (unrelated) Note: This is tail-recursive, but I'm not sure how much that maters.
-fn parent_size<Wq: WorldQuery>(
-    ratio: f32,
-    axis: Axis,
-    node: Option<&Parent>,
-    parents: &ParentQuery<Wq>,
-) -> Result<f32, BadRule> {
-    let node = node.ok_or(BadRule)?.get();
-    let (_, parent, node, _) = parents.get(node).map_err(|_| BadRule)?;
-    let Node::Container(Container { rules, ..}) = node else {
-        return Err(BadRule);
-    };
-    match axis.relative(rules.as_ref()).main {
-        crate::Rule::Children(_) => Err(BadRule),
-        crate::Rule::Fixed(value) => Ok(ratio * *value),
-        crate::Rule::Parent(this_ratio) => parent_size(this_ratio * ratio, axis, parent, parents),
+const fn get_rules<'a>(node: (Option<&'a Node>, Option<&'a Root>)) -> Result<&'a Size<Rule>> {
+    match node {
+        (Some(Node::Container(Container { rules, .. })), _)
+        | (None, Some(Root(Container { rules, .. }))) => Ok(rules),
+        _ => Err(BadRule),
     }
 }
-fn leaf_size<Wq: WorldQuery>(
-    axis: Axis,
-    rule: LeafRule,
-    parent: Option<&Parent>,
-    parents: &ParentQuery<Wq>,
-) -> Result<Option<f32>, BadRule> {
-    match rule {
-        LeafRule::Parent(ratio) => Ok(Some(parent_size(ratio, axis, parent, parents)?)),
-        LeafRule::Fixed(value, false) => Ok(Some(value)),
-        LeafRule::Fixed(_, true) => Ok(None),
-    }
-}
-fn node_content_size<Wq: WorldQuery>(
+
+fn node_content_size(
     parent: Option<&Parent>,
     node: &Node,
-    parents: &ParentQuery<Wq>,
-) -> Result<Size<Option<f32>>, BadRule> {
+    nodes: &NodesQuery,
+) -> Result<Size<Option<f32>>> {
+    let leaf_size = |axis, rule| match rule {
+        LeafRule::Parent(ratio) => Ok(Some(parent_size(ratio, axis, parent, nodes)?)),
+        LeafRule::Fixed(value, false) => Ok(Some(value)),
+        LeafRule::Fixed(_, true) => Ok(None),
+    };
     // TODO(bug)TODO(feat): Node::Axis
     if let Node::Box(size) = node {
         Ok(Size {
-            width: leaf_size(Axis::Horizontal, size.width, parent, parents)?,
-            height: leaf_size(Axis::Vertical, size.height, parent, parents)?,
+            width: leaf_size(Axis::Horizontal, size.width)?,
+            height: leaf_size(Axis::Vertical, size.height)?,
         })
     } else {
         Err(BadRule)
+    }
+}
+fn parent_size(ratio: f32, axis: Axis, node: Option<&Parent>, nodes: &NodesQuery) -> Result<f32> {
+    let node = node.ok_or(BadRule)?.get();
+    let (_, parent, node) = nodes.get(node).map_err(|_| BadRule)?;
+    let rules = get_rules(node)?;
+    match axis.relative(rules.as_ref()).main {
+        Rule::Children(_) => Err(BadRule),
+        Rule::Fixed(value) => Ok(ratio * *value),
+        Rule::Parent(this_ratio) => parent_size(this_ratio * ratio, axis, parent, nodes),
     }
 }
 fn set_node_content_size(mut node: Mut<Node>, new: Size<Option<f32>>) {

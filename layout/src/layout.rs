@@ -203,7 +203,7 @@ impl Container {
 /// Unlike a [`Container`], a `Root` always has a fixed `size`, (`bounds`).
 #[derive(Component, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
-pub struct Root(Container);
+pub struct Root(pub(crate) Container);
 impl Root {
     /// Get the [`Container`] in `Self`.
     #[must_use]
