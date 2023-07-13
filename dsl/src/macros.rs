@@ -408,20 +408,24 @@ macro_rules! dsl {
     (@statement [$d_ty:ty, $cmds:expr] code (let $cmds_ident:ident) {$($code:tt)*} $($($t:tt)+)?) => {
         let $cmds_ident = &mut $cmds;
         $($code)*
+        // Generate the rest of the code
         $(; dsl!(@statement $cmds, $d_ty, $($t)*))?
     };
     (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) ; $($($t:tt)+)?) => {
         let mut x = <$d_ty>::default();
         dsl!(@arg x, $($args)*);
         x.insert(&mut $cmds.to_cmds());
+        // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
     (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
         let mut arg = <$d_ty>::default();
         dsl!(@arg arg, $($args)*);
         arg.node($cmds.to_cmds(), |mut cmds| {
+            // Generate code for statements inside curly braces
             dsl!(@statement [$d_ty, cmds] $($inner)*);
         })
+        // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
     (@statement [$d_ty:ty, $cmds:expr] $leaf_node:ident ( $value:expr $(, $($args:tt)*)? ) ; $($($t:tt)+)?) => {
@@ -430,21 +434,20 @@ macro_rules! dsl {
         dsl!(@arg x, $($($args)*)?);
         x.insert(&mut leaf_cmd);
         x.$leaf_node($value, &mut leaf_cmd)
+        // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
-    (@statement [$d_ty:ty, $cmds:expr] $parent_node:ident ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
-        let mut arg = <$d_ty>::default();
-        dsl!(@arg arg, $($args)*, $parent_node);
-        arg.node($cmds.to_cmds(), |mut cmds| {
-            dsl!(@statement [$d_ty, cmds] $($inner)*);
-        })
-        $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
+    (@statement [$d_ty:ty, $cmds:expr] $parent_node:ident ($($($args:tt)+)?) {$($inner:tt)*} $($t:tt)*) => {
+        // Call the @statement spawn with curly braces
+        dsl!(@statement [$d_ty, $cmds] spawn ($($($args)+,)? $parent_node) {$($inner)*} $($t)*)
     };
     (<$builder:ty> $cmds:expr, $($t:tt)*) => {{
         use $crate::{IntoEntityCommands, DslBundle};
         fn is_dsl_bundle<D: DslBundle>() {} is_dsl_bundle::<$builder>();
+        // Generate code for all statements
         dsl!(@statement [$builder, $cmds] $($t)*);
     }};
+    // Just call the match above with <Dsl>
     ($cmds:expr, $($t:tt)*) => { dsl!(<Dsl> $cmds, $($t)*) };
 }
 

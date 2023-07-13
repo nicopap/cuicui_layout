@@ -7,7 +7,7 @@ use bevy::{
 };
 use cuicui_dsl::dsl;
 use cuicui_layout::{
-    dsl::{IntoUiBundle, UiBundle},
+    dsl::IntoUiBundle,
     dsl_functions::{child, pct},
     Node, PosRect, Root, Size,
 };
@@ -131,7 +131,6 @@ impl IntoUiBundle<Space> for Space {
         }
     }
 }
-impl UiBundle for ElementBundle {}
 
 fn setup(mut cmds: Commands) {
     cmds.spawn(Camera2dBundle {

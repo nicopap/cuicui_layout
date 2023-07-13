@@ -9,103 +9,27 @@ use bevy::{
     utils::default,
 };
 use cuicui_dsl::DslBundle;
-use cuicui_layout::dsl::{ContentSized, IntoUiBundle, UiBundle};
-use cuicui_layout::{LeafRule, Node, PosRect, Size};
+use cuicui_layout::dsl::IntoUiBundle;
 
 /// An image leaf node wrapping a [`bevy::sprite::SpriteBundle`].
 ///
-/// By default, will stretch to fit the parent container.
-///
-/// If the `rule`s are set to [`LeafRule::Fixed`], then the inner image
-/// will have a fixed size equal to that of the image.
-/// If the image's size change, then the fixed size value updates to that
-/// of the new image.
+/// If a `SpriteBundle`'s layout axis is not set, it will be dynamically computed
+/// based on the image.
 #[derive(Bundle, Default)]
 pub struct SpriteBundle {
-    /// The [`cuicui_layout`] positional component.
-    pub pos_rect: PosRect,
     /// The bevy bundle.
     pub inner: sprite::SpriteBundle,
-    /// Mark this node for [`ContentSized`] size management.
-    pub content_size: ContentSized,
-    pub(crate) rules: Node,
-}
-impl SpriteBundle {
-    pub(crate) fn mut_box_size(&mut self) -> &mut Size<LeafRule> {
-        let Node::Box(size) = &mut self.rules else {
-            unreachable!("There is no way to make an `ImageBundle` with a non-box rule");
-        };
-        size
-    }
-    /// Set the [`LeafRule`] for the width of the image.
-    ///
-    /// a [`LeafRule::Parent`] will stretch the width to fit that of the
-    /// parent.
-    /// While [`LeafRule::Fixed`] — **regardless of the provided value** —
-    /// will set the value to the image's native size.
-    #[must_use]
-    pub fn width_rule(mut self, rule: LeafRule) -> Self {
-        self.mut_box_size().width = rule;
-        self
-    }
-    /// Set the [`LeafRule`] for the height of the image.
-    ///
-    /// a [`LeafRule::Parent`] will stretch the height to fit that of the
-    /// parent.
-    /// While [`LeafRule::Fixed`] — **regardless of the provided value** —
-    /// will set the value to the image's native size.
-    #[must_use]
-    pub fn height_rule(mut self, rule: LeafRule) -> Self {
-        self.mut_box_size().height = rule;
-        self
-    }
 }
 
 /// A text leaf node wrapping a [`Text2dBundle`].
 ///
-/// By default, a text node will stretch to fit the parent's size.
-///
-/// In order to have the text be bound to a fixed size, you should use
-/// [`LeafRule::Parent`] and wrap the text in another container with a [`Rule::Fixed`].
-///
-/// [`Rule::Fixed`]: cuicui_layout::Rule::Fixed
+/// If a `TextBundle`'s layout axis is not set, it will be dynamically computed
+/// based on the text's content.
 #[cfg(feature = "sprite_text")]
 #[derive(Bundle, Default)]
 pub struct TextBundle {
-    /// The [`cuicui_layout`] positional component.
-    pub pos_rect: PosRect,
     /// The bevy bundle.
     pub inner: Text2dBundle,
-    /// Mark this node for [`ContentSized`] size management.
-    pub content_size: ContentSized,
-    rules: Node,
-}
-#[cfg(feature = "sprite_text")]
-impl TextBundle {
-    pub(crate) fn mut_box_size(&mut self) -> &mut Size<LeafRule> {
-        let Node::Box(size) = &mut self.rules else {
-            unreachable!("There is no way to make an `TextBundle` with a non-box rule");
-        };
-        size
-    }
-    /// Set the width of this [`UiBundle`] to `rule`.
-    ///
-    /// If [`LeafRule::Fixed`], then the width of this layout node will fit
-    /// exactly that of the text.
-    #[must_use]
-    pub fn width_rule(mut self, rule: LeafRule) -> Self {
-        self.mut_box_size().width = rule;
-        self
-    }
-    /// Set the height of this [`UiBundle`] to `rule`.
-    ///
-    /// If [`LeafRule::Fixed`], then the height of this layout node will fit
-    /// exactly that of the text.
-    #[must_use]
-    pub fn height_rule(mut self, rule: LeafRule) -> Self {
-        self.mut_box_size().height = rule;
-        self
-    }
 }
 #[cfg(feature = "sprite_text")]
 impl From<Text> for TextBundle {
@@ -116,7 +40,7 @@ impl From<Text> for TextBundle {
 #[cfg(feature = "sprite_text")]
 impl From<Text2dBundle> for TextBundle {
     fn from(inner: Text2dBundle) -> Self {
-        Self { inner, ..Self::default() }
+        Self { inner }
     }
 }
 impl From<Handle<Image>> for SpriteBundle {
@@ -126,7 +50,7 @@ impl From<Handle<Image>> for SpriteBundle {
 }
 impl From<sprite::SpriteBundle> for SpriteBundle {
     fn from(inner: sprite::SpriteBundle) -> Self {
-        Self { inner, ..Self::default() }
+        Self { inner }
     }
 }
 
@@ -173,24 +97,6 @@ impl IntoUiBundle<SpriteDsl> for TextBundle {
         self
     }
 }
-impl UiBundle for SpriteBundle {
-    fn width_content_sized_enabled(&mut self) {
-        self.mut_box_size().width = LeafRule::Fixed(1.0);
-    }
-    fn height_content_sized_enabled(&mut self) {
-        self.mut_box_size().height = LeafRule::Fixed(1.0);
-    }
-}
-#[cfg(feature = "sprite_text")]
-impl UiBundle for TextBundle {
-    fn width_content_sized_enabled(&mut self) {
-        self.mut_box_size().width = LeafRule::Fixed(1.0);
-    }
-    fn height_content_sized_enabled(&mut self) {
-        self.mut_box_size().height = LeafRule::Fixed(1.0);
-    }
-}
-
 /// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default, Deref, DerefMut)]
 pub struct SpriteDsl<C = cuicui_layout::dsl::LayoutDsl> {

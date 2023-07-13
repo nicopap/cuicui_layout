@@ -108,6 +108,16 @@ impl fmt::Display for Flow {
     }
 }
 
+impl From<bevy::math::Vec2> for Size<f32> {
+    fn from(value: bevy::math::Vec2) -> Self {
+        Size::new(value.x, value.y)
+    }
+}
+impl From<Size<f32>> for bevy::math::Vec2 {
+    fn from(value: Size<f32>) -> Self {
+        bevy::math::Vec2::new(value.width, value.height)
+    }
+}
 impl<T: fmt::Display> fmt::Display for Size<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}×{}", self.width, self.height)

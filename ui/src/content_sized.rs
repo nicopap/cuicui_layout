@@ -6,52 +6,18 @@ use bevy::{
     ecs::{prelude::*, system::SystemParam},
     prelude::{trace, Assets, Vec2},
     text::{Font, Text, TextPipeline},
-    ui::{self, widget::UiImageSize},
+    ui::widget::UiImageSize,
 };
-use cuicui_layout::dsl::ContentSized;
-use cuicui_layout::{LeafRule, Node, Size};
+use cuicui_layout::{ComputeContentParam, ComputeContentSize, Size};
 
-/// Update the [`cuicui_layout`] [`Node::Box`] [`LeafRule::Fixed`] values of
-/// entities with a [`bevy::ui::Node`] component.
-#[allow(clippy::needless_pass_by_value)]
-pub fn update(
-    compute: TextCompute,
-    mut query: Query<
-        (&mut Node, &ContentSized, AnyOf<(&Text, &UiImageSize)>),
-        Or<(
-            Changed<ui::Node>,
-            Changed<Text>,
-            Changed<UiImageSize>,
-            Changed<ContentSized>,
-        )>,
-    >,
-) {
-    for (mut node, sized, bevy_ui) in &mut query {
-        let bevy_ui = match bevy_ui {
-            (Some(text), None) => compute.bounds(text, Vec2::INFINITY),
-            (None, Some(image)) => image.size(),
-            _ => unreachable!("This is a bevy bug"),
-        };
-        if sized.managed_axis.width {
-            if let Node::Box(Size { width, .. }) = &mut *node {
-                *width = LeafRule::Fixed(bevy_ui.x);
-            }
-        }
-        if sized.managed_axis.height {
-            if let Node::Box(Size { height, .. }) = &mut *node {
-                *height = LeafRule::Fixed(bevy_ui.y);
-            }
-        }
-    }
-}
-
-/// [`update`] parameter to compute text extents based on `cuicui_layout`, rather
-/// than `bevy_ui`'s flexbox.
 #[derive(SystemParam)]
-pub struct TextCompute<'w> {
+pub(crate) struct UiContentSize<'w> {
     fonts: Res<'w, Assets<Font>>,
 }
-impl TextCompute<'_> {
+impl ComputeContentParam for UiContentSize<'static> {
+    type Components = AnyOf<(&'static Text, &'static UiImageSize)>;
+}
+impl UiContentSize<'_> {
     /// Due to a regression in bevy 0.11, it is now impossible to access
     /// text size pre-layouting, therefore this nonsense is needed.
     fn bounds(&self, text: &Text, bounds: Vec2) -> Vec2 {
@@ -66,5 +32,32 @@ impl TextCompute<'_> {
             text.linebreak_behavior,
         );
         measure.map_or(Vec2::ZERO, |m| m.compute_size(bounds))
+    }
+}
+impl ComputeContentSize for UiContentSize<'_> {
+    type Components = AnyOf<(&'static Text, &'static UiImageSize)>;
+
+    fn compute_content(
+        &self,
+        components: (Option<&Text>, Option<&UiImageSize>),
+        set_size: Size<Option<f32>>,
+    ) -> Size<f32> {
+        let inf = f32::INFINITY;
+        let size_vec = Vec2::new(
+            set_size.width.unwrap_or(inf),
+            set_size.height.unwrap_or(inf),
+        );
+        let bevy_ui = match components {
+            (Some(text), None) => {
+                trace!("Ui Text content size to re-compute");
+                self.bounds(text, size_vec)
+            }
+            (None, Some(image)) => {
+                trace!("UiImage content size to re-compute");
+                image.size()
+            }
+            _ => unreachable!("This is a bevy bug"),
+        };
+        bevy_ui.into()
     }
 }

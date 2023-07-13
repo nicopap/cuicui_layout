@@ -58,7 +58,7 @@ pub struct TestWorkspaceReadme;
 use bevy::ecs::prelude::*;
 use bevy::prelude::{App, Camera, Plugin, Style};
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::{dsl::ContentSized, LayoutRootCamera, PosRect, Root};
+use cuicui_layout::{AppContentSizeExt, LayoutRootCamera, PosRect, Root};
 
 pub mod content_sized;
 pub mod dsl;
@@ -84,9 +84,7 @@ pub fn update_ui_camera_root(
 
 /// Set the [`Style`]'s `{min_,max_,}size.{width,height}` and `position.{left,right}`
 /// according to [`PosRect`]'s computed from [`cuicui_layout`].
-pub fn set_layout_style(
-    mut query: Query<(&mut Style, &PosRect), (Changed<PosRect>, Without<ContentSized>)>,
-) {
+pub fn set_layout_style(mut query: Query<(&mut Style, &PosRect), Changed<PosRect>>) {
     use bevy::ui::{PositionType, Val};
     query.for_each_mut(|(mut style, pos)| {
         style.position_type = PositionType::Absolute;
@@ -110,8 +108,7 @@ pub fn set_layout_style(
 ///
 /// What this does:
 ///
-/// - **Manage size of text and image elements**: UI elements spawned through [`spawn_ui`]
-///   (with the [`ContentSized`] component)
+/// - **Manage size of text and image elements**
 /// - **Manage size of the [`cuicui_layout::ScreenRoot`] container**
 /// - **Set the [`Style`] flex parameters according to [`cuicui_layout`] computed values**
 /// - **Compute [`cuicui_layout::Node`] layouts**
@@ -126,10 +123,8 @@ impl Plugin for Plug {
         use cuicui_layout::Systems::ComputeLayout;
 
         app.add_plugins(cuicui_layout::Plug::new())
-            .add_systems(
-                Update,
-                (content_sized::update, update_ui_camera_root).before(ComputeLayout),
-            )
+            .add_content_sized::<content_sized::UiContentSize>()
+            .add_systems(Update, update_ui_camera_root.before(ComputeLayout))
             .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout));
     }
 }

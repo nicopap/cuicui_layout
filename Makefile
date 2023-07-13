@@ -4,7 +4,7 @@ CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery
 .PHONY: check run pre-hook
 
 check:
-	cargo clippy $(CLIPPY_ARGS)
+	cargo clippy --workspace $(CLIPPY_ARGS)
 
 run:
 	# cargo test

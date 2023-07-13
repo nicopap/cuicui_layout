@@ -1,8 +1,6 @@
 //! The [`LayoutDsl`] type used to bring layout bundles to the [`cuicui_dsl::dsl`] macro.
 
-use bevy::prelude::{BuildChildren, Component, Deref, DerefMut, Entity};
-#[cfg(feature = "reflect")]
-use bevy::prelude::{Reflect, ReflectComponent};
+use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
 use crate::bundles::{FlowBundle, RootBundle};
@@ -11,16 +9,57 @@ use crate::{Alignment, Container, Distribution, Flow, LeafRule, Oriented, Rule, 
 #[cfg(doc)]
 use crate::{Root, ScreenRoot};
 
-pub use crate::ui_bundle::{IntoUiBundle, UiBundle};
+/// Something that can be converted into a bevy [`Bundle`].
+///
+/// Implement this trait on anything you want, then you can use [`LayoutDsl::spawn_ui`]
+/// with anything you want!
+///
+/// `Marker` is completely ignored. It only exists to make it easier for
+/// consumers of the API to extend the DSL with their own bundle.
+///
+/// # Example
+///
+/// ```
+/// # use bevy::prelude::*;
+/// use cuicui_layout::{LayoutDsl, dsl};
+/// use cuicui_layout::dsl::IntoUiBundle;
+/// use cuicui_layout::dsl_functions::px;
+///
+/// # #[derive(Component)] struct TextBundle;
+/// enum MyDsl {}
+///
+/// impl IntoUiBundle<MyDsl> for &'_ str {
+///     type Target = TextBundle;
+///
+///     fn into_ui_bundle(self) -> Self::Target {
+///         TextBundle {
+///             // ...
+///             // text: Text::from_section(self, Default::default()),
+///             // ...
+///         }
+///     }
+/// }
+///
+/// fn setup(mut cmds: Commands) {
+///
+///     dsl! {
+///         <LayoutDsl> &mut cmds,
+///         spawn_ui("Hello world", width px(350));
+///         spawn_ui("Even hi!", width px(350));
+///         spawn_ui("Howdy partner", width px(350));
+///     };
+/// }
+/// ```
+pub trait IntoUiBundle<Marker> {
+    /// The [`Bundle`] this can be converted into.
+    type Target: Bundle;
 
-/// Dynamically update the [`Node::Box`] rules fixed values of UI entities with
-/// its native content.
-#[derive(Component, Clone, Copy, Debug, Default)]
-#[component(storage = "SparseSet")]
-#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
-pub struct ContentSized {
-    /// `true` for axis that are sized by the content.
-    pub managed_axis: Size<bool>,
+    /// Convert `self` into an [`Self::Target`], will be directly inserted by
+    /// [`LayoutDsl::spawn_ui`] with an additional [`Node`] component.
+    ///
+    /// Since `Target` is inserted _after_ the [`Node`] component, you can
+    /// overwrite it by including it in the bundle.
+    fn into_ui_bundle(self) -> Self::Target;
 }
 
 /// Metadata internal to [`LayoutDsl`] to manage the state of things it
@@ -152,44 +191,18 @@ impl<C: DslBundle> LayoutDsl<C> {
         self.root = RootKind::Root;
     }
 
-    /// Spawn `ui_bundle` as an [`UiBundle`].
+    /// Spawn `ui_bundle`.
     ///
-    /// If `ui_bundle` is "content sized" (ie: `ui_bundle.content_sized()`
-    /// returns `true` **and** one of the axis for this statement wasn't
-    /// set), then it will be spawned as a child of this node, and its size
-    /// will track that of the content, rather than be defined by the layout
-    /// algorithm.
+    /// Note that axis without set rules or [`Rule::Children`]
+    /// are considered [content-sized](crate::ComputeContentSize).
     pub fn spawn_ui<M>(
         &mut self,
         ui_bundle: impl IntoUiBundle<M>,
         cmds: &mut EntityCommands,
     ) -> Entity {
-        use LeafRule::{Fixed, Parent};
-        let mut ui_bundle = ui_bundle.into_ui_bundle();
-
-        let content_defined = self.layout.size.map(|t| t.is_none());
-        if content_defined.width {
-            ui_bundle.width_content_sized_enabled();
-        }
-        if content_defined.height {
-            ui_bundle.height_content_sized_enabled();
-        }
-        if ui_bundle.content_sized() {
-            let child_node = Node::Box(Size {
-                width: if content_defined.width { Fixed(1.0) } else { Parent(1.0) },
-                height: if content_defined.height { Fixed(1.0) } else { Parent(1.0) },
-            });
-
-            let id = cmds.commands().spawn(ui_bundle).insert(child_node).id();
-            cmds.add_child(id);
-            id
-        } else {
-            let self_node = Node::Box(self.layout.size.map(LeafRule::from_rule));
-            cmds.insert(self_node)
-                .insert(ui_bundle)
-                .remove::<ContentSized>()
-                .id()
-        }
+        let ui_bundle = ui_bundle.into_ui_bundle();
+        let size = self.layout.size.map(LeafRule::from_rule);
+        cmds.insert(Node::Box(size)).insert(ui_bundle).id()
     }
 }
 impl<C: DslBundle> DslBundle for LayoutDsl<C> {

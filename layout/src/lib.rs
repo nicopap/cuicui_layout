@@ -26,11 +26,11 @@
 
 mod alignment;
 pub mod bundles;
+mod content_sized;
 mod direction;
 pub mod dsl;
 mod error;
 mod layout;
-pub mod ui_bundle;
 
 /// Functions to simplify using [`dsl::LayoutDsl`].
 pub mod dsl_functions {
@@ -38,23 +38,25 @@ pub mod dsl_functions {
 }
 use std::marker::PhantomData;
 
+use bevy::ecs::component::Tick;
 use bevy::ecs::prelude::*;
 use bevy::ecs::query::ReadOnlyWorldQuery;
+use bevy::ecs::system::SystemChangeTick;
 use bevy::prelude::{App, Children, Name, Parent, Plugin, Transform, Update, Vec2};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
 
-use error::Computed;
-
 pub use alignment::{Alignment, Distribution};
+pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};
 pub use cuicui_dsl::{dsl, DslBundle};
 pub use direction::{Flow, Oriented, Size};
-pub use dsl::ContentSized;
+pub use dsl::LayoutDsl;
 pub use error::ComputeLayoutError;
 pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
 
 use crate::layout::Layout;
+use error::Computed;
 
 /// Use this camera's logical size as the root fixed-size container for
 /// `cuicui_layout`.
@@ -93,38 +95,72 @@ impl PosRect {
     }
 }
 
-type LayoutHasChanged<F> = (
-    F,
-    Or<(With<Node>, With<Root>)>,
-    Or<(
-        Changed<Children>,
-        Changed<Node>,
-        Changed<Root>,
-        Changed<Parent>,
-    )>,
+/// Stores the tick of the last time [`compute_layout::<F>`] ran.
+#[derive(Resource)]
+pub struct LastLayoutChange<F> {
+    tick: Option<Tick>,
+    _f: PhantomData<fn(F)>,
+}
+impl<F> LastLayoutChange<F> {
+    /// The last time [`compute_layout<F>`] ran.
+    #[must_use]
+    pub const fn tick(&self) -> Option<Tick> {
+        self.tick
+    }
+}
+impl<F> Default for LastLayoutChange<F> {
+    fn default() -> Self {
+        Self { tick: None, _f: PhantomData }
+    }
+}
+
+type LayoutRef = (
+    Option<Ref<'static, Node>>,
+    Option<Ref<'static, Root>>,
+    Option<Ref<'static, Children>>,
+    Option<Ref<'static, Parent>>,
 );
+
+// TODO(bug): We need to .or_else this with the updates on `ComputeContentSize`
+/// A run condition to tell whether it's necessary to recompute layout.
+#[allow(clippy::needless_pass_by_value, clippy::must_use_candidate)]
+pub fn require_layout_recompute<F: ReadOnlyWorldQuery + 'static>(
+    nodes: Query<NodeQuery, F>,
+    anything_changed: Query<LayoutRef, (F, Or<(With<Node>, With<Root>)>)>,
+    last_layout_change: Res<LastLayoutChange<F>>,
+    system_tick: SystemChangeTick,
+    mut children_removed: RemovedComponents<Children>,
+    mut parent_removed: RemovedComponents<Parent>,
+) -> bool {
+    let Some(tick) = last_layout_change.tick else {
+        return true;
+    };
+    let this_tick = system_tick.this_run();
+    let anything_changed = anything_changed.iter().any(|q| {
+        matches!(q.0, Some(r) if r.last_changed().is_newer_than(tick, this_tick))
+            || matches!(q.1, Some(r) if r.last_changed().is_newer_than(tick, this_tick))
+            || matches!(q.2, Some(r) if r.last_changed().is_newer_than(tick, this_tick))
+            || matches!(q.3, Some(r) if r.last_changed().is_newer_than(tick, this_tick))
+    });
+    let mut children_removed = || children_removed.iter().any(|e| nodes.contains(e));
+    let mut parent_removed = || parent_removed.iter().any(|e| nodes.contains(e));
+
+    anything_changed || children_removed() || parent_removed()
+}
 
 /// Run the layout algorithm on entities with [`Node`] and [`PosRect`] components.
 ///
 /// You may set `F` to any query filter in order to limit the layouting to a
 /// subset of layout entities.
 #[sysfail(log(level = "error"))]
-pub fn compute_layout<F: ReadOnlyWorldQuery>(
+pub fn compute_layout<F: ReadOnlyWorldQuery + 'static>(
     mut to_update: Query<&'static mut PosRect, F>,
     nodes: Query<NodeQuery, F>,
     names: Query<&'static Name>,
     roots: Query<(Entity, &'static Root, &'static Children), F>,
-    anything_changed: Query<(), LayoutHasChanged<F>>,
-    mut children_removed: RemovedComponents<Children>,
-    mut parent_removed: RemovedComponents<Parent>,
+    mut last_layout_change: ResMut<LastLayoutChange<F>>,
+    system_tick: SystemChangeTick,
 ) -> Result<(), ComputeLayoutError> {
-    let nothing_changed = || anything_changed.is_empty();
-    let mut children_removed = || children_removed.iter().any(|e| nodes.contains(e));
-    let mut parent_removed = || parent_removed.iter().any(|e| nodes.contains(e));
-    if nothing_changed() && !children_removed() && !parent_removed() {
-        return Ok(()); // Nothing changed, we do nothing
-    }
-
     for (entity, root, children) in &roots {
         let root_container = *root.get();
         let bounds = root.get_size(entity, &names)?;
@@ -136,6 +172,7 @@ pub fn compute_layout<F: ReadOnlyWorldQuery>(
         bounds.set_margin(root_container.margin, &layout)?;
         layout.container(root_container, children, bounds)?;
     }
+    last_layout_change.tick = Some(system_tick.this_run());
     Ok(())
 }
 /// Update transform of things that have a `PosRect` component.
@@ -151,6 +188,15 @@ pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Chang
 pub enum Systems {
     /// The layouting system, [`compute_layout`].
     ComputeLayout,
+    /// When [`ComputeContentSize::compute_content`]  is evaulated.
+    /// [`add_content_sized`] automatically adds the relevant systems to this set.
+    ///
+    /// It is part of the [`Self::ComputeLayout`] set, but this happens just
+    /// before computing [`compute_layout`], setting the content-sized
+    /// informations.
+    ///
+    /// [`add_content_sized`]: AppContentSizeExt::add_content_sized
+    ContentSizedCompute,
 }
 
 /// Add the [`compute_layout`] system to the bevy `Update` set.
@@ -175,12 +221,21 @@ impl Plug<()> {
 
 impl<F: ReadOnlyWorldQuery + 'static> Plugin for Plug<F> {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, compute_layout::<F>.in_set(Systems::ComputeLayout));
+        app.configure_set(
+            Update,
+            Systems::ComputeLayout.run_if(require_layout_recompute::<F>),
+        )
+        .add_systems(
+            Update,
+            compute_layout::<F>
+                .in_set(Systems::ComputeLayout)
+                .after(Systems::ContentSizedCompute),
+        )
+        .init_resource::<LastLayoutChange<F>>();
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()
             .register_type::<Container>()
-            .register_type::<ContentSized>()
             .register_type::<Distribution>()
             .register_type::<Flow>()
             .register_type::<Node>()

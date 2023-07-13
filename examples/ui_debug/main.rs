@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use bevy::{asset::ChangeWatcher, prelude::*};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use cuicui_dsl::dsl;
 use cuicui_layout::{
     dsl_functions::{pct, px},
@@ -26,10 +27,8 @@ macro_rules! text {
 }
 
 fn main() {
-    // use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
         .add_plugins((
-            cuicui_layout_bevy_ui::Plug,
             DefaultPlugins
                 .set(AssetPlugin {
                     asset_folder: "../../assets".to_owned(),
@@ -38,7 +37,8 @@ fn main() {
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::INFO,
                     filter: "\
-                    cuicui_layout=debug,\
+                    cuicui_layout=trace,\
+                    cuicui_layout_bevy_ui=trace,\
                     gilrs_core=info,\
                     gilrs=info,\
                     naga=info,\
@@ -47,10 +47,11 @@ fn main() {
                     "
                     .to_string(),
                 }),
+            cuicui_layout_bevy_ui::Plug,
+            WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
         // .add_startup_system(random_bg.in_base_set(StartupSet::PostStartup))
-        // .add_plugin(WorldInspectorPlugin::default())
         .run();
 }
 

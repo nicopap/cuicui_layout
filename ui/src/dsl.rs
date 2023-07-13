@@ -3,24 +3,18 @@
 use bevy::{
     ecs::system::EntityCommands,
     prelude::{Bundle, Color, Deref, DerefMut, Entity, Handle, Image, Text, TextStyle, UiImage},
-    ui::{node_bundles as bevy_ui, BackgroundColor, BorderColor, UiRect, Val},
+    text::TextLayoutInfo,
+    ui::{
+        node_bundles as bevy_ui,
+        widget::{TextFlags, UiImageSize},
+        BackgroundColor, BorderColor, ContentSize, UiRect, Val,
+    },
     utils::default,
 };
 use cuicui_dsl::DslBundle;
-use cuicui_layout::dsl::{ContentSized, IntoUiBundle, UiBundle};
+use cuicui_layout::dsl::IntoUiBundle;
 #[cfg(doc)]
 use cuicui_layout::{LeafRule, Rule};
-
-macro_rules! impl_bundle {
-    ($t:ident) => {
-        impl From<bevy_ui::$t> for $t {
-            fn from(inner: bevy_ui::$t) -> Self {
-                #[allow(clippy::needless_update)]
-                Self { inner, ..Self::default() }
-            }
-        }
-    };
-}
 
 /// An image leaf node wrapping a [`bevy_ui::ImageBundle`].
 ///
@@ -31,11 +25,11 @@ macro_rules! impl_bundle {
 /// If the image's size change, then the fixed size value updates to that
 /// of the new image.
 #[derive(Bundle, Default)]
+#[allow(missing_docs)]
 pub struct ImageBundle {
-    /// The bevy bundle.
-    pub inner: bevy_ui::ImageBundle,
-    /// Mark this node for [`ContentSized`] size management.
-    pub content_size: ContentSized,
+    pub calculated_size: ContentSize,
+    pub image: UiImage,
+    pub image_size: UiImageSize,
 }
 
 /// A text leaf node wrapping a [`bevy_ui::TextBundle`].
@@ -45,11 +39,12 @@ pub struct ImageBundle {
 /// In order to have the text be bound to a fixed size, you should use
 /// [`LeafRule::Parent`] and wrap the text in another container with a [`Rule::Fixed`].
 #[derive(Bundle, Default)]
+#[allow(missing_docs)]
 pub struct TextBundle {
-    /// The bevy bundle.
-    pub inner: bevy_ui::TextBundle,
-    /// Mark this node for [`ContentSized`] size management.
-    pub content_size: ContentSized,
+    pub text: Text,
+    pub text_layout_info: TextLayoutInfo,
+    pub text_flags: TextFlags,
+    pub calculated_size: ContentSize,
 }
 impl From<Text> for TextBundle {
     fn from(text: Text) -> Self {
@@ -62,8 +57,25 @@ impl From<UiImage> for ImageBundle {
     }
 }
 
-impl_bundle!(ImageBundle);
-impl_bundle!(TextBundle);
+impl From<bevy_ui::ImageBundle> for ImageBundle {
+    fn from(value: bevy_ui::ImageBundle) -> Self {
+        Self {
+            calculated_size: value.calculated_size,
+            image_size: value.image_size,
+            image: value.image,
+        }
+    }
+}
+impl From<bevy_ui::TextBundle> for TextBundle {
+    fn from(value: bevy_ui::TextBundle) -> Self {
+        Self {
+            calculated_size: value.calculated_size,
+            text: value.text,
+            text_layout_info: value.text_layout_info,
+            text_flags: value.text_flags,
+        }
+    }
+}
 
 macro_rules! from_delegate_impl {
     ([$from:ty, $to:ty]) => {
@@ -101,28 +113,6 @@ impl IntoUiBundle<UiDsl> for TextBundle {
     type Target = Self;
     fn into_ui_bundle(self) -> Self::Target {
         self
-    }
-}
-impl UiBundle for ImageBundle {
-    fn width_content_sized_enabled(&mut self) {
-        self.content_size.managed_axis.width = true;
-    }
-    fn height_content_sized_enabled(&mut self) {
-        self.content_size.managed_axis.height = true;
-    }
-    fn content_sized(&self) -> bool {
-        self.content_size.managed_axis.width || self.content_size.managed_axis.height
-    }
-}
-impl UiBundle for TextBundle {
-    fn width_content_sized_enabled(&mut self) {
-        self.content_size.managed_axis.width = true;
-    }
-    fn height_content_sized_enabled(&mut self) {
-        self.content_size.managed_axis.height = true;
-    }
-    fn content_sized(&self) -> bool {
-        self.content_size.managed_axis.width || self.content_size.managed_axis.height
     }
 }
 
