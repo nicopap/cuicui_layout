@@ -95,11 +95,12 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
         &mut cmds,
         row(screen_root, "root", main_margin 100., align_start, image &bg) {
             column("menu", width px(310), height pct(100), main_margin 40., fill_main_axis, image &board) {
-                spawn_ui(title_card, "Title card", height px(100), width pct(100));
+                spawn(image &title_card, "Title card", width pct(100));
+                spawn_ui(title_card, "Title card 2", width pct(50));
                 code(let cmds) {
                     for n in &menu_buttons {
                         let name = format!("{n} button");
-                        dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(30)););
+                        dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(33)););
                     }
                 }
             }
