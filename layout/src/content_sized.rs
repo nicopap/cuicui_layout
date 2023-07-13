@@ -166,7 +166,7 @@ fn parent_size<Wq: WorldQuery>(
     };
     match axis.relative(rules.as_ref()).main {
         crate::Rule::Children(_) => Err(BadRule),
-        crate::Rule::Fixed(value) => Ok(*value),
+        crate::Rule::Fixed(value) => Ok(ratio * *value),
         crate::Rule::Parent(this_ratio) => parent_size(this_ratio * ratio, axis, parent, parents),
     }
 }
