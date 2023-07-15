@@ -10,18 +10,16 @@ use cuicui_layout::{
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
 
 macro_rules! text {
-    ($handle:expr, $value:expr) => {
+    ($value:expr) => {
         Text::from_section($value, TextStyle {
-            font: $handle.clone(),
             font_size: 30.0,
-            ..Default::default()
+            ..default()
         })
     };
-    ($handle:expr, $($tail:tt)*) => {
+    ($($tail:tt)*) => {
         Text::from_section(format!($($tail)*), TextStyle {
-            font: $handle.clone(),
             font_size: 30.0,
-            ..Default::default()
+            ..default()
         })
     };
 }
@@ -86,8 +84,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
         "CREDITS",
         "QUIT GAME",
     ];
-    let font = serv.load("adobe_sans.ttf");
-    let bg = serv.load("background.png");
+    let bg = serv.load("background.jpg");
     let board = serv.load("board.png");
     let button = serv.load("button.png");
 
@@ -100,7 +97,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
                 code(let cmds) {
                     for n in &menu_buttons {
                         let name = format!("{n} button");
-                        dsl!(cmds, spawn_ui(text!(font, *n), named name, image &button, height px(33)););
+                        dsl!(cmds, spawn_ui(text!(*n), named name, image &button, height px(33)););
                     }
                 }
             }

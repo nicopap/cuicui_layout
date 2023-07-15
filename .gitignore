@@ -1,3 +1,4 @@
 /Cargo.lock
-/assets
+/fat_assets
 /.cargo/config.toml
+/target

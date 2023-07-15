@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="1432" version="1.1" viewBox="-200 0 1200 1432" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<defs>
+		<linearGradient id="a">
+			<stop stop-color="#ac302a" offset="0"/>
+			<stop stop-color="#ac302a" stop-opacity="0" offset="1"/>
+		</linearGradient>
+		<radialGradient id="g" cx="102" cy="717" r="305" gradientTransform="matrix(2.01 0 0 2.35 -103 -966)" gradientUnits="userSpaceOnUse">
+			<stop offset="0"/>
+			<stop stop-opacity=".568" offset="1"/>
+		</radialGradient>
+		<filter id="i" x="-.255" y="-.109" width="1.51" height="1.22" color-interpolation-filters="sRGB">
+			<feGaussianBlur stdDeviation="64.851404"/>
+		</filter>
+		<radialGradient id="f" cx="94.1" cy="373" r="298" gradientTransform="matrix(2.04 0 0 1.79 -193 -280)" gradientUnits="userSpaceOnUse" xlink:href="#a"/>
+		<pattern id="h" width="596.54307" height="25.10318" patternTransform="translate(94.9 156)" patternUnits="userSpaceOnUse" fill="none" >
+			<path d="m0 1.5h597" stroke="url(#f)" stroke-width="2"/>
+			<path d="m0 12.7h597" stroke="url(#f)" stroke-width="2"/>
+			<path d="m0 7.27h597" stroke="url(#f)" stroke-width="3"/>
+			<path d="m0 18.5h597" stroke="url(#f)"/>
+			<path d="m0 23.6h597" stroke="url(#f)" stroke-width="3"/>
+		</pattern>
+	</defs>
+	<rect x="99.6" y=".9" width="610" height="1432" fill="url(#h)"/>
+	<rect x="99.6" y=".9" width="610" height="1432" fill="url(#g)" filter="url(#i)"/>
+	<g fill="#ac302a" font-family="monospace" letter-spacing="0px" word-spacing="0px">
+		<text x="110.86839" y="1176.6404" font-size="18.3px" stroke-width=".454" xml:space="preserve"><tspan x="110.86839" y="1176.6404" stroke-width=".454">TRN_TCLAS_B00B5</tspan></text>
+		<text x="115.45599" y="1226.1476" font-size="40.4px" xml:space="preserve"><tspan x="115.45599" y="1226.1476">0.5.0</tspan></text>
+		<text x="112.94373" y="1324.4353" font-size="11.6px" stroke-width=".288" xml:space="preserve"><tspan x="112.94373" y="1324.4353" stroke-width=".288">UNAUTHERIZED ACCESS PLEASE CONTACT LOCAL MAINAINER</tspan></text>
+		<text x="114.76633" y="1369.8308" font-size="14px" stroke-width=".346" xml:space="preserve"><tspan x="114.76633" y="1369.8308" stroke-width=".346">DO NOT PROCEED FURTHER</tspan></text>
+	</g>
+	<path d="m110 1189h578" fill="none" stroke="#ac302a" stroke-width="3"/>
+	<g transform="matrix(.707 0 0 .707 37.9 41.7)">
+		<text x="112.88073" y="78.542366" fill="#ac302a" font-family="monospace" font-size="18.3px" letter-spacing="0px" stroke-width=".454" word-spacing="0px" xml:space="preserve"><tspan x="112.88073" y="78.542366">4238352 10200 00</tspan><tspan x="112.88073" y="101.43562">XX         v.0001203</tspan></text>
+		<rect x="98.5" y="57.3" width="148" height="53.3" fill="none" stroke="#ac302a" stroke-width="3"/>
+	</g>
+	<g transform="matrix(.707 0 0 .707 40.6 41.7)">
+		<text x="106.19772" y="33.025253" fill="#ac302a" font-family="monospace" font-size="18.3px" letter-spacing="0px" stroke-width=".454" word-spacing="0px" xml:space="preserve"><tspan x="106.19772" y="33.025253" stroke-width=".454">f00ad0cd9c148ad5affb7e7800fd3b05    v74394</tspan></text>
+		<rect x="94.6" y="6.15" width="332" height="40.4" fill="none" stroke="#ac302a" stroke-width="3"/>
+	</g>
+	<path d="m94 1432v-1432" fill="none" stroke="#ac302a" stroke-width="3"/>
+	<path d="m721 1432v-1432" fill="none" stroke="#ac302a" stroke-width="3"/>
+</svg>
