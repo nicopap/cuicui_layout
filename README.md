@@ -97,8 +97,8 @@ First add your chosen integration crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cuicui_layout_bevy_ui = "0.4.0"
-cuicui_layout = "0.4.0"
+cuicui_layout_bevy_ui = "0.5.0"
+cuicui_layout = "0.5.0"
 ```
 
 Then, use `cuicui_layout` in your crate:
@@ -236,7 +236,7 @@ and whether they really do anything, so I wont' adventure an asnwer.
 
 | bevy | latest supporting version      |
 |------|-------|
-| 0.11 | 0.4.0 |
+| 0.11 | 0.5.0 |
 | 0.10 | 0.3.0 |
 
 ## License
