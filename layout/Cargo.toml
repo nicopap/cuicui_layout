@@ -25,5 +25,5 @@ cuicui_dsl.workspace = true
 pre-release-replacements = [
   {file="../README.md", search="cuicui_layout = .*", replace="cuicui_layout = \"{{version}}\""},
   {file="../README.md", search="cuicui_layout_bevy_ui = .*", replace="cuicui_layout_bevy_ui = \"{{version}}\""},
-  {file="../README.md", search="\\| 0.11 \\| 0.4.0 \\|", replace="| 0.11 | {{version}} |"},
+  {file="../README.md", search="\\| 0.11 \\| [0-9.]* \\|", replace="| 0.11 | {{version}} |"},
 ]
