@@ -20,3 +20,10 @@ thiserror = "1"
 bevy_mod_sysfail.workspace = true
 bevy = { version = "0.11", default-features = false }
 cuicui_dsl.workspace = true
+
+[package.metadata.release]
+pre-release-replacements = [
+  {file="../README.md", search="cuicui_layout = .*", replace="cuicui_layout = \"{{version}}\""},
+  {file="../README.md", search="cuicui_layout_bevy_ui = .*", replace="cuicui_layout_bevy_ui = \"{{version}}\""},
+  {file="../README.md", search="\\| 0.11 \\| 0.4.0 \\|", replace="| 0.11 | {{version}} |"},
+]
