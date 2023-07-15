@@ -141,9 +141,9 @@ fn setup(mut cmds: Commands) {
     cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
     dsl! {
         &mut cmds,
-        column("root", screen_root, fill_main_axis, main_margin 50., cross_margin 100.) {
+        column("root", screen_root, main_margin 50., cross_margin 100.) {
             spawn_ui(Space(10), "spacer1");
-            row("horiz_cont1", fill_main_axis, width pct(85), height child(1.5), main_margin 30.) {
+            row("horiz_cont1", width pct(85), height child(1.5), main_margin 30.) {
                 spawn_ui(Fixed(10, 10), "h1_1_fix");
                 spawn_ui(Fixed(30, 10), "h1_2_fix");
                 spawn_ui(Fixed(50, 20), "h1_3_fix");
@@ -152,19 +152,19 @@ fn setup(mut cmds: Commands) {
             }
             spawn_ui(Fixed(10, 20), "fix1");
             spawn_ui(Fixed(40, 30), "fix2");
-            row("horiz_cont2", height child(1.5), main_margin 30.) {
+            row("horiz_cont2", distrib_start, height child(1.5), main_margin 30.) {
                 spawn_ui(Fixed(10, 14), "h2_1_fix");
                 spawn_ui(Fixed(12, 12), "h2_2_fix");
                 spawn_ui(Fixed(14, 10), "h2_3_fix");
             }
-            row("horiz_cont3", fill_main_axis, width pct(100), height child(1.5), main_margin 30.) {
+            row("horiz_cont3", width pct(100), height child(1.5), main_margin 30.) {
                 spawn_ui(Space(4), "spacer5");
                 // row("horiz_cont4", fill_main) {
                 //     spawn_ui(Fixed(10, 14), "h4_1" );
                 //     spawn_ui(Fixed(12, 12), "h4_2" );
                 //     spawn_ui(Fixed(14, 10), "h4_3" );
                 // }
-                column("vert_cont1", align_start, fill_main_axis, height child(1.5), main_margin 30., cross_margin 5.0) {
+                column("vert_cont1", align_start, height child(1.5), main_margin 30., cross_margin 5.0) {
                     spawn_ui(Fixed(10, 21), "v1_1_fix");
                     spawn_ui(Fixed(12, 12), "v1_2_fix");
                     spawn_ui(Fixed(14, 20), "v1_3_fix");
@@ -180,7 +180,7 @@ fn setup(mut cmds: Commands) {
                     spawn_ui(Fixed(18, 12), "v2_5_fix");
                     spawn_ui(Fixed(20, 20), "v2_6_fix");
                 }
-                column("vert_cont3", align_end, height child(1.5), main_margin 30., cross_margin 5.0) {
+                column("vert_cont3", distrib_start, align_end, height child(1.5), main_margin 30., cross_margin 5.0) {
                     spawn_ui(Fixed(10, 21), "v3_1_fix");
                     spawn_ui(Fixed(12, 12), "v3_2_fix");
                     spawn_ui(Fixed(14, 20), "v3_3_fix");

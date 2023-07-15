@@ -35,8 +35,8 @@ fn main() {
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::INFO,
                     filter: "\
-                    cuicui_layout=debug,\
-                    cuicui_layout_bevy_ui=debug,\
+                    cuicui_layout=info,\
+                    cuicui_layout_bevy_ui=info,\
                     gilrs_core=info,\
                     gilrs=info,\
                     naga=info,\
@@ -90,8 +90,8 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 
     dsl! {
         &mut cmds,
-        row(screen_root, "root", main_margin 100., align_start, image &bg) {
-            column("menu", width px(310), height pct(100), main_margin 40., fill_main_axis, image &board) {
+        row(screen_root, "root", main_margin 100., distrib_start, align_start, image &bg) {
+            column("menu", width px(310), height pct(100), main_margin 40., image &board) {
                 spawn(image &title_card, "Title card", width pct(100));
                 spawn_ui(title_card, "Title card 2", width pct(50));
                 code(let cmds) {

@@ -4,9 +4,9 @@ use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
 use crate::bundles::{LayoutBundle, RootBundle};
-use crate::{Alignment, Container, Distribution, Flow, LeafRule, Oriented, Rule, Size};
+use crate::{Alignment, Container, Distribution, Flow, LeafRule, Node, Oriented, Rule, Size};
 #[cfg(doc)]
-use crate::{Node, Root, ScreenRoot};
+use crate::{Root, ScreenRoot};
 
 /// Something that can be converted into a bevy [`Bundle`].
 ///
@@ -73,7 +73,7 @@ pub struct Layout {
     pub flow: Flow,
     /// Default to [`Alignment::Center`].
     pub align: Alignment,
-    /// Default to [`Distribution::Start`].
+    /// Default to [`Distribution::FillMain`].
     pub distrib: Distribution,
     /// The [margin](Container::margin) size.
     pub margin: Oriented<f32>,
@@ -85,7 +85,7 @@ impl Default for Layout {
     fn default() -> Self {
         Layout {
             align: Alignment::Center,
-            distrib: Distribution::Start,
+            distrib: Distribution::FillMain,
             margin: Oriented::default(),
             size: Size::all(None),
             flow: Flow::Horizontal,
@@ -113,7 +113,17 @@ enum RootKind {
     None,
 }
 
-/// A wrapper around [`EntityCommands`] with additional  layouting information.
+/// The [`DslBundle`] for layouting.
+///
+/// The defaults are:
+///
+/// - For containers: Child sized, meaning a container node has the minimum size
+///   to fit all its children.
+/// - [`Distribution::FillMain`]
+/// - [`Alignment::Center`]
+///
+/// For terminal nodes (spawned through `spawn` or `spawn_ui`) the default
+/// size is [`LeafRule::Fixed(0.)`], or content-sized.
 ///
 /// [`EntityCommands`]: bevy::ecs::system::EntityCommands
 #[derive(Default, Deref, DerefMut)]
@@ -143,17 +153,19 @@ impl<C: DslBundle> LayoutDsl<C> {
     pub fn row(&mut self) {
         self.flow(Flow::Horizontal);
     }
+    /// Push children of this [`Node`] to the start of the main flow axis,
+    /// the default is [`Distribution::FillMain`].
+    pub fn distrib_start(&mut self) {
+        self.layout.distrib = Distribution::Start;
+    }
     /// Push children of this [`Node`] to the end of the main flow axis,
-    /// the default is [`Distribution::Start`].
-    ///
-    /// > **Warning**: This [`Node`] **Must not** be [`Rule::Children`] on the main flow axis.
+    /// the default is [`Distribution::FillMain`].
     pub fn distrib_end(&mut self) {
         self.layout.distrib = Distribution::End;
     }
     /// Distribute the children of this [`Node`] to fill this [`Container`]'s main flow axis.
-    /// the default is [`Distribution::Start`].
     ///
-    /// > **Warning**: This [`Node`] **Must not** be [`Rule::Children`] on the main flow axis.
+    /// Note that this is the default.
     pub fn fill_main_axis(&mut self) {
         self.layout.distrib = Distribution::FillMain;
     }
