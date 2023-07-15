@@ -109,24 +109,12 @@ impl Default for ElementBundle {
 #[derive(Component, Clone)]
 struct Fixed(i32, i32);
 
-#[derive(Component, Clone)]
-struct Space(i8);
-
 impl IntoUiBundle<Fixed> for Fixed {
     type Target = ElementBundle;
     fn into_ui_bundle(self) -> Self::Target {
         #[allow(clippy::cast_precision_loss)]
         ElementBundle {
             node: Node::fixed(Size::new(self.0 as f32, self.1 as f32)),
-            ..default()
-        }
-    }
-}
-impl IntoUiBundle<Space> for Space {
-    type Target = ElementBundle;
-    fn into_ui_bundle(self) -> Self::Target {
-        ElementBundle {
-            node: Node::spacer_percent(f32::from(self.0)).unwrap(),
             ..default()
         }
     }
@@ -142,12 +130,11 @@ fn setup(mut cmds: Commands) {
     dsl! {
         &mut cmds,
         column("root", screen_root, main_margin 50., cross_margin 100.) {
-            spawn_ui(Space(10), "spacer1");
             row("horiz_cont1", width pct(85), height child(1.5), main_margin 30.) {
                 spawn_ui(Fixed(10, 10), "h1_1_fix");
                 spawn_ui(Fixed(30, 10), "h1_2_fix");
                 spawn_ui(Fixed(50, 20), "h1_3_fix");
-                spawn_ui(Space(10), "h1_4_spacer");
+                empty_pct(10, "h1_4_spacer");
                 spawn_ui(Fixed(51, 32), "h1_5_fix");
             }
             spawn_ui(Fixed(10, 20), "fix1");
@@ -158,7 +145,7 @@ fn setup(mut cmds: Commands) {
                 spawn_ui(Fixed(14, 10), "h2_3_fix");
             }
             row("horiz_cont3", width pct(100), height child(1.5), main_margin 30.) {
-                spawn_ui(Space(4), "spacer5");
+                empty_pct(4, "spacer5");
                 // row("horiz_cont4", fill_main) {
                 //     spawn_ui(Fixed(10, 14), "h4_1" );
                 //     spawn_ui(Fixed(12, 12), "h4_2" );
@@ -188,9 +175,8 @@ fn setup(mut cmds: Commands) {
                     spawn_ui(Fixed(18, 12), "v3_5_fix");
                     spawn_ui(Fixed(20, 20), "v3_6_fix");
                 }
-                spawn_ui(Space(4), "spacer4");
+                empty_pct(4, "spacer4");
             }
-            spawn_ui(Space(10), "spacer3");
         }
     }
 }

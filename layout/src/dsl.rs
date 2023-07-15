@@ -208,11 +208,27 @@ impl<C: DslBundle> LayoutDsl<C> {
         self.root = RootKind::Root;
     }
 
+    /// Spawn an empty [`Node::Axis`] with the `main` axis set to `percent`%
+    /// of parent's size,
+    /// and the `cross` axis to 0.
+    ///
+    /// # Panics
+    /// If `percent` is greater than 100. It would mean this node overflows its parent.
+    pub fn empty_pct(&mut self, percent: u8, cmds: &mut EntityCommands) -> Entity {
+        assert!(percent <= 100);
+        let node = Node::Axis(Oriented {
+            main: LeafRule::Parent(f32::from(percent) / 100.0),
+            cross: LeafRule::Fixed(0.0, false),
+        });
+        cmds.insert(LayoutBundle { node, ..Default::default() })
+            .id()
+    }
+
     /// Spawn an empty [`Node::Axis`] with the `main` axis set to `pixels` pixels
     /// and the `cross` axis to 0.
     pub fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
         let node = Node::Axis(Oriented {
-            main: LeafRule::Fixed(pixels as f32, false),
+            main: LeafRule::Fixed(f32::from(pixels), false),
             cross: LeafRule::Fixed(0.0, false),
         });
         cmds.insert(LayoutBundle { node, ..Default::default() })
