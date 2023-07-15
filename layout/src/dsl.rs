@@ -208,6 +208,16 @@ impl<C: DslBundle> LayoutDsl<C> {
         self.root = RootKind::Root;
     }
 
+    /// Spawn an empty [`Node::Axis`] with the `main` axis set to `pixels` pixels
+    /// and the `cross` axis to 0.
+    pub fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
+        let node = Node::Axis(Oriented {
+            main: LeafRule::Fixed(pixels as f32, false),
+            cross: LeafRule::Fixed(0.0, false),
+        });
+        cmds.insert(LayoutBundle { node, ..Default::default() })
+            .id()
+    }
     /// Spawn `ui_bundle`.
     ///
     /// Note that axis without set rules or [`Rule::Children`]
