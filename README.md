@@ -85,19 +85,57 @@ a lot of things are going to break a lot.
     - Using a custom renderer or want your UI to be part of the 3D environment?
       Build on top of [`cuicui_layout`] itself then!
 2. Add the chosen crate as a dependency to your crate. `cargo add cuicui_layout_bevy_ui`
-3. Use the [`layout!`] macro to build a UI (text representation coming soon).
+3. Use the [`dsl!`] macro to build a UI (text representation coming soon).
 4. That's it! You are now using `cuicui_layout`, congratulations!
-   Make sure to check the [`LayoutType`]
+   Make sure to check the [`LayoutDsl`]
    docs to learn the current capabilities of `cuicui_layout`.
 
 Please note that `cuicui_layout` won't magically make sprite components work in
 UI nodes.
 
+First add your chosen integration crate to your `Cargo.toml`:
+
+```toml
+[dependencies]
+cuicui_layout_bevy_ui = "0.4.0"
+cuicui_layout = "0.4.0"
+```
+
+Then, use `cuicui_layout` in your crate:
+
+```rust,no_run
+use bevy::prelude::*;
+use cuicui_layout::{dsl, LayoutRootCamera, dsl_functions::*};
+use cuicui_layout_bevy_ui::UiDsl as Dsl;
+
+fn main() {
+    App::new().add_plugins((DefaultPlugins, cuicui_layout_bevy_ui::Plugin))
+        .add_systems(Startup, setup)
+        .run();
+}
+fn setup(mut commands: Commands) {
+    // Please make sure to add `LayoutRootCamera` to your camera
+    commands.spawn((Camera2dBundle::default(), LayoutRootCamera));
+
+    dsl! { &mut commands,
+        // Make sure to use `screen_root`
+        row(screen_root) {
+            // The `empty_px` here is to center the text box
+            empty_px(0);
+            row(main_margin 9., cross_margin 9., border Color::CYAN, border_px 5, bg Color::NAVY) {
+                spawn_ui("Hello world!");
+            }
+            empty_px(0);
+        }
+    };
+}
+```
+
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
-[`LayoutType`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutType.html
-[`layout!`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.layout.html
+[`LayoutDsl`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html
+[`dsl!`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html
 
 ## `cuicui_layout` crates
 
@@ -151,7 +189,7 @@ In fact, I will forecefully push cuicui's layout algorithm in your head
 in two short bullet points.
 
 - A node can be a `Node::Container` and distribute its children
-  along a `Direction` either by evenly spacing them (`Distribution::FillParent`)
+  along a `Direction` either by evenly spacing them (`Distribution::FillMain`)
   or putting them directly one after another (`Distribution::Start`).
 - A `Container`'s size can be expressed as a static value, a fraction
   of the size of what contains it, or a multiple of what it contains.
