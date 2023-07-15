@@ -2,7 +2,10 @@
 //! components.
 use bevy::{
     ecs::system::EntityCommands,
-    prelude::{Bundle, Color, Deref, DerefMut, Entity, Handle, Image, Text, TextStyle, UiImage},
+    prelude::{
+        BuildChildren, Bundle, Color, Deref, DerefMut, Entity, Handle, Image, NodeBundle, Text,
+        TextStyle, UiImage,
+    },
     text::TextLayoutInfo,
     ui::{
         node_bundles as bevy_ui,
@@ -131,10 +134,22 @@ pub struct UiDsl<C = cuicui_layout::dsl::LayoutDsl> {
 impl<C> UiDsl<C> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.
+    ///
+    /// Due to a limitation of CSS, border will be spawned as a child of the
+    /// actual node entity.
+    ///
+    /// This is because it would be otherwise impossible to arrange children
+    /// independently of parent properties.
     pub fn border_px(&mut self, pixels: u16) {
         self.border_px = Some(pixels);
     }
     /// Set the node's border color.
+    ///
+    /// Due to a limitation of CSS, border will be spawned as a child of the
+    /// actual node entity.
+    ///
+    /// This is because it would be otherwise impossible to arrange children
+    /// independently of parent properties.
     pub fn border(&mut self, color: Color) {
         self.border_color = Some(color.into());
     }
@@ -158,11 +173,21 @@ impl<C: DslBundle> DslBundle for UiDsl<C> {
         if let Some(background_color) = self.bg_color.take() {
             node_bundle.background_color = background_color;
         }
-        if let Some(border_color) = self.border_color.take() {
-            node_bundle.border_color = border_color;
-        }
-        if let Some(pixels) = self.border_px {
-            node_bundle.style.border = UiRect::all(Val::Px(f32::from(pixels)));
+        if let (Some(pixels), Some(border_color)) = (self.border_px, self.border_color.take()) {
+            let child_bundle = NodeBundle {
+                border_color,
+                style: bevy::ui::Style {
+                    position_type: bevy::ui::PositionType::Absolute,
+                    width: Val::Percent(100.),
+                    height: Val::Percent(100.),
+                    border: UiRect::all(Val::Px(f32::from(pixels))),
+                    ..default()
+                },
+                ..default()
+            };
+            cmds.with_children(|c| {
+                c.spawn(child_bundle);
+            });
         }
         match self.bg_image.take() {
             Some(image) => cmds.insert(ImageBundle::from(image)).insert(node_bundle),
