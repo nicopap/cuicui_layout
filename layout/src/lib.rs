@@ -58,8 +58,7 @@ pub use error::ComputeLayoutError;
 pub use labels::{ComputeLayout, ComputeLayoutSet, ContentSizedComputeSystem};
 pub use layout::{Container, LeafRule, Node, NodeQuery, Root, Rule};
 
-/// Use this camera's logical size as the root fixed-size container for
-/// `cuicui_layout`.
+/// Use this camera's logical size as the root container size.
 ///
 /// Note that it is an error to have more than a single camera with this
 /// component.
@@ -95,13 +94,13 @@ impl PosRect {
     }
 }
 
-/// Stores the tick of the last time [`compute_layout::<F>`] ran.
+/// Stores the tick of the last time [`compute_layout`] ran.
 #[derive(Resource, Default)]
 pub struct LastLayoutChange {
     tick: Option<Tick>,
 }
 impl LastLayoutChange {
-    /// The last time [`compute_layout<F>`] ran.
+    /// The last time [`compute_layout`] ran.
     #[must_use]
     pub const fn tick(&self) -> Option<Tick> {
         self.tick
@@ -115,7 +114,6 @@ type LayoutRef = (
     Option<Ref<'static, Parent>>,
 );
 
-// TODO(bug): We need to .or_else this with the updates on `ComputeContentSize`
 /// A run condition to tell whether it's necessary to recompute layout.
 #[allow(clippy::needless_pass_by_value, clippy::must_use_candidate)]
 pub fn require_layout_recompute(
@@ -142,10 +140,7 @@ pub fn require_layout_recompute(
     anything_changed || children_removed() || parent_removed()
 }
 
-/// Run the layout algorithm on entities with [`Node`] and [`PosRect`] components.
-///
-/// You may set `F` to any query filter in order to limit the layouting to a
-/// subset of layout entities.
+/// Run the layout algorithm.
 #[sysfail(log(level = "error"))]
 pub fn compute_layout(
     mut to_update: Query<&'static mut PosRect>,
@@ -178,7 +173,14 @@ pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Chang
     }
 }
 
-/// Add the [`compute_layout`] system to the bevy `Update` set.
+/// Add layout-related sets and systems to the `Update` schedule.
+///
+/// This adds:
+/// - [`compute_layout`] system as member of [`ComputeLayout`] and
+///   [`ComputeLayoutSet`].
+/// - [`ComputeLayout`]: this set only contains `compute_layout`.
+/// - [`ComputeLayoutSet`]: contains `compute_layout` and
+///   [content-sized](ComputeContentSize) systems.
 ///
 /// ## Features
 ///

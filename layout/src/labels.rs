@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 
 use bevy::prelude::SystemSet;
 
-/// The layouting systems, [`compute_layout`], just this system as added by [`Plugin`].
+/// Mark [`compute_layout`] as added by [`Plugin`].
 ///
 /// Consider using [`ComputeLayoutSet`] instead. `ComputeLayout` marks
 /// `compute_layout` only, while `ComputeLayoutSet` also includes the
@@ -14,15 +14,17 @@ use bevy::prelude::SystemSet;
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub struct ComputeLayout;
 
-/// The layouting systems, [`compute_layout`] and systems added by [`add_content_sized`].
+/// [`compute_layout`] and systems added by [`add_content_sized`].
+///
+/// This first runs the systems updating the size of content-dependent nodes
+/// then run the global layouting system.
 ///
 /// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
 /// [`compute_layout`]: crate::compute_layout
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub struct ComputeLayoutSet;
 
-/// When [`ComputeContentSize::compute_content`]  is evaulated.
-/// [`add_content_sized`] automatically adds the relevant systems to this set.
+/// The system added by [`add_content_sized`].
 ///
 /// It is part of [`ComputeLayoutSet`], but this happens just
 /// before [`compute_layout`], setting the content-sized

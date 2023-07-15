@@ -196,11 +196,12 @@ impl Container {
     }
 }
 
-/// A root [`Container`]. This acts as a [`Container`], but layouting "starts" from it.
+/// A root [`Container`].
 ///
-/// This is a marker [`Component`] used in [`crate::compute_layout`] system.
+/// This acts as a [`Container`], but layouting "starts" from it.
 ///
-/// Unlike a [`Container`], a `Root` always has a fixed `size`, (`bounds`).
+/// Unlike a [`Container`], a `Root` never has a parent and its axis
+/// are always [`Rule::Fixed`].
 #[derive(Component, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct Root(pub(crate) Container);
@@ -263,8 +264,7 @@ impl Root {
     }
 }
 
-/// A [`Component`] integrating the attached [`Entity`] into the `cuicui_layout`
-/// layouting algorithm.
+/// A [`Component`] integrating the attached [`Entity`] in `cuicui_layout`.
 #[derive(Component, Clone, Copy, Debug)]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub enum Node {

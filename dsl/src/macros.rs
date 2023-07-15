@@ -9,6 +9,22 @@
 /// The crate-level doc for this has a nice example, you can check it out:
 /// [`crate`].
 ///
+/// ## Cheat sheet
+///
+/// You already know how to use `dsl!`? here are the quick links:
+///
+/// - [**dsl statements**](#dsl-statements):
+///   - [**spawn**](#spawn)
+///   - [**leaf node**](#leaf-node)
+///   - [**parent node**](#parent-node)
+///   - [**code**](#code)
+/// - [**dsl methods**](#dsl-methods):
+///   - [**name literal**](#name-literal)
+///   - [**bare**](#method-calls)
+///   - [**field setting**](#method-calls)
+///   - [**single argument**](#method-calls)
+///   - [**multiple arguments**](#method-calls)
+///
 /// ## Extending `dsl!`
 ///
 /// Since `dsl!` is straight up nothing more than sugar on top of rust's
@@ -409,7 +425,7 @@ macro_rules! dsl {
         let $cmds_ident = &mut $cmds;
         $($code)*
         // Generate the rest of the code
-        $(; dsl!(@statement $cmds, $d_ty, $($t)*))?
+        $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
     (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) ; $($($t:tt)+)?) => {
         let mut x = <$d_ty>::default();

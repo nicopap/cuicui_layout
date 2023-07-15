@@ -73,6 +73,10 @@ where
 }
 
 /// A [`SystemParam`] to compute the size of content-sized layout [`Node`]s.
+///
+/// In order to compute the size of content-sized nodes,
+/// you should also define a [`ComputeContentParam`] and add it to the app
+/// using [`AppContentSizeExt::add_content_sized`].
 pub trait ComputeContentSize: SystemParam {
     /// Components of the thing which content affect the node's size.
     ///
