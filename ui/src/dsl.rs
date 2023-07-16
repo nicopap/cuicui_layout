@@ -143,6 +143,11 @@ impl<C> UiDsl<C> {
     pub fn border_px(&mut self, pixels: u16) {
         self.border_px = Some(pixels);
     }
+    /// Set the node's border [color](Self::border_color) and [width](Self::border_px).
+    pub fn border(&mut self, pixels: u16, color: Color) {
+        self.border_px(pixels);
+        self.border_color(color);
+    }
     /// Set the node's border color.
     ///
     /// Due to a limitation of CSS, border will be spawned as a child of the
@@ -150,7 +155,7 @@ impl<C> UiDsl<C> {
     ///
     /// This is because it would be otherwise impossible to arrange children
     /// independently of parent properties.
-    pub fn border(&mut self, color: Color) {
+    pub fn border_color(&mut self, color: Color) {
         self.border_color = Some(color.into());
     }
     /// Set the node's background color.
