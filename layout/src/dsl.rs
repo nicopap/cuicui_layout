@@ -170,6 +170,12 @@ impl<C: DslBundle> LayoutDsl<C> {
         self.layout.distrib = Distribution::FillMain;
     }
 
+    /// Set both the [cross][Self::cross_margin] and [main][Self::main_margin]
+    /// margins to `pixels`
+    pub fn margin(&mut self, pixels: f32) {
+        self.layout.margin.main = pixels;
+        self.layout.margin.cross = pixels;
+    }
     /// Set this [`Container`]'s margin on the main flow axis.
     pub fn main_margin(&mut self, pixels: f32) {
         self.layout.margin.main = pixels;
