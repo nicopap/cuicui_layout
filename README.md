@@ -77,23 +77,16 @@ a lot of things are going to break a lot.
 
 ## Using `cuicui_layout`
 
-1. Chose which crate you want to use:
-    - Interested in a ready-made UI library on top of `bevy_ui`? [`cuicui_layout_bevy_ui`] is for you!
-    - Want more flexibility? Using `cuicui_layout` on top of `bevy_sprite` will let you
-      integrate your UI with a lot of 3rd party crates that only work with sprites!
-      [`cuicui_layout_bevy_sprite`] is for you!
-    - Using a custom renderer or want your UI to be part of the 3D environment?
-      Build on top of [`cuicui_layout`] itself then!
-2. Add the chosen crate as a dependency to your crate. `cargo add cuicui_layout_bevy_ui`
-3. Use the [`dsl!`] macro to build a UI (text representation coming soon).
-4. That's it! You are now using `cuicui_layout`, congratulations!
-   Make sure to check the [`LayoutDsl`]
-   docs to learn the current capabilities of `cuicui_layout`.
+First, chose which crate you want to use:
 
-Please note that `cuicui_layout` won't magically make sprite components work in
-UI nodes.
+- Interested in a ready-made UI library on top of `bevy_ui`? [`cuicui_layout_bevy_ui`] is for you.
+- Want more flexibility? Using [`cuicui_layout`] on top of `bevy_sprite` will let you
+  integrate your UI with a lot of 3rd party crates that only work with sprites.
+  [`cuicui_layout_bevy_sprite`] is for you.
+- Using a custom renderer or want your UI to be part of the 3D environment?
+  Build on top of [`cuicui_layout`] itself then.
 
-First add your chosen integration crate to your `Cargo.toml`:
+Secondly, add your chosen integration crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -101,7 +94,7 @@ cuicui_layout_bevy_ui = "0.5.0"
 cuicui_layout = "0.5.0"
 ```
 
-Then, use `cuicui_layout` in your crate:
+Then, use `cuicui_layout` in your crate with the [`dsl!`] macro:
 
 ```rust,no_run
 use bevy::prelude::*;
@@ -109,27 +102,29 @@ use cuicui_layout::{dsl, LayoutRootCamera, dsl_functions::*};
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
 
 fn main() {
+    // Do not forget to add cuicui_layout_bevy_{ui,sprite}::Plugin
     App::new().add_plugins((DefaultPlugins, cuicui_layout_bevy_ui::Plugin))
         .add_systems(Startup, setup)
         .run();
 }
 fn setup(mut commands: Commands) {
-    // Please make sure to add `LayoutRootCamera` to your camera
+    // Use LayoutRootCamera to mark a camera as the screen boundaries.
     commands.spawn((Camera2dBundle::default(), LayoutRootCamera));
-
     dsl! { &mut commands,
-        // Make sure to use `screen_root`
+        // Use screen_root to follow the screen's boundaries
         row(screen_root) {
-            // The `empty_px` here is to center the text box
-            empty_px(0);
-            row(main_margin 9., cross_margin 9., border Color::CYAN, border_px 5, bg Color::NAVY) {
+            row(margin 9., border(5, Color::CYAN), bg Color::NAVY) {
                 spawn_ui("Hello world!");
             }
-            empty_px(0);
         }
     };
 }
 ```
+
+That's it! You are now using `cuicui_layout`, congratulations!
+
+Make sure to check the [`LayoutDsl`] docs to learn the current capabilities of
+`cuicui_layout`.
 
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
@@ -170,6 +165,7 @@ This repository contains several crates:
 - Helpful and fully detailed error messages when things are incoherent or broken.
   As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
   why things do not turn out as expected.
+- `cuicui_layout`'s algo runs in `O(n)` where `n` is how many nodes you have.
 
 [^1]: aspirational, currently not really the case.
 
@@ -207,8 +203,12 @@ tell you nicely when you hit them and tell you how to handle them properly.
 <br>**A**: `padding` is equivalent to `margin` in cuicui_layout. `margin` and `border`
 doesn't make conceptual sense.
 
+**Q**: Why not call it `padding` then?
+<br>**A**: Look at the dictionary definition of "margin" and "padding".
+
 **Q**: How do I center a node?
-<br>**A**: Add an empty node at the start and end of the container, and use `fill_parent`
+<br>**A**: nodes are centered by default, make sure the parent's container size
+has the expected size.
 
 **Q**: What is the equivalent of `flex_direction`?
 <br>**A**: use `row` and `column`
@@ -231,6 +231,78 @@ and whether they really do anything, so I wont' adventure an asnwer.
 
 **Q**: Why can't child container overflow their parents?
 <br>**A**: It's likely you didn't expect this, so we report it as an error.
+
+**Q**: How do I make a grid?
+<br>**A**: `cuicui_layout` is currently not capable of managing a grid of nodes.
+This might be added in the future.
+
+#### Why not add \<Flexbox feature\> to `cuicui_layout`?
+
+Each flexbox feature is useful taken in isolation, but when combined,
+they make for a very difficult to grasp whole. It's the combinatorial explosion
+of interactions between features that makes Flexbox impossible to emulate in
+your head. In fact, I'm not so sure anything short of a Flexbox implementation
+can predict what the final output of your CSS will look like.
+
+With this settled, it is natural that I aim to make `cuicui_layout` as featureless
+as possible. Ideally, there is exactly one way to do anything, even if it requires
+a bit of head scratching to get there. Code with less feature is paradoxically
+smarter. A narrow set of functionalities allow easier inference on the user's
+expectations, enabling better error messages and suggestions.
+
+Of course, as a library, `cuicui_layout` must at least have _some_ features.
+Here is what I look in a new feature:
+
+- The feature is inherent to layouting, ie: this isn't the job of a 3rd party
+  integration plugin.
+- The feature can only interact in meaningful and predictible ways with other
+  existing features.
+- The feature introduces only meaningful abstractions/concepts that are fully
+  orthogonal with other features.
+- The feature is not too complex to implement
+
+Here is an example: `margin`. At first, I didn't even want margins.
+After all, I can nest a container within another one with padding empty nodes.
+Right? Well no.
+
+Say you have the following layout:
+
+```text
+dsl! {
+  row(rules(pct(100), pct(100))) {
+    row(margins 10, rules(pct(100), pct(100))) {
+      some_element();
+    }
+  }
+}
+```
+
+We can't use padding nodes here. Because the inner `row` depends on the size
+of the parent. Adding nodes would make the inner `row` always overflow the
+outer row, because it's size will still be 100% that of its parent, in addition
+to the two 10 pixel empty padding nodes.
+
+The solution to this is to have a distinction between "outer" and "inner" sizes:
+
+- outer size is the size as seen by the parent
+- inner size is the size seen by the children
+- inner size = outer size - margin * 2.
+
+The `margin` now allows specifying the inner `row` as 100% the "size" of the
+outer row. In fact it's specifying the size relative to the outer row's size
+minus the given `margin`.
+
+Now why limit `margin` to pixel specification, eschewing percent-based rules?
+
+Paradoxically, it's for usability:
+It is not clear what the percent is a percentage of. Is it the inner size?
+The parent's size? children size? The full size after the application of
+the margin?
+
+We don't know, different people will have different expectations. This avoids
+any confusion. In any case, _this is_ a situation where empty nodes can
+be used, since you'll be able to compute the relative size of each node yourself.
+
 
 ### Version matrix
 
