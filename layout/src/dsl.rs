@@ -171,10 +171,16 @@ impl<C: DslBundle> LayoutDsl<C> {
     }
 
     /// Set both the [cross][Self::cross_margin] and [main][Self::main_margin]
+    /// margins.
+    pub fn margins(&mut self, main: f32, cross: f32) {
+        self.main_margin(main);
+        self.cross_margin(cross);
+    }
+    /// Set both the [cross][Self::cross_margin] and [main][Self::main_margin]
     /// margins to `pixels`
     pub fn margin(&mut self, pixels: f32) {
-        self.layout.margin.main = pixels;
-        self.layout.margin.cross = pixels;
+        self.main_margin(pixels);
+        self.cross_margin(pixels);
     }
     /// Set this [`Container`]'s margin on the main flow axis.
     pub fn main_margin(&mut self, pixels: f32) {
@@ -183,6 +189,11 @@ impl<C: DslBundle> LayoutDsl<C> {
     /// Set this [`Container`]'s margin on the cross flow axis.
     pub fn cross_margin(&mut self, pixels: f32) {
         self.layout.margin.cross = pixels;
+    }
+    /// Set both [width](Self::width) and [height](Self::height) rules.
+    pub fn rules(&mut self, width: Rule, height: Rule) {
+        self.width(width);
+        self.height(height);
     }
     /// Set the width [`Rule`] of this [`Node`].
     pub fn width(&mut self, rule: Rule) {
