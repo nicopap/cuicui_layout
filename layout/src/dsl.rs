@@ -77,7 +77,7 @@ pub struct Layout {
     pub distrib: Distribution,
     /// The [margin](Container::margin) size.
     pub margin: Oriented<f32>,
-    /// The inner size, defaults to [`Rule::Children(1.0)`].
+    /// The inner size, defaults to [`Rule::Children(1.5)`].
     pub size: Size<Option<Rule>>,
 }
 
@@ -99,7 +99,7 @@ impl Layout {
             flow: self.flow,
             align: self.align,
             distrib: self.distrib,
-            rules: self.size.map(|r| r.unwrap_or(Rule::Children(1.0))),
+            rules: self.size.map(|r| r.unwrap_or(Rule::Children(1.5))),
             margin: self.flow.absolute(self.margin),
         }
     }
