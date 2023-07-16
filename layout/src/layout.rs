@@ -162,7 +162,7 @@ impl Default for Container {
             align: Alignment::Center,
             distrib: Distribution::FillMain,
             margin: Size::ZERO,
-            rules: Size::all(Rule::Parent(1.0)),
+            rules: Size::all(Rule::Parent(1.)),
         }
     }
 }
@@ -175,10 +175,10 @@ impl Container {
     #[must_use]
     pub const fn new(flow: Flow, align: Alignment, distrib: Distribution) -> Self {
         let main = match distrib {
-            Distribution::FillMain | Distribution::End => Rule::Parent(1.0),
-            Distribution::Start => Rule::Children(1.0),
+            Distribution::FillMain | Distribution::End => Rule::Parent(1.),
+            Distribution::Start => Rule::Children(1.),
         };
-        let rules = flow.absolute(Oriented::new(main, Rule::Children(1.0)));
+        let rules = flow.absolute(Oriented::new(main, Rule::Children(1.)));
         let margin = Size::ZERO;
         Self { flow, align, distrib, rules, margin }
     }
@@ -282,7 +282,7 @@ impl Default for Node {
     /// DO NOT USE THE DEFAULT IMPL OF `Node`, this is only to satisfy `Reflect`
     /// requirements.
     fn default() -> Self {
-        Node::Box(Size::all(LeafRule::Parent(1.0)))
+        Node::Box(Size::all(LeafRule::Parent(1.)))
     }
 }
 impl Node {
@@ -300,7 +300,7 @@ impl Node {
     /// Returns `None` if `value` is not between 0 and 100.
     #[must_use]
     pub fn spacer_percent(value: f32) -> Option<Self> {
-        Self::spacer_ratio(value / 100.0)
+        Self::spacer_ratio(value / 100.)
     }
     /// A [`Node`] occupying `value` ratio of it's parent container on the main axis.
     ///
@@ -309,9 +309,9 @@ impl Node {
     pub fn spacer_ratio(value: f32) -> Option<Self> {
         let spacer = Node::Axis(Oriented {
             main: LeafRule::Parent(value),
-            cross: LeafRule::Fixed(0.0, false),
+            cross: LeafRule::Fixed(0., false),
         });
-        (value <= 1.0 && value >= 0.0).then_some(spacer)
+        (value <= 1. && value >= 0.).then_some(spacer)
     }
     /// A fixed size terminal [`Node`], without children.
     #[must_use]
@@ -346,7 +346,7 @@ pub enum LeafRule {
 }
 impl Default for LeafRule {
     fn default() -> Self {
-        LeafRule::Parent(1.0)
+        LeafRule::Parent(1.)
     }
 }
 
@@ -382,7 +382,7 @@ pub enum Rule {
 }
 impl Default for Rule {
     fn default() -> Self {
-        Rule::Children(1.0)
+        Rule::Children(1.)
     }
 }
 impl FromStr for Rule {
@@ -390,19 +390,19 @@ impl FromStr for Rule {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(pixels) = s.strip_suffix("px") {
             let pixels = pixels.parse()?;
-            if pixels < 0.0 {
+            if pixels < 0. {
                 return Err(None);
             }
             Ok(Self::Fixed(pixels))
         } else if let Some(percents) = s.strip_suffix('%') {
             let percents: f32 = percents.parse()?;
-            if percents > 100.0 || percents < 0.0 {
+            if percents > 100. || percents < 0. {
                 return Err(None);
             }
-            Ok(Self::Parent(percents / 100.0))
+            Ok(Self::Parent(percents / 100.))
         } else if let Some(child_ratio) = s.strip_suffix('*') {
             let ratio: f32 = child_ratio.parse()?;
-            if ratio > 1.0 || ratio < 0.0 {
+            if ratio > 1. || ratio < 0. {
                 return Err(None);
             }
             Ok(Self::Children(ratio))
@@ -416,7 +416,7 @@ impl LeafRule {
     pub(crate) const fn from_rule(rule: Option<Rule>) -> Self {
         match rule {
             // TODO(err)
-            Some(Rule::Children(_)) | None => Self::Fixed(0.0, true),
+            Some(Rule::Children(_)) | None => Self::Fixed(0., true),
             Some(Rule::Fixed(v)) => Self::Fixed(v, false),
             Some(Rule::Parent(v)) => Self::Parent(v),
         }
@@ -507,7 +507,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         children: &Children,
         computed_size: Size<Computed>,
     ) -> Result<Size<f32>, error::Why> {
-        let mut child_size = Oriented { main: 0.0, cross: 0.0 };
+        let mut child_size = Oriented { main: 0., cross: 0. };
         let mut children_count: u32 = 0;
 
         let this_entity = self.this;
@@ -527,13 +527,13 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let count = children_count.saturating_sub(1).max(1) as f32;
         let (main_offset, space_between) = match distrib {
             Distribution::FillMain if single_child => ((size.main - child_size.main) / 2., 0.),
-            Distribution::FillMain => (0.0, (size.main - child_size.main) / count),
-            Distribution::Start => (0.0, 0.0),
-            Distribution::End => (size.main - child_size.main, 0.0),
+            Distribution::FillMain => (0., (size.main - child_size.main) / count),
+            Distribution::Start => (0., 0.),
+            Distribution::End => (size.main - child_size.main, 0.),
         };
 
         let margin = flow.relative(margin);
-        let mut offset = Oriented::new(main_offset + margin.main, 0.0);
+        let mut offset = Oriented::new(main_offset + margin.main, 0.);
 
         trace!("Setting offsets of children of {}", Handle::of(self));
         let cross_align = CrossAlign::new(size, align);
@@ -592,7 +592,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let width_too_large = child_size.width > size.width;
         let axis = if width_too_large { WIDTH } else { HEIGHT };
         let largest_child = children.iter().max_by_key(|e| {
-            let Ok(PosRect { size, .. }) = self.to_update.get(**e) else { return FloatOrd(0.0); };
+            let Ok(PosRect { size, .. }) = self.to_update.get(**e) else { return FloatOrd(0.); };
             FloatOrd(if width_too_large { size.width } else { size.height })
         });
         let relative_size = children.iter().filter_map(|e| {
