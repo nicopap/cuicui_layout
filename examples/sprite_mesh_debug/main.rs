@@ -6,7 +6,8 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 use cuicui_dsl::dsl;
-use cuicui_layout::{dsl::IntoUiBundle, dsl_functions::pct, Node, PosRect, Root, Size};
+use cuicui_layout::dsl_functions::{pct, px};
+use cuicui_layout::{dsl::IntoUiBundle, Node, PosRect, Root, Size};
 use cuicui_layout_bevy_sprite as render;
 use cuicui_layout_bevy_sprite::SpriteDsl as Dsl;
 
@@ -134,7 +135,9 @@ fn setup(mut cmds: Commands) {
                 spawn_ui(Fixed(51, 32), "h1_5_fix");
             }
             spawn_ui(Fixed(10, 20), "fix1");
-            spawn_ui(Fixed(40, 30), "fix2");
+            row("single_child", rules(px(130), px(130))) {
+                spawn_ui(Fixed(40, 40), "fix2");
+            }
             row("horiz_cont2", distrib_start, main_margin 30.) {
                 spawn_ui(Fixed(10, 14), "h2_1_fix");
                 spawn_ui(Fixed(12, 12), "h2_2_fix");

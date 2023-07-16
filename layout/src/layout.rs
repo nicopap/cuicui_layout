@@ -505,7 +505,6 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         &mut self,
         Container { flow, distrib, align, margin, .. }: Container,
         children: &Children,
-        // Size of this container
         computed_size: Size<Computed>,
     ) -> Result<Size<f32>, error::Why> {
         let mut child_size = Oriented { main: 0.0, cross: 0.0 };
@@ -514,7 +513,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let this_entity = self.this;
         for (this, node, children) in self.nodes.iter_many(children) {
             self.this = this;
-            let Oriented { main, cross } = self.node(node, children, flow, computed_size)?;
+            let Oriented { main, cross } = self.leaf(node, children, flow, computed_size)?;
             child_size.main += main;
             child_size.cross = child_size.cross.max(cross);
             children_count += 1;
@@ -524,8 +523,10 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let size = flow.relative(computed_size).with_children(child_size);
         self.validate_size(children, flow, child_size, size)?;
 
+        let single_child = children_count == 1;
         let count = children_count.saturating_sub(1).max(1) as f32;
         let (main_offset, space_between) = match distrib {
+            Distribution::FillMain if single_child => ((size.main - child_size.main) / 2., 0.),
             Distribution::FillMain => (0.0, (size.main - child_size.main) / count),
             Distribution::Start => (0.0, 0.0),
             Distribution::End => (size.main - child_size.main, 0.0),
@@ -547,7 +548,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         Ok(flow.absolute(size))
     }
 
-    fn node(
+    fn leaf(
         &mut self,
         node: &Node,
         children: Option<&Children>,
