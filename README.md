@@ -151,7 +151,7 @@ This repository contains several crates:
 - `cuicui_layout/reflect` (on by default): Derive `bevy_reflect` traits for cuicui_layout
   types & register them.
 
-[debug.md]: https://github.com/nicopap/cuicui_layout/blob/main/design_docs/debug.md
+[debug.md]: https://docs.rs/cuicui_layout/latest/cuicui_layout/debug/index.html
 
 ## Why cuicui layout
 

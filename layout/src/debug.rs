@@ -2,8 +2,10 @@
 //!
 //! See [`Plugin`].
 //!
-#![doc = include_str!("../../design_docs/debug.md")]
+#![doc = include_str!("../debug.md")]
 
+#[cfg(feature = "bevy_ui")]
+use bevy::prelude::UiCameraConfig;
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     ecs::{prelude::*, system::SystemParam},
@@ -11,7 +13,7 @@ use bevy::{
     prelude::{
         default, info, BVec2, Camera, Camera2d, Camera2dBundle, Children, Color, GizmoConfig,
         Gizmos, GlobalTransform, Input, KeyCode, OrthographicProjection, Plugin as BevyPlugin,
-        UiCameraConfig, Update, Vec2,
+        Update, Vec2,
     },
     render::view::RenderLayers,
 };
@@ -32,7 +34,7 @@ fn hue_from_entity(entity: Entity) -> f32 {
     entity.index().wrapping_mul(FRAC_U32MAX_GOLDEN_RATIO) as f32 * RATIO_360
 }
 
-/// The Kind of debug overlays available in cuicui_layout.
+/// The Kind of debug overlays available in `cuicui_layout`.
 #[derive(EnumSetType, Debug)]
 pub enum Flag {
     /// Show layout node outlines, and their margin as lighter color.
@@ -55,7 +57,7 @@ pub enum Flag {
     InfoText,
 }
 
-/// The inputs used by the cuicui_layout debug overlay.
+/// The inputs used by the `cuicui_layout` debug overlay.
 #[derive(Resource, Clone)]
 pub struct InputMap {
     /// The key used for swapping between overlays, default is [`KeyCode::Space`].
@@ -98,6 +100,7 @@ fn update_debug_camera(
     } else {
         let spawn_cam = || {
             cmds.spawn((
+                #[cfg(feature = "bevy_ui")]
                 UiCameraConfig { show_ui: false },
                 Camera2dBundle {
                     projection: OrthographicProjection {
@@ -186,7 +189,7 @@ fn inset(
     };
     (PosRect { pos, ..child }, parent_inset)
 }
-fn node_margin(node: &Node) -> Size<f32> {
+const fn node_margin(node: &Node) -> Size<f32> {
     match node {
         Node::Container(c) => c.margin,
         _ => Size::ZERO,
@@ -292,6 +295,7 @@ fn outline_node(
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum RuleArrow {
     Outward(f32),
     Inward(f32),
@@ -299,10 +303,10 @@ enum RuleArrow {
     None,
 }
 impl RuleArrow {
-    fn arrange<T>(&self, inner: T, outer: T) -> Option<(T, T, Option<f32>)> {
+    fn arrange<T>(self, inner: T, outer: T) -> Option<(T, T, Option<f32>)> {
         match self {
-            RuleArrow::Outward(v) => Some((inner, outer, Some(*v))),
-            RuleArrow::Inward(v) => Some((outer, inner, Some(*v))),
+            RuleArrow::Outward(v) => Some((inner, outer, Some(v))),
+            RuleArrow::Inward(v) => Some((outer, inner, Some(v))),
             RuleArrow::InwardBare => Some((outer, inner, None)),
             RuleArrow::None => None,
         }

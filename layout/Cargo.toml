@@ -12,7 +12,7 @@ repository.workspace = true
 
 [features]
 default = ["reflect"]
-debug = ["bevy/bevy_gizmos"]
+debug = ["bevy/bevy_gizmos", "bevy/bevy_render", "bevy/bevy_core_pipeline"]
 reflect = []
 
 [dependencies]

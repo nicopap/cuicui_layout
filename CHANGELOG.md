@@ -8,7 +8,7 @@
       children or content (inward arrows) or fixed (no arrows).
   - Pressing `Space` cycles between debug views, see the log output for details.
   - This is a very basic initial implementation
-  - See [debug.md](https://github.com/nicopap/cuicui_layout/blob/main/design_docs/debug.md)
+  - See [debug.md](https://docs.rs/cuicui_layout/latest/cuicui_layout/debug/index.html)
 - rename `ui_debug` example to `bevypunk` and `sprite_mesh_debug` to `sprite_debug`.
 
 ## 0.6.0
