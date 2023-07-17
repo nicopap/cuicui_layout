@@ -38,6 +38,8 @@ use error::Computed;
 mod alignment;
 pub mod bundles;
 mod content_sized;
+#[cfg(feature = "debug")]
+mod debug;
 mod direction;
 pub mod dsl;
 mod error;

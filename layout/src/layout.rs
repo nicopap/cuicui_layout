@@ -204,19 +204,21 @@ impl Container {
 /// are always [`Rule::Fixed`].
 #[derive(Component, Default)]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
-pub struct Root(pub(crate) Container);
+pub struct Root {
+    pub(crate) node: Container,
+}
 impl Root {
     /// Get the [`Container`] in `Self`.
     #[must_use]
     pub const fn get(&self) -> &Container {
-        &self.0
+        &self.node
     }
 
     /// Get a mutable reference to the fixed size of this [`Root`] container
     #[must_use]
     pub fn size_mut(&mut self) -> Size<&mut f32> {
         use Rule::Fixed;
-        let Size { width: Fixed(width), height: Fixed(height) } = &mut self.0.rules else {
+        let Size { width: Fixed(width), height: Fixed(height) } = &mut self.node.rules else {
             unreachable!("Can't construct a `Root` with non-fixed size");
         };
         Size { width, height }
@@ -231,7 +233,7 @@ impl Root {
     #[must_use]
     pub const fn size(&self) -> Size<f32> {
         use Rule::Fixed;
-        let Size { width: Fixed(width), height: Fixed(height) } = self.0.rules else {
+        let Size { width: Fixed(width), height: Fixed(height) } = self.node.rules else {
             panic!("A Root container had an unfixed axis");
         };
         Size { width, height }
@@ -242,8 +244,8 @@ impl Root {
         names: &Query<&Name>,
     ) -> Result<Size<f32>, error::Why> {
         use Rule::Fixed;
-        let Size { width: Fixed(width), height: Fixed(height) } = self.0.rules else {
-            let width_fix = matches!(self.0.rules.width, Fixed(_));
+        let Size { width: Fixed(width), height: Fixed(height) } = self.node.rules else {
+            let width_fix = matches!(self.node.rules.width, Fixed(_));
             let axis = if width_fix { HEIGHT } else { WIDTH };
             return Err(error::Why::invalid_root(axis, entity, names));
         };
@@ -260,7 +262,8 @@ impl Root {
     ) -> Self {
         use Rule::Fixed;
         let rules = Size::new(Fixed(width), Fixed(height));
-        Root(Container { flow, align, distrib, rules, margin })
+        let node = Container { flow, align, distrib, rules, margin };
+        Root { node }
     }
 }
 

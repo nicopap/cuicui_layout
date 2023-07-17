@@ -159,7 +159,7 @@ impl FailureMode for BadRule {
 const fn get_rules<'a>(node: (Option<&'a Node>, Option<&'a Root>)) -> Result<&'a Size<Rule>> {
     match node {
         (Some(Node::Container(Container { rules, .. })), _)
-        | (None, Some(Root(Container { rules, .. }))) => Ok(rules),
+        | (None, Some(Root { node: Container { rules, .. } })) => Ok(rules),
         _ => Err(BadRule),
     }
 }
