@@ -1,5 +1,5 @@
 [package]
-name = "ui_debug"
+name = "bevypunk"
 description = "Show extents of containers for bevy_ui cuicui_layout adaptor"
 edition.workspace = true
 version.workspace = true
@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [[bin]]
-name = "ui_debug"
+name = "bevypunk"
 path = "main.rs"
 
 [dependencies]

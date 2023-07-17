@@ -1,5 +1,5 @@
 [package]
-name = "sprite_mesh_debug"
+name = "sprite_debug"
 description = "Show extents of containers using cuicui_layout"
 edition.workspace = true
 version.workspace = true
@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [[bin]]
-name = "sprite_mesh_debug"
+name = "sprite_debug"
 path = "main.rs"
 
 [dependencies]

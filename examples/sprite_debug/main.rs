@@ -1,5 +1,8 @@
-//! Demonstrate how to use cuicui layout.
-#![allow(clippy::cast_precision_loss)]
+//! Makes a somewhat complex layout with nested element and rules going forward
+//! or backward.
+//!
+//! The goal is to test `cuicui_layout` in non-trival situations.
+#![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
 
 use bevy::{
     prelude::*,
@@ -7,8 +10,7 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
 };
 use cuicui_dsl::dsl;
-use cuicui_layout::dsl_functions::{pct, px};
-use cuicui_layout::{dsl::IntoUiBundle, Node, PosRect, Root, Size};
+use cuicui_layout::{dsl::IntoUiBundle, dsl_functions::*, Node, PosRect, Root, Size};
 use cuicui_layout_bevy_sprite as render;
 use cuicui_layout_bevy_sprite::SpriteDsl as Dsl;
 
@@ -22,7 +24,7 @@ fn van_der_corput(bits: u32) -> f32 {
     nominator as f32 / denominator as f32
 }
 fn color_from_entity(entity: Entity) -> Color {
-    Color::hsla(van_der_corput(entity.index()), 1., 0.5, 0.06)
+    Color::hsla(van_der_corput(entity.index()) * 360., 1., 0.5, 0.6)
 }
 
 fn main() {
@@ -135,8 +137,14 @@ fn setup(mut cmds: Commands) {
                 empty_pct(10, "h1_4_spacer");
                 spawn_ui(Fixed(51, 32), "h1_5_fix");
             }
-            spawn_ui(Fixed(10, 20), "fix1");
-            row("single_child", rules(px(130), px(130))) {
+            row("deep1", rules(pct(80), child(1.5))) {
+                row("deep2", rules(child(1.5), child(3.))) {
+                    row("deep3", rules(child(4.), child(1.5))) {
+                        spawn_ui(Fixed(10, 10), "deep4");
+                    }
+                }
+            }
+            row("single_child", rules(child(2.), child(2.))) {
                 spawn_ui(Fixed(40, 40), "fix2");
             }
             spawn("horiz_cont2", layout ">dSaC", main_margin 30.) {
@@ -145,13 +153,12 @@ fn setup(mut cmds: Commands) {
                 spawn_ui(Fixed(14, 10), "h2_3_fix");
             }
             row("horiz_cont3", width pct(100), main_margin 30.) {
-                empty_pct(4, "spacer5");
                 // row("horiz_cont4", fill_main) {
                 //     spawn_ui(Fixed(10, 14), "h4_1" );
                 //     spawn_ui(Fixed(12, 12), "h4_2" );
                 //     spawn_ui(Fixed(14, 10), "h4_3" );
                 // }
-                column("vert_cont1", align_start, margins(30., 5.0)) {
+                column("vert_cont1", align_start, width pct(25), margins(30., 5.0)) {
                     spawn_ui(Fixed(10, 21), "v1_1_fix");
                     spawn_ui(Fixed(12, 12), "v1_2_fix");
                     spawn_ui(Fixed(14, 20), "v1_3_fix");
@@ -159,7 +166,7 @@ fn setup(mut cmds: Commands) {
                     spawn_ui(Fixed(18, 12), "v1_5_fix");
                     spawn_ui(Fixed(20, 20), "v1_6_fix");
                 }
-                row("horiz_inner", distrib_end, margins(30., 5.0)) {
+                row("horiz_inner", distrib_end, height child(4.), margins(30., 5.0)) {
                     spawn_ui(Fixed(10, 21), "v2_1_fix");
                     spawn_ui(Fixed(12, 12), "v2_2_fix");
                     spawn_ui(Fixed(14, 20), "v2_3_fix");

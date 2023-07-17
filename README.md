@@ -12,12 +12,7 @@ A dumb layout algorithm you can rely on, built for and with bevy.
 For some reasons, the Cyberpunk main menu has become the 7GUI of bevy, so here
 is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 
-<video controls>
-  <source
-    src="https://github.com/nicopap/cuicui_layout/assets/26321040/8a51f9a9-ffa7-4b60-a2ad-3947ff718e27.mp4"
-    type="video/mp4"
-  />
-</video>
+https://github.com/nicopap/cuicui_layout/assets/26321040/8a51f9a9-ffa7-4b60-a2ad-3947ff718e27.mp4
 
 ### Code
 

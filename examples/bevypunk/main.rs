@@ -1,12 +1,11 @@
+//! Demonstrates how one could build a menu using `cuicui_layout` in
+//! combination with `bevy_ui`.
+#![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
 use std::time::Duration;
 
 use bevy::{asset::ChangeWatcher, prelude::*};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use cuicui_dsl::dsl;
-use cuicui_layout::{
-    dsl_functions::{pct, px},
-    LayoutRootCamera,
-};
+use cuicui_layout::{dsl_functions::*, LayoutRootCamera};
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
 
 macro_rules! text {
@@ -46,7 +45,7 @@ fn main() {
                     .to_string(),
                 }),
             cuicui_layout_bevy_ui::Plugin,
-            WorldInspectorPlugin::default(),
+            // bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
         .run();

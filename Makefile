@@ -8,9 +8,9 @@ check:
 
 run:
 	# cargo test
-	RUST_BACKTRACE=1 cargo run --bin sprite_mesh_debug --features cuicui_layout/debug
-	# cd examples/sprite_mesh_debug && RUSTC_BOOTSTRAP=1 cargo rustc --bin sprite_mesh_debug -- -Zunpretty=expanded
-	# cd examples/ui_debug && RUSTC_BOOTSTRAP=1 cargo rustc --bin ui_debug -- -Z macro-backtrace
+	RUST_BACKTRACE=1 cargo run --bin bevypunk --features cuicui_layout/debug
+	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc --bin sprite_debug -- -Zunpretty=expanded
+	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc --bin bevypunk -- -Z macro-backtrace
 
 pre-hook:
 	cargo test --package cuicui_dsl --features test_and_doc
