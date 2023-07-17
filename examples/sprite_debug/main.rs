@@ -38,20 +38,12 @@ fn main() {
         .add_systems(
             Update,
             (
-                update_transforms,
+                cuicui_layout::update_transforms,
                 render::update_ui_camera_root,
                 stretch_boxes,
             ),
         )
         .run();
-}
-
-/// Update transform of things that have a `PosRect` component.
-fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Changed<PosRect>>) {
-    for (pos, mut transform) in &mut positioned {
-        let z = transform.translation.z;
-        transform.translation = pos.pos().extend(z);
-    }
 }
 
 fn setup_debug(
