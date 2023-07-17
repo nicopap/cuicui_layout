@@ -80,6 +80,10 @@ impl<T> Size<T> {
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Size<U> {
         Size { width: f(self.width), height: f(self.height) }
     }
+    /// Convert the content of this `Size`
+    pub fn map_into<U: From<T>>(self) -> Size<U> {
+        self.map(Into::into)
+    }
     /// Go from `&Size<T>` to `Size<&T>`.
     pub const fn as_ref(&self) -> Size<&T> {
         let Self { width, height } = self;

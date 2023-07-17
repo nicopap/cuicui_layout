@@ -39,7 +39,7 @@ mod alignment;
 pub mod bundles;
 mod content_sized;
 #[cfg(feature = "debug")]
-mod debug;
+pub mod debug;
 mod direction;
 pub mod dsl;
 mod error;
@@ -77,7 +77,7 @@ pub struct ScreenRoot;
 ///
 /// Note that `Pos` will always be **relative to** the top left position of the
 /// containing node.
-#[derive(Component, Clone, Copy, Default, PartialEq)]
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
 pub struct PosRect {
     size: Size<f32>,
@@ -199,6 +199,8 @@ impl BevyPlugin for Plugin {
                 .in_set(ComputeLayout)
                 .in_set(ComputeLayoutSet),
         );
+        #[cfg(feature = "debug")]
+        app.add_plugins(debug::Plugin);
 
         #[cfg(feature = "reflect")]
         app.register_type::<Alignment>()

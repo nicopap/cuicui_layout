@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-exclude = ["assets/", "design_docs/"]
+exclude = ["assets/"]
 members = [
   "examples/*",
   "layout",
@@ -17,10 +17,10 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/nicopap/cuicui_layout"
 
 [workspace.dependencies]
-ahash = "0.8"
 anyhow = "1"
 bevy_mod_sysfail = "3"
 bevy-inspector-egui = "0.19"
+enumset = "1.1"
 thiserror = "1"
 # winnow = "0.4.9"
 

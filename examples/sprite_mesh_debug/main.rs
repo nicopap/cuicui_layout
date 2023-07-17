@@ -1,4 +1,5 @@
 //! Demonstrate how to use cuicui layout.
+#![allow(clippy::cast_precision_loss)]
 
 use bevy::{
     prelude::*,
@@ -13,22 +14,22 @@ use cuicui_layout_bevy_sprite::SpriteDsl as Dsl;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
 
-#[allow(clippy::cast_precision_loss)]
+fn van_der_corput(bits: u32) -> f32 {
+    let leading_zeros = if bits == 0 { 0 } else { bits.leading_zeros() };
+    let nominator = bits.reverse_bits() >> leading_zeros;
+    let denominator = bits.next_power_of_two();
+
+    nominator as f32 / denominator as f32
+}
 fn color_from_entity(entity: Entity) -> Color {
-    use std::hash::{Hash, Hasher};
-    const U64_TO_DEGREES: f32 = 360.0 / u64::MAX as f32;
-
-    let mut hasher = bevy::utils::AHasher::default();
-    entity.hash(&mut hasher);
-
-    let hue = hasher.finish() as f32 * U64_TO_DEGREES;
-    Color::hsl(hue, 0.8, 0.5)
+    Color::hsla(van_der_corput(entity.index()), 1., 0.5, 0.06)
 }
 
 fn main() {
     // use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
         .add_plugins((DefaultPlugins, cuicui_layout::Plugin))
+        .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .add_systems(PostStartup, setup_debug)
         // .add_plugin(WorldInspectorPlugin::default())

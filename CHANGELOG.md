@@ -1,3 +1,15 @@
+## 0.7.0
+
+- Add the `cuicui_layout/debug` feature.
+  - Enable it and press `Space` to have a debug overlay showing:
+    - Node boundaries
+    - Node margins
+    - Whether nodes' size on give axis is relative to parent (outward arrows),
+      children or content (inward arrows) or fixed (no arrows).
+  - Pressing `Space` cycles between debug views, see the log output for details.
+  - This is a very basic initial implementation
+  - See [debug.md](https://github.com/nicopap/cuicui_layout/blob/main/design_docs/debug.md)
+
 ## 0.6.0
 
 - Clarify the "Using cuicui_layout" section of the README

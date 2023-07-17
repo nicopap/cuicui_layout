@@ -149,14 +149,18 @@ This repository contains several crates:
 
 ## Cargo features
 
+- `cuicui_layout/debug` (off by default): An overlay showing layout outlines & the rule type used
+  by nodes. See [debug.md] for a detailed feature list.
 - `cuicui_layout_bevy_sprite/sprite_text` (on by default): implement content-sized layout nodes
   for `Text2dBundle`.
 - `cuicui_layout/reflect` (on by default): Derive `bevy_reflect` traits for cuicui_layout
   types & register them.
 
+[debug.md]: https://github.com/nicopap/cuicui_layout/blob/main/design_docs/debug.md
+
 ## Why cuicui layout
 
-- Friendly algo with less things to keep in your head and good defaults.[^1]
+- Friendly algo with less things to keep in your head and good defaults.
 - Uses and takes full advantage of the bevy ECS.
 - Only controls `PosRect`, not `Transform`, you need to add a system that sets
   `Transform` based on `PosRect`.
@@ -166,8 +170,6 @@ This repository contains several crates:
   As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
   why things do not turn out as expected.
 - `cuicui_layout`'s algo runs in `O(n)` where `n` is how many nodes you have.
-
-[^1]: aspirational, currently not really the case.
 
 ## Why not Flexbox
 

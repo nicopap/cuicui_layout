@@ -202,10 +202,20 @@ impl Container {
 ///
 /// Unlike a [`Container`], a `Root` never has a parent and its axis
 /// are always [`Rule::Fixed`].
-#[derive(Component, Default)]
+#[derive(Component)]
 #[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct Root {
     pub(crate) node: Container,
+    /// Whether this node and its children should be displayed in the debug overlay.
+    ///
+    /// `true` by default. To debug layout, enable the `cuicui_layout/debug`
+    /// cargo feature.
+    pub debug: bool,
+}
+impl Default for Root {
+    fn default() -> Self {
+        Root { node: Container::default(), debug: true }
+    }
 }
 impl Root {
     /// Get the [`Container`] in `Self`.
@@ -263,7 +273,7 @@ impl Root {
         use Rule::Fixed;
         let rules = Size::new(Fixed(width), Fixed(height));
         let node = Container { flow, align, distrib, rules, margin };
-        Root { node }
+        Root { node, debug: true }
     }
 }
 
@@ -561,11 +571,13 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let size = match *node {
             Node::Container(container) => match children {
                 Some(children) => {
+                    let margin = container.margin;
                     let computed_size = parent.container_size(&container, self);
-                    let mut inner_size = self.container(container, children, computed_size?)?;
-                    inner_size.width += container.margin.width * 2.;
-                    inner_size.height += container.margin.height * 2.;
-                    inner_size
+                    let inner_size = self.container(container, children, computed_size?)?;
+                    Size {
+                        width: margin.width.mul_add(2., inner_size.width),
+                        height: margin.height.mul_add(2., inner_size.height),
+                    }
                 }
                 None => return Err(error::Why::ChildlessContainer(Handle::of(self))),
             },
