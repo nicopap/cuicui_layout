@@ -25,9 +25,7 @@
 )]
 
 use bevy::ecs::{component::Tick, prelude::*, system::SystemChangeTick};
-use bevy::prelude::{
-    debug, App, Children, Name, Parent, Plugin as BevyPlugin, Transform, Update, Vec2,
-};
+use bevy::prelude::{debug, App, Children, Name, Parent, Plugin as BevyPlugin, Update, Vec2};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
@@ -166,13 +164,6 @@ pub fn compute_layout(
         layout.container(root_container, children, bounds)?;
     }
     Ok(())
-}
-/// Update transform of things that have a `PosRect` component.
-pub fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Changed<PosRect>>) {
-    for (pos, mut transform) in &mut positioned {
-        transform.translation.x = pos.pos.width;
-        transform.translation.y = pos.pos.height;
-    }
 }
 
 /// Add layout-related sets and systems to the `Update` schedule.
