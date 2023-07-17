@@ -3,6 +3,8 @@
 //! It contains:
 //!
 //! * [`cuicui_dsl::DslBundle`] implementation ([`Sprite`]) to use with the [`cuicui_layout::dsl!`] macro.
+//!
+//! [`Sprite`]: bevy::sprite::Sprite
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(
     clippy::use_self,
@@ -11,7 +13,8 @@
 )]
 
 use bevy::{
-    prelude::*,
+    ecs::prelude::*,
+    prelude::{default, Camera, Camera2dBundle, OrthographicProjection, Vec2},
     render::view::{Layer, RenderLayers},
 };
 use bevy_mod_sysfail::quick_sysfail;
@@ -71,6 +74,8 @@ impl UiCameraBundle {
 
 /// System updating the [`ScreenRoot`] [`cuicui_layout`] [`Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.
+///
+/// [`Node`]: cuicui_layout::Node
 #[quick_sysfail]
 pub fn update_ui_camera_root(
     ui_cameras: Query<(&Camera, &RenderLayers), (With<LayoutRootCamera>, Changed<Camera>)>,
