@@ -1,8 +1,8 @@
 [package]
 name = "sprite_debug"
 description = "Show extents of containers using cuicui_layout"
+version = "0.1.0"
 edition.workspace = true
-version.workspace = true
 license.workspace = true
 publish = false
 
