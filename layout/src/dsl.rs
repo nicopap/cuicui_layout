@@ -170,6 +170,21 @@ impl<C: DslBundle> LayoutDsl<C> {
         self.layout.distrib = Distribution::FillMain;
     }
 
+    // TODO(feat): be more lean on what we accept.
+    /// Set properties based on the given `spec`.
+    ///
+    /// `spec` specifies the [flow][Self::flow], (d)istribution
+    /// and (a)lignment of the container in the form: `[v>]d[SEC]a[SEC]`.
+    ///
+    /// # Panics
+    /// If the `spec` format is invalid.
+    pub fn layout(&mut self, spec: &str) {
+        assert_eq!(spec.len(), 5, "accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
+        self.set_flow = true;
+        self.layout.flow = spec[0..1].parse().unwrap();
+        self.layout.distrib = spec[1..3].parse().unwrap();
+        self.layout.align = spec[3..5].parse().unwrap();
+    }
     /// Set both the [cross][Self::cross_margin] and [main][Self::main_margin]
     /// margins.
     pub fn margins(&mut self, main: f32, cross: f32) {

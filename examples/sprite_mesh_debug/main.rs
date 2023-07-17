@@ -138,7 +138,7 @@ fn setup(mut cmds: Commands) {
             row("single_child", rules(px(130), px(130))) {
                 spawn_ui(Fixed(40, 40), "fix2");
             }
-            row("horiz_cont2", distrib_start, main_margin 30.) {
+            spawn("horiz_cont2", layout ">dSaC", main_margin 30.) {
                 spawn_ui(Fixed(10, 14), "h2_1_fix");
                 spawn_ui(Fixed(12, 12), "h2_2_fix");
                 spawn_ui(Fixed(14, 10), "h2_3_fix");
@@ -166,7 +166,7 @@ fn setup(mut cmds: Commands) {
                     spawn_ui(Fixed(18, 12), "v2_5_fix");
                     spawn_ui(Fixed(20, 20), "v2_6_fix");
                 }
-                column("vert_cont3", distrib_start, align_end, margins(30., 5.)) {
+                spawn("vert_cont3", layout "vdSaE", margins(30., 5.)) {
                     spawn_ui(Fixed(10, 21), "v3_1_fix");
                     spawn_ui(Fixed(12, 12), "v3_2_fix");
                     spawn_ui(Fixed(14, 20), "v3_3_fix");

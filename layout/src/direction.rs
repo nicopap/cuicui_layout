@@ -1,5 +1,5 @@
 //! Structs to help convert between a relative and absolute direction.
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[cfg(feature = "reflect")]
 use bevy::prelude::Reflect;
@@ -104,6 +104,17 @@ impl fmt::Display for Flow {
         match self {
             Flow::Horizontal => f.write_str("width"),
             Flow::Vertical => f.write_str("height"),
+        }
+    }
+}
+impl FromStr for Flow {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "v" => Ok(Self::Vertical),
+            ">" => Ok(Self::Horizontal),
+            _ => Err(()),
         }
     }
 }

@@ -1,5 +1,7 @@
 //! enums for main axis and cross axis alignment.
 
+use std::str::FromStr;
+
 #[cfg(feature = "reflect")]
 use bevy::prelude::Reflect;
 
@@ -104,6 +106,32 @@ impl CrossAlign {
             Alignment::Start => 0.0,
             Alignment::Center => (self.cross_parent_size - cross_child_size) / 2.0,
             Alignment::End => self.cross_parent_size - cross_child_size,
+        }
+    }
+}
+
+impl FromStr for Distribution {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "dS" => Ok(Self::Start),
+            "dE" => Ok(Self::End),
+            "dC" => Ok(Self::FillMain),
+            _ => Err(()),
+        }
+    }
+}
+
+impl FromStr for Alignment {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "aS" => Ok(Self::Start),
+            "aE" => Ok(Self::End),
+            "aC" => Ok(Self::Center),
+            _ => Err(()),
         }
     }
 }

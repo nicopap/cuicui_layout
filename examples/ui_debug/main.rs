@@ -71,7 +71,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 
     dsl! {
         &mut cmds,
-        row(screen_root, "root", main_margin 100., distrib_start, align_start, image &bg) {
+        spawn(layout ">dSaS", screen_root, "root", main_margin 100., image &bg) {
             column("menu", rules(px(310), pct(100)), main_margin 40., image &board) {
                 spawn(image &title_card, "Title card", width pct(100));
                 spawn_ui(title_card, "Title card 2", width pct(50));
