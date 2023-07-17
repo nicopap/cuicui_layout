@@ -49,26 +49,7 @@ fn main() {
             WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
-        // .add_startup_system(random_bg.in_base_set(StartupSet::PostStartup))
         .run();
-}
-
-#[allow(clippy::cast_precision_loss, clippy::unreadable_literal)]
-fn _color_from_entity(entity: Entity) -> Color {
-    use ahash::random_state::RandomState;
-    const U64_TO_DEGREES: f32 = 360.0 / u64::MAX as f32;
-
-    const STATE: RandomState =
-        RandomState::with_seeds(5952553601252303067, 16866614500153072625, 0, 0);
-    let hash = STATE.hash_one(entity);
-
-    let hue = hash as f32 * U64_TO_DEGREES;
-    Color::hsla(hue, 0.4, 0.9, 1.0)
-}
-fn _random_bg(mut query: Query<(Entity, &mut BackgroundColor)>) {
-    for (entity, mut bg) in &mut query {
-        bg.0 = _color_from_entity(entity);
-    }
 }
 
 #[allow(clippy::needless_pass_by_value)]
