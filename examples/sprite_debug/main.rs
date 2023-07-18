@@ -28,13 +28,12 @@ fn color_from_entity(entity: Entity) -> Color {
 }
 
 fn main() {
-    // use bevy_inspector_egui::quick::WorldInspectorPlugin;
     App::new()
         .add_plugins((DefaultPlugins, cuicui_layout::Plugin))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .add_systems(PostStartup, setup_debug)
-        // .add_plugin(WorldInspectorPlugin::default())
+        // .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .add_systems(
             Update,
             (
@@ -138,7 +137,7 @@ fn setup(mut cmds: Commands) {
     dsl! {
         &mut cmds,
         column("root", screen_root, margins(50., 100.)) {
-            row("horiz_cont1", width pct(85), main_margin 30.) {
+            row("horiz_cont1", align_start, width pct(85), main_margin 30.) {
                 spawn_ui(Fixed(10, 10), "h1_1_fix");
                 spawn_ui(Fixed(30, 10), "h1_2_fix");
                 spawn_ui(Fixed(50, 20), "h1_3_fix");

@@ -2,13 +2,14 @@
 //!
 //! See [`Plugin`].
 //!
+//! > **IMPORTANT**: If you are using `cuicui_layout` but not `cuicui_layout_bevy_ui`,
+//! > and the outlines are drawn behind the UI, enable the `cuicui_layout/debug_bevy_ui`!
+//!
 #![doc = include_str!("../debug.md")]
 
-#[cfg(feature = "bevy_ui")]
-use bevy::prelude::UiCameraConfig;
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
-    ecs::{prelude::*, system::SystemParam},
+    ecs::{prelude::*, query::Has, system::SystemParam},
     math::Vec2Swizzles,
     prelude::{
         default, info, BVec2, Camera, Camera2d, Camera2dBundle, Children, Color, GizmoConfig,
@@ -16,9 +17,12 @@ use bevy::{
         Update, Vec2,
     },
     render::view::RenderLayers,
+    utils::HashSet,
 };
 
-use crate::{direction::Axis, Flow, LayoutRootCamera, LeafRule, Node, PosRect, Root, Rule, Size};
+use crate::{
+    direction::Axis, Flow, LayoutRootCamera, LeafRule, Node, PosRect, Root, Rule, ScreenRoot, Size,
+};
 
 pub use enumset::{EnumSet, EnumSetType};
 
@@ -26,6 +30,13 @@ pub use enumset::{EnumSet, EnumSetType};
 pub const LAYOUT_DEBUG_CAMERA_ORDER: isize = 255;
 /// The [`RenderLayers`] used by the debug gizmos and the debug camera.
 pub const LAYOUT_DEBUG_LAYERS: RenderLayers = RenderLayers::none().with(16);
+
+/// For some reasons, gizmo lines' size is divided by 1.5, absolutely no idea why.
+const WEIRD_SCALE: f32 = 1. / 1.5;
+const MARGIN_LIGHTNESS: f32 = 0.85;
+const NODE_LIGHTNESS: f32 = 0.7;
+const NODE_SATURATION: f32 = 0.8;
+const CHEVRON_RATIO: f32 = 1. / 4.;
 
 #[allow(clippy::cast_precision_loss)]
 fn hue_from_entity(entity: Entity) -> f32 {
@@ -100,8 +111,8 @@ fn update_debug_camera(
     } else {
         let spawn_cam = || {
             cmds.spawn((
-                #[cfg(feature = "bevy_ui")]
-                UiCameraConfig { show_ui: false },
+                #[cfg(feature = "debug_bevy_ui")]
+                bevy::prelude::UiCameraConfig { show_ui: false },
                 Camera2dBundle {
                     projection: OrthographicProjection {
                         far: 1000.0,
@@ -150,45 +161,61 @@ fn cycle_flags(input: Res<Input<KeyCode>>, mut options: ResMut<Options>, map: Re
         options.flags = next;
     }
 }
-// TODO(clean)TODO(bug): This doesn't work. only kinda.
-fn inset(
-    line_width: f32,
-    parent: PosRect,
-    parent_margin: Size<f32>,
-    mut child: PosRect,
-    mut parent_inset: Size<f32>,
-) -> (PosRect, Size<f32>) {
-    let line_width = line_width + parent_inset.width;
-    let line_height = line_width + parent_inset.height;
-    // horizontal
-    let start = parent_margin.width;
-    let end = parent.size.width - parent_margin.width;
-    if child.pos.width.is(start) {
-        child.pos.width += line_width;
-        child.size.width -= line_width;
-        parent_inset.width = line_width;
-    }
-    if (child.pos.width + child.size.width).is(end) {
-        child.size.width -= line_width;
-    }
-    // vertical
-    let start = parent_margin.height;
-    let end = parent.size.height - parent_margin.height;
-    if child.pos.height.is(start) {
-        child.pos.height += line_height;
-        child.size.height -= line_height;
-        parent_inset.height = line_height;
-    }
-    if (child.pos.height + child.size.height).is(end) {
-        child.size.height -= line_height;
-    }
-    // returns
-    let pos = Size {
-        width: child.pos.width + parent.pos.width,
-        height: child.pos.height + parent.pos.height,
-    };
-    (PosRect { pos, ..child }, parent_inset)
+/// Collection of axis aligned "lines" (actually just their coordinate on
+/// a given axis).
+#[derive(Debug, Clone)]
+struct DrawnLines {
+    lines: HashSet<i64>,
+    width: f32,
 }
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
+impl DrawnLines {
+    fn new(width: f32) -> Self {
+        let width = width * WEIRD_SCALE;
+        DrawnLines { lines: HashSet::new(), width }
+    }
+    /// Return `value` offset by as many `increment`s as necessary to make it
+    /// not overlap with already drawn lines.
+    fn inset(&self, value: f32, increment: i64) -> f32 {
+        let scaled = value / self.width;
+        let fract = scaled.fract();
+        let mut on_grid = scaled.floor() as i64;
+        loop {
+            if !self.lines.contains(&on_grid) {
+                return ((on_grid as f32) + fract) * self.width;
+            }
+            on_grid += increment;
+        }
+    }
+    /// Remove a line from the collection of drawn lines.
+    ///
+    /// Typically, we only care for pre-existing lines when drawing the children
+    /// of a container, nothing more. So we remove it after we are done with
+    /// the children.
+    fn remove(&mut self, value: f32, increment: i64) {
+        let mut on_grid = (value / self.width).floor() as i64;
+        loop {
+            let next_cell = on_grid + increment;
+            if !self.lines.contains(&next_cell) {
+                self.lines.remove(&on_grid);
+                return;
+            }
+            on_grid = next_cell;
+        }
+    }
+    /// Add a line from the collection of drawn lines.
+    fn add(&mut self, value: f32, increment: i64) {
+        let mut on_grid = (value / self.width).floor() as i64;
+        loop {
+            let did_not_exist = self.lines.insert(on_grid);
+            if did_not_exist {
+                return;
+            }
+            on_grid += increment;
+        }
+    }
+}
+
 const fn node_margin(node: &Node) -> Size<f32> {
     match node {
         Node::Container(c) => c.margin,
@@ -203,27 +230,26 @@ fn node_rules(flow: Flow, node: &Node) -> Size<RuleArrow> {
     }
 }
 fn outline_nodes(
-    params: &OutlineParam,
-    draw: &mut ViewportGizmo,
+    outline: &OutlineParam,
+    draw: &mut InsetGizmo,
     flow: Flow,
     this_entity: Entity,
-    this_margin: Size<f32>,
-    this_inset: Size<f32>,
     this: PosRect,
 ) {
-    let Ok(to_iter) = params.children.get(this_entity) else { return; };
-    for (entity, node, child) in params.nodes.iter_many(to_iter) {
+    let Ok(to_iter) = outline.children.get(this_entity) else { return; };
+    for (entity, node, child) in outline.nodes.iter_many(to_iter) {
         let rules = node_rules(flow, node);
         let margin = node_margin(node);
-        let (pos, inset) = inset(params.line_width(), this, this_margin, *child, this_inset);
-        let flags = params.options.flags;
-        outline_node(entity, pos, margin, rules, flags, draw);
+        let mut rect = *child;
+        rect.pos.width += this.pos.width;
+        rect.pos.height += this.pos.height;
+        outline_node(entity, rect, margin, rules, outline.flags(), draw);
 
         if let Node::Container(c) = node {
-            let mut rect = *child;
-            rect.pos.width += this.pos.width;
-            rect.pos.height += this.pos.height;
-            outline_nodes(params, draw, c.flow, entity, margin, inset, rect);
+            outline_nodes(outline, draw, c.flow, entity, rect);
+        }
+        if outline.flags().contains(Flag::Outlines) {
+            draw.clear_scope(rect, margin);
         }
     }
 }
@@ -235,61 +261,55 @@ struct OutlineParam<'w, 's> {
     nodes: Query<'w, 's, (Entity, &'static Node, &'static PosRect)>,
 }
 impl OutlineParam<'_, '_> {
-    fn line_width(&self) -> f32 {
-        self.gizmo_config.line_width / 2.
+    fn flags(&self) -> EnumSet<Flag> {
+        self.options.flags
     }
 }
 fn outline_roots(
-    params: OutlineParam,
-    mut draw: ViewportGizmo,
-    roots: Query<(Entity, &Root, &PosRect)>,
+    outline: OutlineParam,
+    draw: Gizmos,
+    cam: Query<&'static Camera, With<DebugOverlayCamera>>,
+    roots: Query<(Entity, &Root, &PosRect, Has<ScreenRoot>)>,
 ) {
-    for (entity, root, pos) in &roots {
+    let mut draw = InsetGizmo::new(draw, cam, outline.gizmo_config.line_width);
+    for (entity, root, rect, is_screen) in &roots {
         if !root.debug {
             continue;
         }
-
-        let (inset_pos, inset) = inset(params.line_width(), *pos, Size::ZERO, *pos, Size::ZERO);
-        let rules = root.node.rules.map_into();
         let margin = root.node.margin;
-        let flags = params.options.flags;
-        outline_node(entity, inset_pos, margin, rules, flags, &mut draw);
+        let rules = root.node.rules.map_into();
+        if is_screen {
+            // inset so that the root container is fully visible.
+            draw.set_scope(*rect, Size::ZERO);
+        }
+        outline_node(entity, *rect, margin, rules, outline.flags(), &mut draw);
 
         let flow = root.node.flow;
-        outline_nodes(&params, &mut draw, flow, entity, margin, inset, *pos);
+        outline_nodes(&outline, &mut draw, flow, entity, *rect);
     }
 }
-#[derive(Clone, Copy, PartialEq, Debug)]
-struct InnerSize(PosRect);
-
-// returns the inner-size of container
 fn outline_node(
     entity: Entity,
-    pos: PosRect,
-    margins: Size<f32>,
+    rect: PosRect,
+    margin: Size<f32>,
     rules: Size<RuleArrow>,
     flags: EnumSet<Flag>,
-    draw: &mut ViewportGizmo,
+    draw: &mut InsetGizmo,
 ) {
     let hue = hue_from_entity(entity);
-    let main_color = Color::hsl(hue, 0.8, 0.7);
-    let margin_color = Color::hsl(hue, 0.8, 0.85);
-
-    let extents = Vec2::from(pos.size()) / 2.;
-    let center = pos.pos() + extents;
+    let main_color = Color::hsl(hue, NODE_SATURATION, NODE_LIGHTNESS);
+    let margin_color = Color::hsl(hue, NODE_SATURATION, MARGIN_LIGHTNESS);
 
     if flags.contains(Flag::Outlines) {
         // first draw margins, as we will draw the actual outline on top
-        let m = Vec2::from(margins);
-        if m.x != 0. || m.y != 0. {
-            draw.rect_2d(center, (extents - m) * 2., margin_color);
-        }
-        draw.rect_2d(center, extents * 2., main_color);
+        draw.rect_2d(rect, margin, margin_color);
+        draw.rect_2d(rect, Size::ZERO, main_color);
+        draw.set_scope(rect, margin);
     }
-    if flags.contains(Flag::InfoText) {}
     if flags.contains(Flag::Rules) {
-        // TODO: avoid drawing on top of text
-        // TODO: ratio on top of arrow
+        let extents = Vec2::from(rect.size()) / 2.;
+        let center = rect.pos() + extents;
+
         draw.rule(center, extents, rules.width, Axis::Horizontal, main_color);
         draw.rule(center, extents, rules.height, Axis::Vertical, main_color);
     }
@@ -331,6 +351,13 @@ impl From<Rule> for RuleArrow {
     }
 }
 
+fn rect_border_axis(rect: PosRect, margin: Size<f32>) -> (f32, f32, f32, f32) {
+    let pos = rect.pos() + Vec2::from(margin);
+    let size = Vec2::from(rect.size()) - Vec2::from(margin) * 2.;
+    let offset = pos + size;
+    (pos.x, offset.x, pos.y, offset.y)
+}
+
 trait ApproxF32 {
     fn is(self, other: f32) -> bool;
 }
@@ -341,12 +368,25 @@ impl ApproxF32 for f32 {
     }
 }
 
-#[derive(SystemParam)]
-struct ViewportGizmo<'w, 's> {
+struct InsetGizmo<'w, 's> {
     draw: Gizmos<'s>,
     cam: Query<'w, 's, &'static Camera, With<DebugOverlayCamera>>,
+    known_y: DrawnLines,
+    known_x: DrawnLines,
 }
-impl ViewportGizmo<'_, '_> {
+impl<'w, 's> InsetGizmo<'w, 's> {
+    fn new(
+        draw: Gizmos<'s>,
+        cam: Query<'w, 's, &'static Camera, With<DebugOverlayCamera>>,
+        line_width: f32,
+    ) -> Self {
+        InsetGizmo {
+            draw,
+            cam,
+            known_y: DrawnLines::new(line_width),
+            known_x: DrawnLines::new(line_width),
+        }
+    }
     fn relative(&self, position: Vec2) -> Vec2 {
         let zero = GlobalTransform::IDENTITY;
         let Ok(cam) = self.cam.get_single() else { return Vec2::ZERO;};
@@ -364,15 +404,50 @@ impl ViewportGizmo<'_, '_> {
 
         let Some((start1, end1, _)) = rule.arrange(c - e + trim_e, c - e) else { return; };
         let Some((start2, end2, _)) = rule.arrange(c + e - trim_e, c + e) else { return; };
-        self.arrow(start1, end1, color, start1.distance(end1) / 4.);
-        self.arrow(start2, end2, color, start2.distance(end2) / 4.);
+        self.arrow(start1, end1, color, start1.distance(end1) * CHEVRON_RATIO);
+        self.arrow(start2, end2, color, start2.distance(end2) * CHEVRON_RATIO);
     }
     fn line_2d(&mut self, start: Vec2, end: Vec2, color: Color) {
         let (start, end) = (self.relative(start), self.relative(end));
         self.draw.line_2d(start, end, color);
     }
-    fn rect_2d(&mut self, pos: Vec2, size: Vec2, color: Color) {
-        self.draw.rect_2d(self.relative(pos), 0., size, color);
+    fn set_scope(&mut self, rect: PosRect, margin: Size<f32>) {
+        let (left, right, top, bottom) = rect_border_axis(rect, margin);
+        self.known_x.add(left, 1);
+        self.known_x.add(right, -1);
+        self.known_y.add(top, 1);
+        self.known_y.add(bottom, -1);
+    }
+    fn clear_scope(&mut self, rect: PosRect, margin: Size<f32>) {
+        let (left, right, top, bottom) = rect_border_axis(rect, margin);
+        self.known_x.remove(left, 1);
+        self.known_x.remove(right, -1);
+        self.known_y.remove(top, 1);
+        self.known_y.remove(bottom, -1);
+    }
+    fn rect_2d(&mut self, rect: PosRect, margin: Size<f32>, color: Color) {
+        let (left, right, top, bottom) = rect_border_axis(rect, margin);
+        if left.is(right) {
+            self.line_2d(Vec2::new(left, top), Vec2::new(left, bottom), color);
+        }
+        if top.is(bottom) {
+            self.line_2d(Vec2::new(left, top), Vec2::new(right, top), color);
+        }
+        let inset_x = |v, incr| self.known_x.inset(v, incr);
+        let inset_y = |v, incr| self.known_y.inset(v, incr);
+        let (left, right) = (inset_x(left, 1), inset_x(right, -1));
+        let (top, bottom) = (inset_y(top, 1), inset_y(bottom, -1));
+        self.draw.linestrip_2d(
+            [
+                Vec2::new(left, top),
+                Vec2::new(left, bottom),
+                Vec2::new(right, bottom),
+                Vec2::new(right, top),
+                Vec2::new(left, top),
+            ]
+            .map(|v| self.relative(v)),
+            color,
+        );
     }
     fn arrow(&mut self, start: Vec2, end: Vec2, color: Color, chevron_size: f32) {
         let Some(angle) = (end - start).try_normalize() else { return; };
@@ -393,6 +468,9 @@ impl ViewportGizmo<'_, '_> {
 /// Note that while the debug plugin is enabled, gizmos cannot be used by other
 /// cameras (!)
 ///
+/// > **IMPORTANT**: If you are using `cuicui_layout` but not `cuicui_layout_bevy_ui`,
+/// > and the outlines are drawn behind the UI, enable the `cuicui_layout/debug_bevy_ui`!
+///
 /// disabling the plugin will give you back gizmo control.
 pub struct Plugin;
 impl BevyPlugin for Plugin {
@@ -409,7 +487,7 @@ impl BevyPlugin for Plugin {
     }
     fn finish(&self, _app: &mut bevy::prelude::App) {
         info!(
-            "The cuicui_layout debug overlay is activated!\n\
+            "The cuicui_layout debug overlay is active!\n\
             ----------------------------------------------\n\
             \n\
             This will show the outline of layout nodes.\n\

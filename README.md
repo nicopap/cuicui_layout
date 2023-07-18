@@ -165,6 +165,7 @@ This repository contains several crates:
   As opposed to FlexBox, which goes "this is fine 🔥🐶🔥" and leaves you to guess
   why things do not turn out as expected.
 - `cuicui_layout`'s algo runs in `O(n)` where `n` is how many nodes you have.
+- An extensive debugging overlay.
 
 ## Why not Flexbox
 

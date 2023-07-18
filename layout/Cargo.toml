@@ -13,6 +13,9 @@ repository.workspace = true
 [features]
 default = ["reflect"]
 debug = ["bevy/bevy_gizmos", "bevy/bevy_render", "bevy/bevy_core_pipeline"]
+## This is a workaround to NOT depend on bevy_ui for debug, yet
+## supporting setups to draw on top of UI.
+debug_bevy_ui = ["bevy/bevy_ui"]
 reflect = []
 
 [dependencies]
@@ -30,4 +33,4 @@ pre-release-replacements = [
 ]
 
 [package.metadata.docs.rs]
-features = ["debug"]
+features = ["debug", "debug_bevy_ui"]
