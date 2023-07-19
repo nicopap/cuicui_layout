@@ -1,3 +1,6 @@
+use std::any::type_name;
+use std::marker::PhantomData;
+
 use bevy::{
     ecs::{
         prelude::*,
@@ -5,14 +8,14 @@ use bevy::{
         schedule::SystemSetConfig,
         system::{assert_is_system, StaticSystemParam, SystemParam},
     },
-    prelude::{debug, error, trace, App, Parent, Update},
+    prelude::{debug, error, trace, App, Name, Parent, Update},
 };
 use bevy_mod_sysfail::{sysfail, FailureMode, LogLevel};
 use thiserror::Error;
 
 use crate::{
-    direction::Axis, ComputeLayout, ComputeLayoutSet, Container, ContentSizedComputeSystem,
-    LeafRule, Node, Root, Rule, Size,
+    direction::Axis, error::Handle, ComputeLayout, ComputeLayoutSet, Container,
+    ContentSizedComputeSystem, LeafRule, Node, Root, Rule, Size,
 };
 
 type Result<T> = std::result::Result<T, BadRule>;
@@ -96,7 +99,8 @@ pub trait ComputeContentSize: SystemParam {
     ) -> Size<f32>;
 }
 
-type BasicQuery<'w, 's, C> = Query<'w, 's, (Entity, Option<&'static Parent>, C)>;
+type BasicQuery<'w, 's, C> =
+    Query<'w, 's, (Entity, Option<&'static Name>, Option<&'static Parent>, C)>;
 type NodesQuery<'w, 's> = BasicQuery<'w, 's, AnyOf<(&'static Node, &'static Root)>>;
 type ComputeQuery<'w, 's, N, S> = BasicQuery<'w, 's, (N, <S as ComputeContentParam>::Components)>;
 type ReadQuery<'w, 's, S> = ComputeQuery<'w, 's, &'static Node, S>;
@@ -107,7 +111,7 @@ fn compute_content_size<S: ComputeContentParam>(
     compute_param: StaticSystemParam<S>,
     mut p: ParamSet<((NodesQuery, ReadQuery<S>), WriteQuery<S>)>,
     mut to_update: Local<Vec<(Entity, Size<Option<f32>>)>>,
-) -> Result<()>
+) -> std::result::Result<(), Why<S>>
 where
     for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
 {
@@ -118,12 +122,12 @@ where
     );
 
     let (nodes, requires_update) = p.p0();
-    for (entity, parent, (node, components)) in &requires_update {
+    for (entity, name, parent, (node, components)) in &requires_update {
         if !node.content_sized() {
             continue;
         }
         trace!("Computing size of a node with constraints: {node:?}");
-        let size = node_content_size(parent, node, &nodes)?;
+        let size = node_content_size(parent, node, &nodes).map_err(|e| e.into_why(entity, name))?;
         let computed = compute_param.compute_content(components, size);
         let computed = Size {
             width: size.width.is_none().then_some(computed.width),
@@ -135,24 +139,63 @@ where
     let mut to_set = p.p1();
     for (node, computed) in to_update.drain(..) {
         // SAFETY: due to the above, this can only be valid
-        let node = unsafe { to_set.get_component_mut::<Node>(node).unwrap_unchecked() };
-        set_node_content_size(node, computed);
+        let (entity, name, _, (node, _)) = unsafe { to_set.get_mut(node).unwrap_unchecked() };
+        set_node_content_size(node, computed).map_err(|e| e.into_why(entity, name))?;
     }
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, Error)]
-#[error("Bad rule, couldn't compute content sizes")]
-struct BadRule;
+#[derive(Debug, Clone, Error)]
+enum Why<T> {
+    #[error("{}.compute_content returned a Nan when computing {1}'s {0}. Size must be a number.", type_name::<T>())]
+    Nan(Axis, Handle),
+    #[error("When computing content of {}: {0} depends on its parent, but it has no parents :(",  type_name::<T>())]
+    Orphan(Handle),
+    #[error("Not shown, crate::error::Why::CyclicRule should do this job")]
+    CyclicRule,
+    #[error("Not shown, never constructed")]
+    _PlzIgnore(PhantomData<T>),
+}
 
-impl FailureMode for BadRule {
+impl<T> FailureMode for Why<T> {
     type ID = ();
     fn identify(&self) {}
     fn log_level(&self) -> LogLevel {
-        LogLevel::Warn
+        match self {
+            Why::Nan(_, _) | Why::Orphan(_) => LogLevel::Error,
+            Why::CyclicRule | Why::_PlzIgnore(_) => LogLevel::Silent,
+        }
     }
     fn display(&self) -> Option<String> {
         Some(self.to_string())
+    }
+}
+
+enum BadRule {
+    OrphanUnnamed,
+    Orphan(Handle),
+    Nan(Axis),
+    Cyclic,
+}
+impl BadRule {
+    fn into_why<T>(self, e: Entity, name: Option<&Name>) -> Why<T> {
+        use Handle::{Named, Unnamed};
+        let handle = || name.map_or(Unnamed(e), |n| Named(n.clone()));
+        match self {
+            BadRule::OrphanUnnamed => Why::Orphan(handle()),
+            BadRule::Orphan(handle) => Why::Orphan(handle),
+            BadRule::Nan(axis) => Why::Nan(axis, handle()),
+            BadRule::Cyclic => Why::CyclicRule,
+        }
+    }
+
+    fn name(self, e: Entity, name: Option<&Name>) -> Self {
+        use Handle::{Named, Unnamed};
+        let handle = || name.map_or(Unnamed(e), |n| Named(n.clone()));
+        match self {
+            BadRule::OrphanUnnamed => BadRule::Orphan(handle()),
+            BadRule::Orphan(_) | BadRule::Nan(_) | BadRule::Cyclic => self,
+        }
     }
 }
 
@@ -160,7 +203,7 @@ const fn get_rules<'a>(node: (Option<&'a Node>, Option<&'a Root>)) -> Result<&'a
     match node {
         (Some(Node::Container(Container { rules, .. })), _)
         | (None, Some(Root { node: Container { rules, .. }, .. })) => Ok(rules),
-        _ => Err(BadRule),
+        _ => Err(BadRule::OrphanUnnamed),
     }
 }
 
@@ -181,33 +224,43 @@ fn node_content_size(
             height: leaf_size(Axis::Vertical, size.height)?,
         })
     } else {
-        Err(BadRule)
+        unreachable!(
+            "node_content_size is only called on node.is_content_sized() \
+            meaning this branch should never be reached"
+        );
     }
 }
-fn parent_size(ratio: f32, axis: Axis, node: Option<&Parent>, nodes: &NodesQuery) -> Result<f32> {
-    let node = node.ok_or(BadRule)?.get();
-    let (_, parent, node) = nodes.get(node).map_err(|_| BadRule)?;
+fn parent_size(ratio: f32, axis: Axis, this: Option<&Parent>, nodes: &NodesQuery) -> Result<f32> {
+    use BadRule::OrphanUnnamed as Orphan;
+    let this = this.ok_or(Orphan)?.get();
+    let (e, n, parent, node) = nodes.get(this).map_err(|_| Orphan)?;
     let rules = get_rules(node)?;
     match axis.relative(rules.as_ref()).main {
-        Rule::Children(_) => Err(BadRule),
-        Rule::Fixed(value) => Ok(ratio * *value),
-        Rule::Parent(this_ratio) => parent_size(this_ratio * ratio, axis, parent, nodes),
+        Rule::Children(_) => Err(BadRule::Cyclic),
+        &Rule::Fixed(value) => Ok(ratio * value),
+        Rule::Parent(this_ratio) => {
+            parent_size(ratio * this_ratio, axis, parent, nodes).map_err(|err| err.name(e, n))
+        }
     }
 }
-fn set_node_content_size(mut node: Mut<Node>, new: Size<Option<f32>>) {
+fn set_node_content_size(mut node: Mut<Node>, new: Size<Option<f32>>) -> Result<()> {
     let Node::Box(size) = &mut *node else {
-        unreachable!("bad");
+        unreachable!(
+            "set_node_content_size is only called on node.is_content_sized() \
+            meaning this branch should never be reached"
+        );
     };
     if let (LeafRule::Fixed(to_update, true), Some(new)) = (&mut size.width, new.width) {
         if new.is_nan() {
-            error!("Some computed width was NAN, this will break the layouting algo");
+            return Err(BadRule::Nan(Axis::Horizontal));
         }
         *to_update = new;
     }
     if let (LeafRule::Fixed(to_update, true), Some(new)) = (&mut size.height, new.height) {
         if new.is_nan() {
-            error!("Some computed height was NAN, this will break the layouting algo");
+            return Err(BadRule::Nan(Axis::Vertical));
         }
         *to_update = new;
     }
+    Ok(())
 }
