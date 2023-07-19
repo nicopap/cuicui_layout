@@ -190,6 +190,20 @@ impl BevyPlugin for Plugin {
                 .in_set(ComputeLayout)
                 .in_set(ComputeLayoutSet),
         );
+        use bevy::prelude::{Changed, Commands, Entity, Query};
+        use content_sized::LeafNode;
+        app.add_systems(
+            Update,
+            (|mut cmds: Commands, q: Query<(Entity, &Node), Changed<Node>>| {
+                for (entity, node) in &q {
+                    match node {
+                        Node::Container(_) => cmds.entity(entity).remove::<LeafNode>(),
+                        Node::Axis(_) | Node::Box(_) => cmds.entity(entity).insert(LeafNode),
+                    };
+                }
+            })
+            .before(ComputeLayoutSet),
+        );
         #[cfg(feature = "debug")]
         app.add_plugins(debug::Plugin);
 

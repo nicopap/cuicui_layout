@@ -99,18 +99,20 @@ pub trait ComputeContentSize: SystemParam {
     ) -> Size<f32>;
 }
 
-type BasicQuery<'w, 's, C> =
-    Query<'w, 's, (Entity, Option<&'static Name>, Option<&'static Parent>, C)>;
-type NodesQuery<'w, 's> = BasicQuery<'w, 's, AnyOf<(&'static Node, &'static Root)>>;
-type ComputeQuery<'w, 's, N, S> = BasicQuery<'w, 's, (N, <S as ComputeContentParam>::Components)>;
-type ReadQuery<'w, 's, S> = ComputeQuery<'w, 's, &'static Node, S>;
-type WriteQuery<'w, 's, S> = ComputeQuery<'w, 's, &'static mut Node, S>;
+#[derive(Component)]
+pub(crate) struct LeafNode;
+
+type BasicQuery<'w, 's, C, F> =
+    Query<'w, 's, (Entity, Option<&'static Name>, Option<&'static Parent>, C), F>;
+
+type NodeQuery<'w, 's> =
+    BasicQuery<'w, 's, AnyOf<(&'static Node, &'static Root)>, Without<LeafNode>>;
 
 #[sysfail(log(level = "error"))]
 fn compute_content_size<S: ComputeContentParam>(
     compute_param: StaticSystemParam<S>,
-    mut p: ParamSet<((NodesQuery, ReadQuery<S>), WriteQuery<S>)>,
-    mut to_update: Local<Vec<(Entity, Size<Option<f32>>)>>,
+    mut content_sized: BasicQuery<(&mut Node, S::Components), With<LeafNode>>,
+    nodes: NodeQuery,
 ) -> std::result::Result<(), Why<S>>
 where
     for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
@@ -121,26 +123,19 @@ where
         bevy::utils::get_short_name(std::any::type_name::<S>())
     );
 
-    let (nodes, requires_update) = p.p0();
-    for (entity, name, parent, (node, components)) in &requires_update {
+    for (e, name, parent, (node, components)) in &mut content_sized {
         if !node.content_sized() {
             continue;
         }
         trace!("Computing size of a node with constraints: {node:?}");
-        let size = node_content_size(parent, node, &nodes).map_err(|e| e.into_why(entity, name))?;
+        let size = node_content_size(parent, &node, &nodes).map_err(|err| err.into_why(e, name))?;
         let computed = compute_param.compute_content(components, size);
         let computed = Size {
             width: size.width.is_none().then_some(computed.width),
             height: size.height.is_none().then_some(computed.height),
         };
         trace!("It is: {computed:?}");
-        to_update.push((entity, computed));
-    }
-    let mut to_set = p.p1();
-    for (node, computed) in to_update.drain(..) {
-        // SAFETY: due to the above, this can only be valid
-        let (entity, name, _, (node, _)) = unsafe { to_set.get_mut(node).unwrap_unchecked() };
-        set_node_content_size(node, computed).map_err(|e| e.into_why(entity, name))?;
+        set_node_content_size(node, computed).map_err(|err| err.into_why(e, name))?;
     }
     Ok(())
 }
@@ -210,7 +205,7 @@ const fn get_rules<'a>(node: (Option<&'a Node>, Option<&'a Root>)) -> Result<&'a
 fn node_content_size(
     parent: Option<&Parent>,
     node: &Node,
-    nodes: &NodesQuery,
+    nodes: &NodeQuery,
 ) -> Result<Size<Option<f32>>> {
     let leaf_size = |axis, rule| match rule {
         LeafRule::Parent(ratio) => Ok(Some(parent_size(ratio, axis, parent, nodes)?)),
@@ -230,7 +225,7 @@ fn node_content_size(
         );
     }
 }
-fn parent_size(ratio: f32, axis: Axis, this: Option<&Parent>, nodes: &NodesQuery) -> Result<f32> {
+fn parent_size(ratio: f32, axis: Axis, this: Option<&Parent>, nodes: &NodeQuery) -> Result<f32> {
     use BadRule::OrphanUnnamed as Orphan;
     let this = this.ok_or(Orphan)?.get();
     let (e, n, parent, node) = nodes.get(this).map_err(|_| Orphan)?;
