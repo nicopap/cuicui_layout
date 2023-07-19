@@ -144,12 +144,33 @@ fn setup(mut cmds: Commands) {
                 empty_pct(10, "h1_4_spacer");
                 spawn_ui(Fixed(51, 32), "h1_5_fix");
             }
-            row("deep1", rules(pct(80), child(1.5))) {
-                row("deep2", rules(child(1.5), child(3.))) {
-                    row("deep3", rules(child(4.), child(1.5))) {
-                        spawn_ui(Fixed(10, 10), "deep4");
+            row("deep1", rules(pct(80), pct(10))) {
+                empty_px(5);
+                row("deepA1", rules(px(300), pct(100))) {
+                    row("deepA2", rules(pct(85), pct(100))) {
+                        row("deepA3", rules(pct(85), pct(100))) {
+                            row("deepA4", rules(pct(85), pct(100))) {
+                                row("deepA5", rules(pct(85), pct(100))) {
+                                    row("deepA6", rules(pct(85), pct(100))) {
+                                        spawn_ui(Fixed(30, 30), "deepA7");
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                row("deepB2", rules(child(1.5), child(3.))) {
+                    row("deepB3", rules(child(1.5), child(1.))) {
+                        row("deepB4", rules(child(1.5), child(1.))) {
+                            row("deepB5", rules(child(1.5), child(1.))) {
+                                row("deepB6", rules(child(4.), child(1.5))) {
+                                    spawn_ui(Fixed(10, 10), "deepB7");
+                                }
+                            }
+                        }
+                    }
+                }
+                empty_px(0);
             }
             row("single_child", rules(child(2.), child(2.))) {
                 spawn_ui(Fixed(40, 40), "fix2");
