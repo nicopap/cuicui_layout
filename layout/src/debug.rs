@@ -6,6 +6,7 @@
 //! > and the outlines are drawn behind the UI, enable the `cuicui_layout/debug_bevy_ui`!
 //!
 #![doc = include_str!("../debug.md")]
+#![allow(clippy::needless_pass_by_value)]
 
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
@@ -80,7 +81,7 @@ impl Default for InputMap {
     }
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Debug, Clone, Default)]
 struct DebugOverlayCamera {
     screen_space: bool,
 }
@@ -410,17 +411,15 @@ impl<'w, 's> InsetGizmo<'w, 's> {
             known_x: DrawnLines::new(line_width),
         }
     }
-    fn relative(&self, position: Vec2) -> Vec2 {
+    fn relative(&self, mut position: Vec2) -> Vec2 {
         let zero = GlobalTransform::IDENTITY;
         let Ok((cam, debug)) = self.cam.get_single() else { return Vec2::ZERO;};
         if debug.screen_space {
-            position.xy()
-        } else {
-            let Some(position) = cam.world_to_viewport(&zero, position.extend(0.)) else {
-                return Vec2::ZERO
+            if let Some(new_position) = cam.world_to_viewport(&zero, position.extend(0.)) {
+                position = new_position;
             };
-            position.xy()
         }
+        position.xy()
     }
     /// Draw rule at edge of container on given axis.
     fn rule(&mut self, center: Vec2, extents: Vec2, rule: RuleArrow, axis: Axis, color: Color) {
@@ -513,10 +512,8 @@ impl BevyPlugin for Plugin {
             )
                 .chain(),
         );
-        #[allow(clippy::unnecessary_struct_initialization)]
         app.insert_resource(Options {
-            #[cfg(feature = "debug_bevy_ui")]
-            screen_space: true,
+            screen_space: cfg!(feature = "debug_bevy_ui"),
             ..default()
         });
     }

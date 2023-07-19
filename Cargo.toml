@@ -23,8 +23,8 @@ enumset = "1.1"
 thiserror = "1"
 # winnow = "0.4.9"
 
-cuicui_layout = { version = "0.7.0", path = "./layout" }
-cuicui_layout_bevy_sprite = { version = "0.7.0", path = "./sprite" }
+cuicui_layout = { version = "0.7.0", path = "./layout", default-features = false }
+cuicui_layout_bevy_sprite = { version = "0.7.0", path = "./sprite", default-features = false }
 cuicui_layout_bevy_ui = { version = "0.7.0", path = "./ui" }
 cuicui_dsl = { version = "0.7.0", path = "./dsl" }
 

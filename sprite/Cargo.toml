@@ -11,7 +11,8 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["sprite_text"]
+default = ["sprite_text", "reflect"]
+reflect = ["cuicui_layout/reflect"]
 sprite_text = []
 
 [dependencies]
