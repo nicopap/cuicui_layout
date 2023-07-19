@@ -24,7 +24,13 @@ pub struct ComputeLayout;
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub struct ComputeLayoutSet;
 
-/// The system added by [`add_content_sized`].
+/// All systems added by [`add_content_sized`].
+///
+/// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
+#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
+pub struct ContentSizedComputeSystemSet;
+
+/// The system added by [`add_content_sized`] for `S`.
 ///
 /// It is part of [`ComputeLayoutSet`], but this happens just
 /// before [`compute_layout`], setting the content-sized

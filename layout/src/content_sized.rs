@@ -15,7 +15,8 @@ use thiserror::Error;
 
 use crate::{
     direction::Axis, error::Handle, ComputeLayout, ComputeLayoutSet, Container,
-    ContentSizedComputeSystem, LeafRule, Node, Root, Rule, Size,
+    ContentSizedComputeSystem, ContentSizedComputeSystemSet, LeafNode, LeafRule, Node, Root, Rule,
+    Size,
 };
 
 type Result<T> = std::result::Result<T, BadRule>;
@@ -46,6 +47,7 @@ impl AppContentSizeExt for App {
             Update,
             compute_content_size::<S>
                 .in_set(ComputeLayoutSet)
+                .in_set(ContentSizedComputeSystemSet)
                 .in_set(set),
         );
         self.configure_set(Update, S::condition(set));
@@ -98,9 +100,6 @@ pub trait ComputeContentSize: SystemParam {
         set_size: Size<Option<f32>>,
     ) -> Size<f32>;
 }
-
-#[derive(Component)]
-pub(crate) struct LeafNode;
 
 type BasicQuery<'w, 's, C, F> =
     Query<'w, 's, (Entity, Option<&'static Name>, Option<&'static Parent>, C), F>;

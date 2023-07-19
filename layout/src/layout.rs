@@ -6,7 +6,7 @@ use std::{num::ParseFloatError, str::FromStr};
 use bevy::prelude::{Reflect, ReflectComponent};
 use bevy::{
     ecs::query::ReadOnlyWorldQuery,
-    prelude::{trace, Children, Component, Entity, Name, Query},
+    prelude::{trace, Children, Component, Entity, Name, Query, Vec2},
     utils::FloatOrd,
 };
 
@@ -17,8 +17,31 @@ use crate::{
     alignment::{Alignment, CrossAlign, Distribution},
     direction::{Flow, Oriented, Size},
     error::{self, Computed, Handle, Relative},
-    PosRect,
 };
+
+/// Position and size of a [`Node`] as computed by the layouting algo.
+///
+/// Note that `Pos` will always be **relative to** the top left position of the
+/// containing node.
+#[derive(Component, Debug, Clone, Copy, Default, PartialEq)]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+pub struct PosRect {
+    pub(crate) size: Size<f32>,
+    pub(crate) pos: Size<f32>,
+}
+impl PosRect {
+    /// The `(top, left)` position of the [`Node`].
+    #[must_use]
+    pub const fn pos(&self) -> Vec2 {
+        Vec2::new(self.pos.width, self.pos.height)
+    }
+    /// The [`Size`] of the node.
+    #[must_use]
+    pub const fn size(&self) -> Size<f32> {
+        self.size
+    }
+}
+
 impl<T> Size<Result<T, Entity>> {
     /// Go from a `Size<Result<T, Entity>>` to a `Result<Size<T>, error::Why>`.
     /// Assumes the error is a [`error::Why::CyclicRule`].
@@ -473,7 +496,7 @@ impl Rule {
 /// [`WorldQuery`] item used by the layout function.
 ///
 /// [`WorldQuery`]: bevy::ecs::query::WorldQuery
-pub type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
+pub(crate) type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
 
 /// The layouting algorithm's inner state.
 ///

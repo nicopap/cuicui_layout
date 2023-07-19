@@ -140,8 +140,7 @@ pub(crate) enum Why {
         - {this} depends on PARENT {parent} on {axis}\n\
         - {parent} depends on CHILD {this} on {axis}\n\
         It's impossible to make sense of this circular dependency!   \
-        Use different rules on {axis} for any container between {parent} and {this} \
-        (included) to fix this issue."
+        Use different rules on {axis} for {parent} or {this} to fix this issue."
     )]
     CyclicRule {
         this: Handle,
