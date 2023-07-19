@@ -1,10 +1,16 @@
 //! Make [`cuicui_layout`] useable with bevy's UI library (`bevy_ui`).
 //!
-//! Import this crate's [`DslBundle`] and use [`cuicui_dsl::dsl!`] with
+//! Import this crate's [`UiDsl`] and use [`cuicui_dsl::dsl!`] with
 //! it to have a fully working UI library.
 //!
 //! It contains:
 //! * A [`dsl`] to use with the [`cuicui_dsl::dsl!`] macro.
+//!
+//! Note that **unlike `cuicui_layout_bevy_ui`, this uses a Y axis down**
+//! coordinate space, (like `bevy_sprite`)
+//!
+//! Therefore, if you happen to convert your layouts from `bevy_ui` to `bevy_sprite`
+//! (or vis-versa) what was on top will be at the bottom and vis-versa.
 //!
 //! # Example
 //!
