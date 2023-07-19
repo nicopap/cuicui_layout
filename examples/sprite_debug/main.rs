@@ -4,17 +4,23 @@
 //! The goal is to test `cuicui_layout` in non-trival situations.
 #![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
 
+use std::time::Duration;
+
 use bevy::{
+    asset::ChangeWatcher,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::RenderLayers},
     sprite::MaterialMesh2dBundle,
 };
 use cuicui_dsl::dsl;
-use cuicui_layout::{dsl::IntoUiBundle, dsl_functions::*, Node, PosRect, Root, Size};
+use cuicui_layout::{
+    dsl::IntoUiBundle, dsl_functions::*, ComputeLayoutSet, Node, PosRect, Root, Size,
+};
 use cuicui_layout_bevy_sprite as render;
 use cuicui_layout_bevy_sprite::SpriteDsl as Dsl;
 
 const UI_LAYER: RenderLayers = RenderLayers::none().with(20);
+const Z_OFFSET: f32 = 0.01;
 
 fn van_der_corput(bits: u32) -> f32 {
     let leading_zeros = if bits == 0 { 0 } else { bits.leading_zeros() };
@@ -29,27 +35,27 @@ fn color_from_entity(entity: Entity) -> Color {
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, cuicui_layout::Plugin))
+        .add_plugins((
+            DefaultPlugins.set(AssetPlugin {
+                asset_folder: "../../assets".to_owned(),
+                watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
+            }),
+            cuicui_layout_bevy_sprite::Plugin,
+            // bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
+        ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .add_systems(PostStartup, setup_debug)
-        // .add_plugin(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .add_systems(
             Update,
-            (
-                update_transforms,
-                render::update_ui_camera_root,
-                stretch_boxes,
-            ),
+            (stretch_boxes, forward_layout_nodes.before(ComputeLayoutSet)),
         )
         .run();
 }
 
-/// Update transform of things that have a `PosRect` component.
-fn update_transforms(mut positioned: Query<(&PosRect, &mut Transform), Changed<PosRect>>) {
-    for (pos, mut transform) in &mut positioned {
-        let z = transform.translation.z;
-        transform.translation = pos.pos().extend(z);
+fn forward_layout_nodes(mut q: Query<&mut Transform, Added<PosRect>>) {
+    for mut t in &mut q {
+        t.translation.z = Z_OFFSET;
     }
 }
 

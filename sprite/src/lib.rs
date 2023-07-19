@@ -1,8 +1,15 @@
 //! Make [`cuicui_layout`] useable with bevy's 2D renderer (`bevy_sprite`).
 //!
-//! It contains:
+//! Import this crate's [`SpriteDsl`] and use [`cuicui_dsl::dsl!`] with
+//! it to have a fully working UI library.
 //!
-//! * [`cuicui_dsl::DslBundle`] implementation ([`Sprite`]) to use with the [`cuicui_layout::dsl!`] macro.
+//! Note that **unlike `cuicui_layout_bevy_ui`, this uses a Y axis down**
+//! coordinate space, (like `bevy_sprite`)
+//!
+//! Therefore, if you happen to convert your layouts from `bevy_ui` to `bevy_sprite`
+//! (or vis-versa) what was on top will be at the bottom and vis-versa.
+//!
+//! This might be changed in the future, so beware!
 //!
 //! [`Sprite`]: bevy::sprite::Sprite
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
@@ -14,11 +21,14 @@
 
 use bevy::{
     ecs::prelude::*,
-    prelude::{default, Camera, Camera2dBundle, OrthographicProjection, Vec2},
+    prelude::{
+        default, App, Camera, Camera2dBundle, OrthographicProjection, Plugin as BevyPlugin,
+        Transform, Vec2,
+    },
     render::view::{Layer, RenderLayers},
 };
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::{LayoutRootCamera, Root, ScreenRoot};
+use cuicui_layout::{AppContentSizeExt, LayoutRootCamera, PosRect, Root, ScreenRoot};
 
 pub mod content_sized;
 pub mod dsl;
@@ -77,7 +87,7 @@ impl UiCameraBundle {
 ///
 /// [`Node`]: cuicui_layout::Node
 #[quick_sysfail]
-pub fn update_ui_camera_root(
+pub fn update_layout_camera_root(
     ui_cameras: Query<(&Camera, &RenderLayers), (With<LayoutRootCamera>, Changed<Camera>)>,
     mut roots: Query<(&mut Root, &RenderLayers), With<ScreenRoot>>,
 ) {
@@ -89,5 +99,44 @@ pub fn update_ui_camera_root(
             *bounds.width = size.x;
             *bounds.height = size.y;
         }
+    }
+}
+/// Set the [`Transform`]s according to [`PosRect`]'s computed from [`cuicui_layout`].
+pub fn update_layout_transform(mut query: Query<(&mut Transform, &PosRect), Changed<PosRect>>) {
+    query.for_each_mut(|(mut transform, rect)| {
+        let z = transform.translation.z;
+        transform.translation = rect.pos().extend(z);
+    });
+}
+
+/// Plugin managing position and size of `bevy_sprite` renderable components
+///  using [`cuicui_layout`] components.
+///
+/// What this does:
+///
+/// - Manage size of [`Sprite`], [`Mesh2dHandle`] and [`Text2dBundle`] components
+///   based on their `cuicui_layout`-infered size.
+/// - Manage the size of content-sized [`cuicui_layout::Node`].
+/// - Manage size of the [`cuicui_layout::ScreenRoot`] container
+/// - Set the [`Transform`] of entities with a [`cuicui_layout::Node`] component
+///
+/// [`Sprite`]: bevy::sprite::Sprite
+/// [`Mesh2dHandle`]: bevy::sprite::Mesh2dHandle
+/// [`Text2dBundle`]: bevy::text::Text2dBundle
+pub struct Plugin;
+impl BevyPlugin for Plugin {
+    fn build(&self, app: &mut App) {
+        use bevy::prelude::Update;
+        use cuicui_layout::ComputeLayoutSet;
+
+        app.add_plugins(cuicui_layout::Plugin)
+            .add_content_sized::<content_sized::SpriteContentSize>()
+            .add_systems(
+                Update,
+                (
+                    update_layout_camera_root.before(ComputeLayoutSet),
+                    update_layout_transform.after(ComputeLayoutSet),
+                ),
+            );
     }
 }
