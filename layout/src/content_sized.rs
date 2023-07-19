@@ -21,6 +21,32 @@ use crate::{
 
 type Result<T> = std::result::Result<T, BadRule>;
 
+#[derive(Debug, Clone, Error)]
+enum Why<T> {
+    #[error("{}.compute_content returned a Nan when computing {1}'s {0}. Size must be a number.", type_name::<T>())]
+    Nan(Axis, Handle),
+    #[error("When computing content of {}: {0} depends on its parent, but it has no parents :(",  type_name::<T>())]
+    Orphan(Handle),
+    #[error("Not shown, crate::error::Why::CyclicRule should do this job")]
+    CyclicRule,
+    #[error("Not shown, never constructed")]
+    _PlzIgnore(PhantomData<T>),
+}
+
+impl<T> FailureMode for Why<T> {
+    type ID = ();
+    fn identify(&self) {}
+    fn log_level(&self) -> LogLevel {
+        match self {
+            Why::Nan(_, _) | Why::Orphan(_) => LogLevel::Error,
+            Why::CyclicRule | Why::_PlzIgnore(_) => LogLevel::Silent,
+        }
+    }
+    fn display(&self) -> Option<String> {
+        Some(self.to_string())
+    }
+}
+
 /// Extends [`App`] to support adding [`ComputeContentSize`].
 pub trait AppContentSizeExt {
     /// Add support for content-sized for given `T` [`ComputeContentSize`].
@@ -137,32 +163,6 @@ where
         set_node_content_size(node, computed).map_err(|err| err.into_why(e, name))?;
     }
     Ok(())
-}
-
-#[derive(Debug, Clone, Error)]
-enum Why<T> {
-    #[error("{}.compute_content returned a Nan when computing {1}'s {0}. Size must be a number.", type_name::<T>())]
-    Nan(Axis, Handle),
-    #[error("When computing content of {}: {0} depends on its parent, but it has no parents :(",  type_name::<T>())]
-    Orphan(Handle),
-    #[error("Not shown, crate::error::Why::CyclicRule should do this job")]
-    CyclicRule,
-    #[error("Not shown, never constructed")]
-    _PlzIgnore(PhantomData<T>),
-}
-
-impl<T> FailureMode for Why<T> {
-    type ID = ();
-    fn identify(&self) {}
-    fn log_level(&self) -> LogLevel {
-        match self {
-            Why::Nan(_, _) | Why::Orphan(_) => LogLevel::Error,
-            Why::CyclicRule | Why::_PlzIgnore(_) => LogLevel::Silent,
-        }
-    }
-    fn display(&self) -> Option<String> {
-        Some(self.to_string())
-    }
 }
 
 enum BadRule {
