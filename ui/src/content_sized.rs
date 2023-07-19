@@ -48,24 +48,18 @@ impl UiContentSize<'_> {
     }
 }
 fn compute_image_size(size: Vec2, set_size: Size<Option<f32>>) -> Vec2 {
-    let mut size = match (set_size.width, set_size.height) {
+    let size = match (set_size.width, set_size.height) {
         (None, None) => size,
         (Some(width), None) => Vec2::new(width, width * size.y / size.x),
         (None, Some(height)) => Vec2::new(height * size.x / size.y, height),
         (Some(_), Some(_)) => unreachable!(
-            "This is a bug in cuicui_layout, \
-                the API promises that compute_content is never call with two set values"
+            "This is a bug in cuicui_layout, the API promises that \
+            compute_content is never called with two set values."
         ),
     };
     // `UiImageSize` is NaN when the image is not loaded yet. This messes
     // with cuicui_layout which is picky about errors.
-    if size.x.is_nan() {
-        size.x = 0.;
-    }
-    if size.y.is_nan() {
-        size.y = 0.;
-    }
-    size
+    Vec2::select(size.is_nan_mask(), Vec2::ZERO, size)
 }
 impl ComputeContentSize for UiContentSize<'_> {
     type Components = AnyOf<(&'static Text, &'static UiImageSize)>;
