@@ -208,8 +208,8 @@ fn node_content_size(
 ) -> Result<Size<Option<f32>>> {
     let leaf_size = |axis, rule| match rule {
         LeafRule::Parent(ratio) => Ok(Some(parent_size(ratio, axis, parent, nodes)?)),
-        LeafRule::Fixed(value, false) => Ok(Some(value)),
-        LeafRule::Fixed(_, true) => Ok(None),
+        LeafRule::Fixed(value) => Ok(Some(value)),
+        LeafRule::Content(_) => Ok(None),
     };
     // TODO(bug)TODO(feat): Node::Axis
     if let Node::Box(size) = node {
@@ -244,13 +244,13 @@ fn set_node_content_size(mut node: Mut<Node>, new: Size<Option<f32>>) -> Result<
             meaning this branch should never be reached"
         );
     };
-    if let (LeafRule::Fixed(to_update, true), Some(new)) = (&mut size.width, new.width) {
+    if let (LeafRule::Content(to_update), Some(new)) = (&mut size.width, new.width) {
         if new.is_nan() {
             return Err(BadRule::Nan(Axis::Horizontal));
         }
         *to_update = new;
     }
-    if let (LeafRule::Fixed(to_update, true), Some(new)) = (&mut size.height, new.height) {
+    if let (LeafRule::Content(to_update), Some(new)) = (&mut size.height, new.height) {
         if new.is_nan() {
             return Err(BadRule::Nan(Axis::Vertical));
         }

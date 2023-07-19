@@ -250,7 +250,7 @@ impl<C: DslBundle> LayoutDsl<C> {
         assert!(percent <= 100);
         let node = Node::Axis(Oriented {
             main: LeafRule::Parent(f32::from(percent) / 100.0),
-            cross: LeafRule::Fixed(0.0, false),
+            cross: LeafRule::Fixed(0.0),
         });
         cmds.insert(LayoutBundle { node, ..Default::default() })
             .id()
@@ -260,8 +260,8 @@ impl<C: DslBundle> LayoutDsl<C> {
     /// and the `cross` axis to 0.
     pub fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
         let node = Node::Axis(Oriented {
-            main: LeafRule::Fixed(f32::from(pixels), false),
-            cross: LeafRule::Fixed(0.0, false),
+            main: LeafRule::Fixed(f32::from(pixels)),
+            cross: LeafRule::Fixed(0.0),
         });
         cmds.insert(LayoutBundle { node, ..Default::default() })
             .id()

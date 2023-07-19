@@ -327,10 +327,10 @@ impl Node {
     /// Is this node both terminal and content-sized?
     #[must_use]
     pub(crate) const fn content_sized(&self) -> bool {
-        use LeafRule::Fixed;
+        use LeafRule::Content;
         matches!(
             self,
-            Node::Box(Size { width: Fixed(_, true), .. } | Size { height: Fixed(_, true), .. })
+            Node::Box(Size { width: Content(_), .. } | Size { height: Content(_), .. })
         )
     }
     /// A [`Node`] occupying `value%` of it's parent container on the main axis.
@@ -347,14 +347,14 @@ impl Node {
     pub fn spacer_ratio(value: f32) -> Option<Self> {
         let spacer = Node::Axis(Oriented {
             main: LeafRule::Parent(value),
-            cross: LeafRule::Fixed(0., false),
+            cross: LeafRule::Fixed(0.),
         });
         (value <= 1. && value >= 0.).then_some(spacer)
     }
     /// A fixed size terminal [`Node`], without children.
     #[must_use]
     pub fn fixed(size: Size<f32>) -> Self {
-        Node::Box(size.map(|f| LeafRule::Fixed(f, false)))
+        Node::Box(size.map(LeafRule::Fixed))
     }
     const fn parent_rule(&self, flow: Flow, axis: Flow) -> Option<f32> {
         match self {
@@ -378,9 +378,16 @@ pub enum LeafRule {
     /// (may not be above 1)
     Parent(f32),
 
-    // TODO(clean): the `bool` is REALLY bad. Consider using an additional variant.
     /// The box's size is equal to precisely `f32` pixels.
-    Fixed(f32, bool),
+    Fixed(f32),
+
+    /// The box's size on given axis is dependent on its content.
+    ///
+    /// The `f32` is populated by a system added by [`add_content_sized`].
+    /// This will otherwise act pretty much like [`Self::Fixed`].
+    ///
+    /// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
+    Content(f32),
 }
 impl Default for LeafRule {
     fn default() -> Self {
@@ -454,24 +461,25 @@ impl LeafRule {
     pub(crate) const fn from_rule(rule: Option<Rule>) -> Self {
         match rule {
             // TODO(err)
-            Some(Rule::Children(_)) | None => Self::Fixed(0., true),
-            Some(Rule::Fixed(v)) => Self::Fixed(v, false),
+            Some(Rule::Children(_)) | None => Self::Content(0.),
+            Some(Rule::Fixed(v)) => Self::Fixed(v),
             Some(Rule::Parent(v)) => Self::Parent(v),
         }
     }
     /// Compute effective size, given a potentially set parent container size.
     fn inside(self, parent_size: Computed) -> Result<f32, Entity> {
+        use LeafRule::{Content, Fixed};
         match (self, parent_size) {
             (LeafRule::Parent(ratio), Computed::Valid(value)) => Ok(value * ratio),
             (LeafRule::Parent(_), Computed::ChildDefined(_, parent)) => Err(parent),
-            (LeafRule::Fixed(fixed, _), _) => Ok(fixed),
+            (Fixed(fixed) | Content(fixed), _) => Ok(fixed),
         }
     }
 
     const fn parent_rule(self) -> Option<f32> {
         match self {
             LeafRule::Parent(ratio) => Some(ratio),
-            LeafRule::Fixed(_, _) => None,
+            LeafRule::Fixed(_) | LeafRule::Content(_) => None,
         }
     }
 }

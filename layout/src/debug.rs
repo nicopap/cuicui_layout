@@ -364,8 +364,8 @@ impl RuleArrow {
 impl From<LeafRule> for RuleArrow {
     fn from(value: LeafRule) -> Self {
         match value {
-            LeafRule::Fixed(_, true) => RuleArrow::InwardBare,
-            LeafRule::Fixed(_, false) => RuleArrow::None,
+            LeafRule::Content(_) => RuleArrow::InwardBare,
+            LeafRule::Fixed(_) => RuleArrow::None,
             LeafRule::Parent(value) => RuleArrow::Outward(value),
         }
     }
