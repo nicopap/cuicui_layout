@@ -16,3 +16,6 @@ cuicui_layout.workspace = true
 cuicui_layout_bevy_sprite.workspace = true
 bevy-inspector-egui.workspace = true
 bevy = { version = "0.11", features = ["png", "x11", "bevy_asset", "bevy_render", "bevy_sprite" ] }
+
+[package.metadata.release]
+release = false

@@ -1,3 +1,34 @@
+## 0.8.0
+
+### `cuicui_layout_bevy_sprite`
+
+* 331309d Add a Plugin to `cuicui_layout_bevy_sprite`
+  * Before, you had to manually add every system, now `cuicui_layout_bevy_sprite`
+    exports a plugin to do it for you.
+
+### `cuicui_layout`
+
+* 59ec3fa Split `LeafRule::Fixed` In two (#43)
+* d6cceaf Rename PosRect to LayoutRect (#45)
+* 3ed5e6f Use a marker component for compute_content_size (#35)
+* 653e704 Improve content_sized error handling (#34)
+  * This should cause error logs when returning `Nan` from a `ComputeContentSize` impl
+  * Also when a content-sized node is orphaned while needing parent size
+* bc40e49 Add world space handling
+  * This fixes misalignement of the layout debug overlay for bevy_sprite
+  * Note that layouting is bottom-to-top in the bevy_sprite implementation, this
+    might change in the future
+  * You can control whether the debug overlay is screen-space or world-space
+    with the `cuicui_layout::debug::Options.screen_space` field
+* bc40e49 Handle properly window scaling in debug overlay
+  * Before, cuicui_layout's debug overlay assumed a windows scale of 1.5, now
+    it is computed from the primary window
+  * Might support heterogenous scale (multiple windows) in the future
+* 8e454e8 Use a hashset to handle debug layout insets
+  * Now the debug layout containers are inset pixel-perfectly so that outer container
+    outlines are still visible.
+* 2e98bf2 Move update_transforms from cuicui_layout to cuicui_layout_bevy_sprite
+
 ## 0.7.0
 
 - Add the `cuicui_layout/debug` feature.

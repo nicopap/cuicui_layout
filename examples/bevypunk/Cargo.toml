@@ -16,3 +16,6 @@ cuicui_layout.workspace = true
 cuicui_layout_bevy_ui.workspace = true
 bevy-inspector-egui.workspace = true
 bevy = { version = "0.11", features = ["png", "jpeg", "x11", "bevy_asset", "bevy_ui", "default_font"] }
+
+[package.metadata.release]
+release = false
