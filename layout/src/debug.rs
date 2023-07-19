@@ -23,7 +23,8 @@ use bevy::{
 };
 
 use crate::{
-    direction::Axis, Flow, LayoutRootCamera, LeafRule, Node, PosRect, Root, Rule, ScreenRoot, Size,
+    direction::Axis, Flow, LayoutRect, LayoutRootCamera, LeafRule, Node, Root, Rule, ScreenRoot,
+    Size,
 };
 
 pub use enumset::{EnumSet, EnumSetType};
@@ -248,7 +249,7 @@ fn outline_nodes(
     draw: &mut InsetGizmo,
     flow: Flow,
     this_entity: Entity,
-    this: PosRect,
+    this: LayoutRect,
 ) {
     let Ok(to_iter) = outline.children.get(this_entity) else { return; };
     for (entity, node, child) in outline.nodes.iter_many(to_iter) {
@@ -272,7 +273,7 @@ struct OutlineParam<'w, 's> {
     gizmo_config: Res<'w, GizmoConfig>,
     options: Res<'w, Options>,
     children: Query<'w, 's, &'static Children>,
-    nodes: Query<'w, 's, (Entity, &'static Node, &'static PosRect)>,
+    nodes: Query<'w, 's, (Entity, &'static Node, &'static LayoutRect)>,
 }
 impl OutlineParam<'_, '_> {
     fn flags(&self) -> EnumSet<Flag> {
@@ -286,7 +287,7 @@ fn outline_roots(
     outline: OutlineParam,
     draw: Gizmos,
     cam: CameraQuery,
-    roots: Query<(Entity, &Root, &PosRect, Has<ScreenRoot>)>,
+    roots: Query<(Entity, &Root, &LayoutRect, Has<ScreenRoot>)>,
     window: Query<&Window, With<PrimaryWindow>>,
     nonprimary_windows: Query<&Window, Without<PrimaryWindow>>,
 ) {
@@ -318,7 +319,7 @@ fn outline_roots(
 }
 fn outline_node(
     entity: Entity,
-    rect: PosRect,
+    rect: LayoutRect,
     margin: Size<f32>,
     rules: Size<RuleArrow>,
     flags: EnumSet<Flag>,
@@ -379,7 +380,7 @@ impl From<Rule> for RuleArrow {
     }
 }
 
-fn rect_border_axis(rect: PosRect, margin: Size<f32>) -> (f32, f32, f32, f32) {
+fn rect_border_axis(rect: LayoutRect, margin: Size<f32>) -> (f32, f32, f32, f32) {
     let pos = rect.pos() + Vec2::from(margin);
     let size = Vec2::from(rect.size()) - Vec2::from(margin) * 2.;
     let offset = pos + size;
@@ -439,21 +440,21 @@ impl<'w, 's> InsetGizmo<'w, 's> {
         let (start, end) = (self.relative(start), self.relative(end));
         self.draw.line_2d(start, end, color);
     }
-    fn set_scope(&mut self, rect: PosRect, margin: Size<f32>) {
+    fn set_scope(&mut self, rect: LayoutRect, margin: Size<f32>) {
         let (left, right, top, bottom) = rect_border_axis(rect, margin);
         self.known_x.add(left, 1);
         self.known_x.add(right, -1);
         self.known_y.add(top, 1);
         self.known_y.add(bottom, -1);
     }
-    fn clear_scope(&mut self, rect: PosRect, margin: Size<f32>) {
+    fn clear_scope(&mut self, rect: LayoutRect, margin: Size<f32>) {
         let (left, right, top, bottom) = rect_border_axis(rect, margin);
         self.known_x.remove(left, 1);
         self.known_x.remove(right, -1);
         self.known_y.remove(top, 1);
         self.known_y.remove(bottom, -1);
     }
-    fn rect_2d(&mut self, rect: PosRect, margin: Size<f32>, color: Color) {
+    fn rect_2d(&mut self, rect: LayoutRect, margin: Size<f32>, color: Color) {
         let (left, right, top, bottom) = rect_border_axis(rect, margin);
         if left.is(right) {
             self.line_2d(Vec2::new(left, top), Vec2::new(left, bottom), color);

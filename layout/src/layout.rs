@@ -21,15 +21,17 @@ use crate::{
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
-/// Note that `Pos` will always be **relative to** the top left position of the
+/// Note that [`pos`] will always be **relative to** the top left position of the
 /// containing node.
+///
+/// [`pos`]: Self::pos
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
-pub struct PosRect {
+pub struct LayoutRect {
     pub(crate) size: Size<f32>,
     pub(crate) pos: Size<f32>,
 }
-impl PosRect {
+impl LayoutRect {
     /// The `(top, left)` position of the [`Node`].
     #[must_use]
     pub const fn pos(&self) -> Vec2 {
@@ -514,7 +516,7 @@ pub(crate) type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
 pub struct Layout<'a, 'w, 's, F: ReadOnlyWorldQuery> {
     // This container's entity
     pub(crate) this: Entity,
-    pub(crate) to_update: &'a mut Query<'w, 's, &'static mut PosRect, F>,
+    pub(crate) to_update: &'a mut Query<'w, 's, &'static mut LayoutRect, F>,
     pub(crate) nodes: &'a Query<'w, 's, NodeQuery, F>,
     pub(crate) names: &'a Query<'w, 's, &'static Name>,
 }
@@ -522,7 +524,7 @@ pub struct Layout<'a, 'w, 's, F: ReadOnlyWorldQuery> {
 impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
     pub(crate) fn new(
         this: Entity,
-        to_update: &'a mut Query<'w, 's, &'static mut PosRect, F>,
+        to_update: &'a mut Query<'w, 's, &'static mut LayoutRect, F>,
         nodes: &'a Query<'w, 's, NodeQuery, F>,
         names: &'a Query<'w, 's, &'static Name>,
     ) -> Self {
@@ -630,7 +632,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let width_too_large = child_size.width > size.width;
         let axis = if width_too_large { WIDTH } else { HEIGHT };
         let largest_child = children.iter().max_by_key(|e| {
-            let Ok(PosRect { size, .. }) = self.to_update.get(**e) else { return FloatOrd(0.); };
+            let Ok(LayoutRect { size, .. }) = self.to_update.get(**e) else { return FloatOrd(0.); };
             FloatOrd(if width_too_large { size.width } else { size.height })
         });
         let relative_size = children.iter().filter_map(|e| {

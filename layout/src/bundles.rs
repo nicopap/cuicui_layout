@@ -2,13 +2,13 @@
 
 use bevy::prelude::{default, Bundle};
 
-use crate::{dsl, Container, LeafRule, Node, PosRect, Root, ScreenRoot, Size};
+use crate::{dsl, Container, LayoutRect, LeafRule, Node, Root, ScreenRoot, Size};
 
 /// A [`Root`] container node, it will always span the entire screen.
 #[derive(Bundle, Default)]
 pub struct RootBundle {
     /// The positional component.
-    pub pos_rect: PosRect,
+    pub pos_rect: LayoutRect,
     /// The container description, as a root.
     pub root: Root,
     /// Sets this [`Root`] to track the [`LayoutRootCamera`]'s size.
@@ -33,7 +33,7 @@ impl RootBundle {
 #[derive(Bundle, Default)]
 pub struct LayoutBundle {
     /// The positional component.
-    pub pos_rect: PosRect,
+    pub pos_rect: LayoutRect,
     /// The set of rules this node follows.
     pub node: Node,
 }

@@ -28,7 +28,7 @@ use bevy::{
     render::view::{Layer, RenderLayers},
 };
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::{AppContentSizeExt, LayoutRootCamera, PosRect, Root, ScreenRoot};
+use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root, ScreenRoot};
 
 pub mod content_sized;
 pub mod dsl;
@@ -101,8 +101,10 @@ pub fn update_layout_camera_root(
         }
     }
 }
-/// Set the [`Transform`]s according to [`PosRect`]'s computed from [`cuicui_layout`].
-pub fn update_layout_transform(mut query: Query<(&mut Transform, &PosRect), Changed<PosRect>>) {
+/// Set the [`Transform`]s according to [`LayoutRect`]'s computed from [`cuicui_layout`].
+pub fn update_layout_transform(
+    mut query: Query<(&mut Transform, &LayoutRect), Changed<LayoutRect>>,
+) {
     query.for_each_mut(|(mut transform, rect)| {
         let z = transform.translation.z;
         transform.translation = rect.pos().extend(z);

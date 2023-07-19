@@ -14,7 +14,7 @@ use bevy::{
 };
 use cuicui_dsl::dsl;
 use cuicui_layout::{
-    dsl::IntoUiBundle, dsl_functions::*, ComputeLayoutSet, Node, PosRect, Root, Size,
+    dsl::IntoUiBundle, dsl_functions::*, ComputeLayoutSet, LayoutRect, Node, Root, Size,
 };
 use cuicui_layout_bevy_sprite as render;
 use cuicui_layout_bevy_sprite::SpriteDsl as Dsl;
@@ -53,7 +53,7 @@ fn main() {
         .run();
 }
 
-fn forward_layout_nodes(mut q: Query<&mut Transform, Added<PosRect>>) {
+fn forward_layout_nodes(mut q: Query<&mut Transform, Added<LayoutRect>>) {
     for mut t in &mut q {
         t.translation.z = Z_OFFSET;
     }
@@ -92,7 +92,7 @@ struct DebugChild;
 
 #[allow(clippy::needless_pass_by_value)]
 fn stretch_boxes(
-    query: Query<(&Children, &PosRect), Changed<PosRect>>,
+    query: Query<(&Children, &LayoutRect), Changed<LayoutRect>>,
     mut trans: Query<&mut Transform, With<DebugChild>>,
 ) {
     for (children, pos) in &query {
@@ -107,7 +107,7 @@ fn stretch_boxes(
 #[derive(Bundle)]
 struct ElementBundle {
     node: Node,
-    pos: PosRect,
+    pos: LayoutRect,
     layer: RenderLayers,
 }
 impl Default for ElementBundle {

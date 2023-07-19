@@ -7,7 +7,7 @@ use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
 
 use crate::{
-    error::Computed, layout::Layout, layout::NodeQuery, ComputeLayoutError, Node, PosRect, Root,
+    error::Computed, layout::Layout, layout::NodeQuery, ComputeLayoutError, LayoutRect, Node, Root,
     Size,
 };
 
@@ -78,7 +78,7 @@ pub fn require_layout_recompute(
 /// Run the layout algorithm.
 #[sysfail(log(level = "error"))]
 pub fn compute_layout(
-    mut to_update: Query<&'static mut PosRect>,
+    mut to_update: Query<&'static mut LayoutRect>,
     nodes: Query<NodeQuery>,
     names: Query<&'static Name>,
     roots: Query<(Entity, &'static Root, &'static Children)>,

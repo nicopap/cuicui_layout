@@ -4,7 +4,7 @@
 
 - [ ] Display node info at top left of container
   - [ ] If node has `Name`, then show it. Use entity debug value if not
-  - [ ] `PosRect.size`
+  - [ ] `LayoutRect.size`
   - [ ] for `Container`: flow, distribution & alignment as a `FdDaA` string
      - [ ] `Flow::Vertical`: `v`
      - [ ] `Flow::Horizontal`: `>`
@@ -12,7 +12,7 @@
      - [ ] `Distribution::End`, `Alignment::End`: `E`
      - [ ] `Distribution::FillMain`, `Alignment::Center`: `C`
   - [ ] Tooltip hover for even more details!
-    - [ ] `PosRect.pos`
+    - [ ] `LayoutRect.pos`
     - [ ] margin
     - [ ] rules
     - [ ] fully-named distrib/align/flow

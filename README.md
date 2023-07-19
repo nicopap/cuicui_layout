@@ -157,8 +157,8 @@ This repository contains several crates:
 
 - Friendly algo with less things to keep in your head and good defaults.
 - Uses and takes full advantage of the bevy ECS.
-- Only controls `PosRect`, not `Transform`, you need to add a system that sets
-  `Transform` based on `PosRect`.
+- Only controls `LayoutRect`, not `Transform`, you need to add a system that sets
+  `Transform` based on `LayoutRect`.
 - Fully flexible and extensible, can be used with `bevy_ui`, `bevy_sprite`, your own stuff.
 - Fantatstically easy to extend, like really.
 - Helpful and fully detailed error messages when things are incoherent or broken.

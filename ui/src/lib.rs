@@ -64,7 +64,7 @@ pub struct TestWorkspaceReadme;
 use bevy::ecs::prelude::*;
 use bevy::prelude::{App, Camera, Plugin as BevyPlugin, Style};
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::{AppContentSizeExt, LayoutRootCamera, PosRect, Root};
+use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root};
 
 pub mod content_sized;
 pub mod dsl;
@@ -89,8 +89,8 @@ pub fn update_ui_camera_root(
 }
 
 /// Set the [`Style`]'s `{min_,max_,}size.{width,height}` and `position.{left,right}`
-/// according to [`PosRect`]'s computed from [`cuicui_layout`].
-pub fn set_layout_style(mut query: Query<(&mut Style, &PosRect), Changed<PosRect>>) {
+/// according to [`LayoutRect`]'s computed from [`cuicui_layout`].
+pub fn set_layout_style(mut query: Query<(&mut Style, &LayoutRect), Changed<LayoutRect>>) {
     use bevy::ui::{PositionType, Val};
     query.for_each_mut(|(mut style, pos)| {
         style.position_type = PositionType::Absolute;

@@ -55,7 +55,7 @@ pub use error::ComputeLayoutError;
 pub use labels::{
     ComputeLayout, ComputeLayoutSet, ContentSizedComputeSystem, ContentSizedComputeSystemSet,
 };
-pub use layout::{Container, LeafRule, Node, PosRect, Root, Rule};
+pub use layout::{Container, LayoutRect, LeafRule, Node, Root, Rule};
 pub use systems::{
     compute_layout, require_layout_recompute, update_leaf_nodes, LastLayoutChange,
     LayoutRootCamera, LeafNode, LeafNodeInsertWitness, ScreenRoot,
@@ -109,7 +109,7 @@ impl BevyPlugin for Plugin {
             .register_type::<LeafRule>()
             .register_type::<Node>()
             .register_type::<Oriented<LeafRule>>()
-            .register_type::<PosRect>()
+            .register_type::<LayoutRect>()
             .register_type::<Root>()
             .register_type::<Rule>()
             .register_type::<Size<f32>>()
