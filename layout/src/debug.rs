@@ -12,12 +12,13 @@ use bevy::{
     ecs::{prelude::*, query::Has, system::SystemParam},
     math::Vec2Swizzles,
     prelude::{
-        default, info, BVec2, Camera, Camera2d, Camera2dBundle, Children, Color, GizmoConfig,
-        Gizmos, GlobalTransform, Input, KeyCode, OrthographicProjection, Plugin as BevyPlugin,
-        Update, Vec2,
+        default, info, warn, BVec2, Camera, Camera2d, Camera2dBundle, Children, Color, GizmoConfig,
+        Gizmos, GlobalTransform, Input, KeyCode, Name, OrthographicProjection,
+        Plugin as BevyPlugin, Update, Vec2,
     },
     render::view::RenderLayers,
     utils::HashSet,
+    window::{PrimaryWindow, Window},
 };
 
 use crate::{
@@ -32,7 +33,6 @@ pub const LAYOUT_DEBUG_CAMERA_ORDER: isize = 255;
 pub const LAYOUT_DEBUG_LAYERS: RenderLayers = RenderLayers::none().with(16);
 
 /// For some reasons, gizmo lines' size is divided by 1.5, absolutely no idea why.
-const WEIRD_SCALE: f32 = 1. / 1.5;
 const MARGIN_LIGHTNESS: f32 = 0.85;
 const NODE_LIGHTNESS: f32 = 0.7;
 const NODE_SATURATION: f32 = 0.8;
@@ -80,8 +80,16 @@ impl Default for InputMap {
     }
 }
 
-#[derive(Component)]
-struct DebugOverlayCamera;
+#[derive(Component, Default)]
+struct DebugOverlayCamera {
+    screen_space: bool,
+}
+impl DebugOverlayCamera {
+    #[must_use]
+    const fn with_options(options: &Options) -> Self {
+        Self { screen_space: options.screen_space }
+    }
+}
 
 /// The debug overlay options.
 #[derive(Resource, Clone, Default)]
@@ -90,6 +98,11 @@ pub struct Options {
     pub flags: EnumSet<Flag>,
     /// The inputs used by the debug overlay.
     pub input_map: InputMap,
+    /// Whether the debug overlay should be rendered in screen space
+    /// or world space.
+    ///
+    /// This is usually `false` if not using cuicui_layout with bevy_ui.
+    pub screen_space: bool,
     layout_gizmos_camera: Option<Entity>,
 }
 
@@ -97,10 +110,9 @@ fn update_debug_camera(
     mut gizmo_config: ResMut<GizmoConfig>,
     mut options: ResMut<Options>,
     mut cmds: Commands,
-    _layout_cams: Query<&Camera, With<LayoutRootCamera>>,
     mut debug_cams: Query<&mut Camera, (Without<LayoutRootCamera>, With<DebugOverlayCamera>)>,
 ) {
-    if !options.is_changed() {
+    if !options.is_changed() && !gizmo_config.is_changed() {
         return;
     }
     if options.flags.is_empty() {
@@ -109,6 +121,7 @@ fn update_debug_camera(
         cam.is_active = false;
         gizmo_config.render_layers = RenderLayers::all();
     } else {
+        let debug_overlay_camera = DebugOverlayCamera::with_options(&options);
         let spawn_cam = || {
             cmds.spawn((
                 #[cfg(feature = "debug_bevy_ui")]
@@ -123,15 +136,16 @@ fn update_debug_camera(
                     camera_2d: Camera2d { clear_color: ClearColorConfig::None },
                     ..default()
                 },
-                DebugOverlayCamera,
                 LAYOUT_DEBUG_LAYERS,
+                debug_overlay_camera,
+                Name::new("Layout Debug Camera"),
             ))
             .id()
         };
-        let cam = *options.layout_gizmos_camera.get_or_insert_with(spawn_cam);
-        let Ok(mut cam) = debug_cams.get_mut(cam) else {return;};
         gizmo_config.enabled = true;
         gizmo_config.render_layers = LAYOUT_DEBUG_LAYERS;
+        let cam = *options.layout_gizmos_camera.get_or_insert_with(spawn_cam);
+        let Ok(mut cam) = debug_cams.get_mut(cam) else {return;};
         cam.is_active = true;
     }
 }
@@ -171,7 +185,6 @@ struct DrawnLines {
 #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
 impl DrawnLines {
     fn new(width: f32) -> Self {
-        let width = width * WEIRD_SCALE;
         DrawnLines { lines: HashSet::new(), width }
     }
     /// Return `value` offset by as many `increment`s as necessary to make it
@@ -265,13 +278,27 @@ impl OutlineParam<'_, '_> {
         self.options.flags
     }
 }
+type CameraQuery<'w, 's> = Query<'w, 's, (&'static Camera, &'static DebugOverlayCamera)>;
+
+#[allow(clippy::cast_possible_truncation)] // The `window_scale` don't usually require f64 precision.
 fn outline_roots(
     outline: OutlineParam,
     draw: Gizmos,
-    cam: Query<&'static Camera, With<DebugOverlayCamera>>,
+    cam: CameraQuery,
     roots: Query<(Entity, &Root, &PosRect, Has<ScreenRoot>)>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    nonprimary_windows: Query<&Window, Without<PrimaryWindow>>,
 ) {
-    let mut draw = InsetGizmo::new(draw, cam, outline.gizmo_config.line_width);
+    if !nonprimary_windows.is_empty() {
+        warn!(
+            "The layout debug view only uses the primary window scale, \
+            you might notice gaps between container lines"
+        );
+    }
+    let scale_factor = Window::scale_factor;
+    let window_scale = window.get_single().map_or(1., scale_factor) as f32;
+    let line_width = outline.gizmo_config.line_width / window_scale;
+    let mut draw = InsetGizmo::new(draw, cam, line_width);
     for (entity, root, rect, is_screen) in &roots {
         if !root.debug {
             continue;
@@ -370,16 +397,12 @@ impl ApproxF32 for f32 {
 
 struct InsetGizmo<'w, 's> {
     draw: Gizmos<'s>,
-    cam: Query<'w, 's, &'static Camera, With<DebugOverlayCamera>>,
+    cam: CameraQuery<'w, 's>,
     known_y: DrawnLines,
     known_x: DrawnLines,
 }
 impl<'w, 's> InsetGizmo<'w, 's> {
-    fn new(
-        draw: Gizmos<'s>,
-        cam: Query<'w, 's, &'static Camera, With<DebugOverlayCamera>>,
-        line_width: f32,
-    ) -> Self {
+    fn new(draw: Gizmos<'s>, cam: CameraQuery<'w, 's>, line_width: f32) -> Self {
         InsetGizmo {
             draw,
             cam,
@@ -389,9 +412,15 @@ impl<'w, 's> InsetGizmo<'w, 's> {
     }
     fn relative(&self, position: Vec2) -> Vec2 {
         let zero = GlobalTransform::IDENTITY;
-        let Ok(cam) = self.cam.get_single() else { return Vec2::ZERO;};
-        let Some(p) = cam.world_to_viewport(&zero, position.extend(0.)) else { return Vec2::ZERO };
-        p.xy()
+        let Ok((cam, debug)) = self.cam.get_single() else { return Vec2::ZERO;};
+        if debug.screen_space {
+            position.xy()
+        } else {
+            let Some(position) = cam.world_to_viewport(&zero, position.extend(0.)) else {
+                return Vec2::ZERO
+            };
+            position.xy()
+        }
     }
     /// Draw rule at edge of container on given axis.
     fn rule(&mut self, center: Vec2, extents: Vec2, rule: RuleArrow, axis: Axis, color: Color) {
@@ -475,15 +504,21 @@ impl<'w, 's> InsetGizmo<'w, 's> {
 pub struct Plugin;
 impl BevyPlugin for Plugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<InputMap>()
-            .init_resource::<Options>()
-            .add_systems(
-                Update,
-                (
-                    (update_debug_camera, cycle_flags),
-                    outline_roots.after(crate::ComputeLayoutSet),
-                ),
-            );
+        app.init_resource::<InputMap>().add_systems(
+            Update,
+            (
+                cycle_flags,
+                update_debug_camera,
+                outline_roots.after(crate::ComputeLayoutSet),
+            )
+                .chain(),
+        );
+        #[allow(clippy::unnecessary_struct_initialization)]
+        app.insert_resource(Options {
+            #[cfg(feature = "debug_bevy_ui")]
+            screen_space: true,
+            ..default()
+        });
     }
     fn finish(&self, _app: &mut bevy::prelude::App) {
         info!(
