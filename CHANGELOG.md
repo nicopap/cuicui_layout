@@ -1,3 +1,10 @@
+## `cuicui_dsl` 0.8.1
+
+* 53d6555 Improve `dsl!` error messages
+  * Now, instead of the classic rust `macro_rules!` error messages, we emit
+    `compile_error!` messages with context and links to documentation. This
+    should make it much easier to use
+
 ## 0.8.0
 
 ### `cuicui_layout_bevy_sprite`
