@@ -121,9 +121,47 @@ That's it! You are now using `cuicui_layout`, congratulations!
 Make sure to check the [`LayoutDsl`] docs to learn the current capabilities of
 `cuicui_layout`.
 
+### What's that [`dsl!`] macro?
+
+The previous snippet can be translated to:
+
+```rust,no_run
+use bevy::prelude::*;
+use cuicui_layout_bevy_ui::UiDsl as Dsl;
+
+// ...
+
+fn setup(mut commands: Commands) {
+    use cuicui_dsl::{IntoEntityCommands, DslBundle};
+    let mut x = <Dsl>::default();
+    x.screen_root();
+    x.node(commands.to_cmds(), |cmds| {
+      let mut x = <Dsl>::default();
+      x.margin(9.);
+      x.border(5, Color::CYAN);
+      x.bg(Color::NAVY);
+      x.node(cmds.to_cmds(), |cmds| {
+        let mut x = <Dsl>::default();
+        let mut cmds = cmds.to_cmds();
+        x.insert(&mut cmds);
+        x.spawn_ui("Hello world!", &mut cmds);
+      });
+    });
+}
+```
+
+In short, the identifiers between parenthesis **are just methods**. Check the
+documentation on the relevant `FoobarDsl` struct to learn which methods you
+can use!
+
+Also check the [`cuicui_dsl`] crate documentation for details on the
+`DslBundle` trait (the trait providing the `node` and `insert` methods)
+and the `IntoEntityCommands` trait (for the `to_cmds` method).
+
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
+[`cuicui_dsl`]: https://lib.rs/crates/cuicui_dsl
 [`LayoutDsl`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html
 [`dsl!`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html
 
