@@ -227,6 +227,13 @@
 /// x.button("Button Text", &mut c);
 /// ```
 ///
+/// This means that methods valid in leaf node position have the following
+/// signature, where `_` is the type of `<expr>`:
+///
+/// ```ignore
+/// fn leaf_node_method(value: _, cmds: &mut EntityCommands) -> Entity;
+/// ```
+///
 /// > **Note**: Notice that we call `insert` followed by `button`.
 /// > This is to accommodate `DerefMut`-based [`DslBundle`]s.
 /// >
@@ -409,6 +416,12 @@
 #[rustfmt::skip]
 #[macro_export]
 macro_rules! dsl {
+    (@before_coma [$($prefix:tt)*], $($_:tt)*) => {
+        stringify!($($prefix)*)
+    };
+    (@before_coma [$($prefix:tt)*] $head:tt $($tail:tt)*) => {
+        dsl!(@before_coma [$($prefix)* $head] $($tail)*)
+    };
     (@arg $x:ident, $m:ident ($($m_args:expr),*) $(,$($t:tt)*)?) => {
         $x.$m($($m_args),*) $(; dsl!(@arg $x, $($t)*))?
     };
@@ -419,6 +432,13 @@ macro_rules! dsl {
     (@arg $x:ident, $nm:literal          $(,$($t:tt)*)?)=>{$x.named($nm) $(; dsl!(@arg $x, $($t)*))?};
     (@arg $x:ident, $m:ident $m_arg:expr $(,$($t:tt)*)?)=>{$x.$m($m_arg) $(; dsl!(@arg $x, $($t)*))?};
     (@arg $x:ident, $m:ident             $(,$($t:tt)*)?)=>{$x.$m()       $(; dsl!(@arg $x, $($t)*))?};
+    (@arg $x:ident, $($t:tt)*)=> {
+        compile_error!(concat!(
+            "`", dsl!(@before_coma [] $($t)*), "` is an invalid DSL method",
+            "\n\nPossible methods syntax is described at:",
+            "https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-methods"
+        ));
+    };
 
     (@statement [$d_ty:ty, $cmds:expr] ) => { };
     (@statement [$d_ty:ty, $cmds:expr] code (let $cmds_ident:ident) {$($code:tt)*} $($($t:tt)+)?) => {
@@ -452,6 +472,18 @@ macro_rules! dsl {
         x.$leaf_node($value, &mut leaf_cmd)
         // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
+    };
+    (@statement [$d_ty:ty, $cmds:expr] $leaf_node:ident ($($($args:tt)+)?) ; $($($t:tt)+)?) => {
+        compile_error!(concat!(
+            "Leaf node DSL statements (see dsl! docs) need a valid expression (<expr>) as first method \
+            within parenthesis, this expression will be passed as argument to the method. \
+            If you need to call method `",
+            stringify!($leaf_node), "` on `", stringify!($d_ty), "` \
+            make sure to use to use a leaf node in the form:\n`",
+            stringify!($leaf_node), "(<expr>, ", stringify!($($($args)+)?), ");`",
+            "\n\nThe precise syntax spec is available at:",
+            "https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-statements"
+        ));
     };
     (@statement [$d_ty:ty, $cmds:expr] $parent_node:ident ($($($args:tt)+)?) {$($inner:tt)*} $($t:tt)*) => {
         // Call the @statement spawn with curly braces
