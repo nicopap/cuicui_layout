@@ -176,14 +176,48 @@ impl<C: DslBundle> LayoutDsl<C> {
     /// `spec` specifies the [flow][Self::flow], (d)istribution
     /// and (a)lignment of the container in the form: `[v>]d[SEC]a[SEC]`.
     ///
+    /// The spec string in the form:
+    ///
+    /// > `FdDaA`
+    ///
+    /// Where each uppercase letter is replaced as follow:
+    ///
+    /// - `F in [v>]`: The `Flow`, `v = Vertical; > = Horizontal`
+    /// - `D in [SEC]`: The `Distribution`, `S = Start; E = End; C = FillMain`
+    /// - `A in [SEC]`: The `Alignment`, `S = Start; E = End; C = Center`
+    ///
     /// # Panics
+    ///
     /// If the `spec` format is invalid.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use cuicui_layout::{LayoutDsl, Flow, Distribution, Alignment};
+    /// let mut x: LayoutDsl = Default::default();
+    /// x.layout("vdSaS");
+    ///
+    /// assert_eq!(x.get_layout().flow, Flow::Vertical);
+    /// assert_eq!(x.get_layout().distrib, Distribution::Start);
+    /// assert_eq!(x.get_layout().align, Alignment::Start);
+    ///
+    /// let mut x: LayoutDsl = Default::default();
+    /// x.layout(">dCaE");
+    ///
+    /// assert_eq!(x.get_layout().flow, Flow::Horizontal);
+    /// assert_eq!(x.get_layout().distrib, Distribution::FillMain);
+    /// assert_eq!(x.get_layout().align, Alignment::End);
+    /// ```
     pub fn layout(&mut self, spec: &str) {
         assert_eq!(spec.len(), 5, "accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
         self.set_flow = true;
         self.layout.flow = spec[0..1].parse().unwrap();
         self.layout.distrib = spec[1..3].parse().unwrap();
         self.layout.align = spec[3..5].parse().unwrap();
+    }
+    /// Return the current [`Layout`] used to spawn a container (if relevant).
+    pub const fn get_layout(&self) -> &Layout {
+        &self.layout
     }
     /// Set both the [cross][Self::cross_margin] and [main][Self::main_margin]
     /// margins.

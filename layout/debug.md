@@ -3,14 +3,14 @@
 ## Features
 
 - [ ] Display node info at top left of container
-  - [ ] If node has `Name`, then show it. Use entity debug value if not
-  - [ ] `LayoutRect.size`
-  - [ ] for `Container`: flow, distribution & alignment as a `FdDaA` string
-     - [ ] `Flow::Vertical`: `v`
-     - [ ] `Flow::Horizontal`: `>`
-     - [ ] `Distribution::Start`, `Alignment::Start`: `S`
-     - [ ] `Distribution::End`, `Alignment::End`: `E`
-     - [ ] `Distribution::FillMain`, `Alignment::Center`: `C`
+  - [X] If node has `Name`, then show it. Use entity debug value if not
+  - [X] `LayoutRect.size`
+  - [X] for `Container`: flow, distribution & alignment as a `FdDaA` string
+     - [X] `Flow::Vertical`: `v`
+     - [X] `Flow::Horizontal`: `>`
+     - [X] `Distribution::Start`, `Alignment::Start`: `S`
+     - [X] `Distribution::End`, `Alignment::End`: `E`
+     - [X] `Distribution::FillMain`, `Alignment::Center`: `C`
   - [ ] Tooltip hover for even more details!
     - [ ] `LayoutRect.pos`
     - [ ] margin
@@ -28,7 +28,7 @@
   - [ ] May need to give a semi-transparent darker background for
     readability
 - [X] Distinct (quasi-random sequence) color for each node
-  - [ ] The text should have the same color as the one chosen for the
+  - [X] The text should have the same color as the one chosen for the
     node
   - [X] Container size is outlined (inset) with a gizmo box
   - [X] margins are highlight with a color of same hue, but higher

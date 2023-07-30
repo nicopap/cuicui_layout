@@ -8,25 +8,31 @@
 #![doc = include_str!("../../debug.md")]
 #![allow(clippy::needless_pass_by_value)]
 
+use core::fmt;
+
 use bevy::{
+    core::DebugNameItem,
     core_pipeline::clear_color::ClearColorConfig,
     ecs::{prelude::*, query::Has, system::SystemParam},
     prelude::{
-        default, info, warn, Camera, Camera2d, Camera2dBundle, Children, Color, GizmoConfig,
-        Gizmos, Input, KeyCode, Name, OrthographicProjection, Plugin as BevyPlugin, Update, Vec2,
+        default, info, warn, Camera, Camera2d, Camera2dBundle, Children, Color, DebugName,
+        GizmoConfig, Gizmos, Input, KeyCode, Name, OrthographicProjection, Plugin as BevyPlugin,
+        Update, Vec2,
     },
     render::view::RenderLayers,
     window::{PrimaryWindow, Window},
 };
 
 use crate::{
-    direction::Axis, Flow, LayoutRect, LayoutRootCamera, LeafRule, Node, Root, Rule, ScreenRoot,
-    Size,
+    direction::Axis, Alignment, Container, Distribution, Flow, LayoutRect, LayoutRootCamera,
+    LeafRule, Node, Root, Rule, ScreenRoot, Size,
 };
 
 mod inset;
+mod text;
 
 use inset::InsetGizmo;
+use text::{ImmediateTexts, TextGizmo};
 
 pub use enumset::{EnumSet, EnumSetType};
 
@@ -40,6 +46,48 @@ const MARGIN_LIGHTNESS: f32 = 0.85;
 const NODE_LIGHTNESS: f32 = 0.7;
 const NODE_SATURATION: f32 = 0.8;
 const CHEVRON_RATIO: f32 = 1. / 4.;
+
+// TODO(clean) shitty name
+struct Gizmodor<'w, 's> {
+    inset: InsetGizmo<'w, 's>,
+    text: ResMut<'w, ImmediateTexts>,
+}
+impl<'w, 's> Gizmodor<'w, 's> {
+    fn clear_scope(&mut self, rect: LayoutRect, margin: Size<f32>) {
+        self.inset.clear_scope(rect, margin);
+    }
+
+    fn new(
+        draw: Gizmos<'s>,
+        cam: Query<'w, 's, (&'static Camera, &'static DebugOverlayCamera)>,
+        line_width: f32,
+        text: ResMut<'w, ImmediateTexts>,
+    ) -> Self {
+        Self {
+            inset: InsetGizmo::new(draw, cam, line_width),
+            text,
+        }
+    }
+
+    pub(super) fn set_scope(&mut self, rect: LayoutRect, margin: Size<f32>) {
+        self.inset.set_scope(rect, margin);
+    }
+
+    pub(super) fn rect_2d(&mut self, rect: LayoutRect, margin: Size<f32>, color: Color) {
+        self.inset.rect_2d(rect, margin, color);
+    }
+
+    pub(super) fn rule(
+        &mut self,
+        center: Vec2,
+        extents: Vec2,
+        rule: RuleArrow,
+        axis: Axis,
+        color: Color,
+    ) {
+        self.inset.rule(center, extents, rule, axis, color);
+    }
+}
 
 #[allow(clippy::cast_precision_loss)]
 fn hue_from_entity(entity: Entity) -> f32 {
@@ -66,8 +114,6 @@ pub enum Flag {
     /// Currently unused.
     Tooltips,
     /// If there is room, just inline this information.
-    ///
-    /// Currently unused.
     InfoText,
 }
 
@@ -153,13 +199,26 @@ fn update_debug_camera(
     }
 }
 
-fn cycle_flags(input: Res<Input<KeyCode>>, mut options: ResMut<Options>, map: Res<InputMap>) {
-    use Flag::{Outlines, Rules};
-    let cycle: [EnumSet<Flag>; 3] = [EnumSet::EMPTY, Outlines.into(), Outlines | Rules];
+fn cycle_flags(
+    input: Res<Input<KeyCode>>,
+    mut options: ResMut<Options>,
+    map: Res<InputMap>,
+    mut text: TextGizmo,
+) {
+    use Flag::{InfoText, Outlines, Rules};
+    let cycle: [EnumSet<Flag>; 4] = [
+        EnumSet::EMPTY,
+        Outlines.into(),
+        Outlines | Rules,
+        Outlines | Rules | InfoText,
+    ];
     if input.just_pressed(map.cycle_debug_flag) {
         let current = cycle.iter().position(|f| *f == options.flags).unwrap_or(0);
         let next = cycle[(current + 1) % cycle.len()];
         info!("Setting layout debug mode to {:?}", next);
+        if options.flags.contains(InfoText) && !next.contains(InfoText) {
+            text.reset();
+        }
         if next.contains(Outlines) {
             info!(
                 "Displaying the outline of layout nodes. \
@@ -174,6 +233,13 @@ fn cycle_flags(input: Res<Input<KeyCode>>, mut options: ResMut<Options>, map: Re
                 **inward arrows**: the axis' size depends on its children or content. \
                 **no arrows**: the axis' size is completely fixed."
             );
+        }
+        if next.contains(InfoText) {
+            info!(
+                "Displaying layout info, info per line: \
+                (1) the entity name/id \
+                (2) <width>x<height> + <x>,<y> \
+                (3) the layout spec (see <https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html#method.layout>)");
         }
         options.flags = next;
     }
@@ -194,22 +260,25 @@ fn node_rules(flow: Flow, node: &Node) -> Size<RuleArrow> {
 }
 fn outline_nodes(
     outline: &OutlineParam,
-    draw: &mut InsetGizmo,
+    draw: &mut Gizmodor,
     flow: Flow,
-    this_entity: Entity,
+    debug_name: &DebugNameItem,
     this: LayoutRect,
 ) {
+    let this_entity = debug_name.entity;
     let Ok(to_iter) = outline.children.get(this_entity) else { return; };
-    for (entity, node, child) in outline.nodes.iter_many(to_iter) {
+    for (debug_name, node, child) in outline.nodes.iter_many(to_iter) {
+        let infos = if let Node::Container(c) = node { Some(c.into()) } else { None };
         let rules = node_rules(flow, node);
         let margin = node_margin(node);
         let mut rect = *child;
         rect.pos.width += this.pos.width;
         rect.pos.height += this.pos.height;
-        outline_node(entity, rect, margin, rules, outline.flags(), draw);
+        let flags = outline.flags();
+        outline_node(&debug_name, infos, rect, margin, rules, flags, draw);
 
         if let Node::Container(c) = node {
-            outline_nodes(outline, draw, c.flow, entity, rect);
+            outline_nodes(outline, draw, c.flow, &debug_name, rect);
         }
         if outline.flags().contains(Flag::Outlines) {
             draw.clear_scope(rect, margin);
@@ -221,7 +290,7 @@ struct OutlineParam<'w, 's> {
     gizmo_config: Res<'w, GizmoConfig>,
     options: Res<'w, Options>,
     children: Query<'w, 's, &'static Children>,
-    nodes: Query<'w, 's, (Entity, &'static Node, &'static LayoutRect)>,
+    nodes: Query<'w, 's, (DebugName, &'static Node, &'static LayoutRect)>,
 }
 impl OutlineParam<'_, '_> {
     fn flags(&self) -> EnumSet<Flag> {
@@ -234,8 +303,9 @@ type CameraQuery<'w, 's> = Query<'w, 's, (&'static Camera, &'static DebugOverlay
 fn outline_roots(
     outline: OutlineParam,
     draw: Gizmos,
+    text: ResMut<ImmediateTexts>,
     cam: CameraQuery,
-    roots: Query<(Entity, &Root, &LayoutRect, Has<ScreenRoot>)>,
+    roots: Query<(DebugName, &Root, &LayoutRect, Has<ScreenRoot>)>,
     window: Query<&Window, With<PrimaryWindow>>,
     nonprimary_windows: Query<&Window, Without<PrimaryWindow>>,
 ) {
@@ -248,8 +318,8 @@ fn outline_roots(
     let scale_factor = Window::scale_factor;
     let window_scale = window.get_single().map_or(1., scale_factor) as f32;
     let line_width = outline.gizmo_config.line_width / window_scale;
-    let mut draw = InsetGizmo::new(draw, cam, line_width);
-    for (entity, root, rect, is_screen) in &roots {
+    let mut draw = Gizmodor::new(draw, cam, line_width, text);
+    for (name, root, rect, is_screen) in &roots {
         if !root.debug {
             continue;
         }
@@ -259,24 +329,98 @@ fn outline_roots(
             // inset so that the root container is fully visible.
             draw.set_scope(*rect, Size::ZERO);
         }
-        outline_node(entity, *rect, margin, rules, outline.flags(), &mut draw);
+        let flags = outline.flags();
+        let info = Some(ContainerInfo::from(&root.node));
+        outline_node(&name, info, *rect, margin, rules, flags, &mut draw);
 
         let flow = root.node.flow;
-        outline_nodes(&outline, &mut draw, flow, entity, *rect);
+        outline_nodes(&outline, &mut draw, flow, &name, *rect);
+    }
+}
+struct ContainerInfo {
+    flow: Flow,
+    distrib: Distribution,
+    align: Alignment,
+}
+impl<'a> From<&'a Container> for ContainerInfo {
+    fn from(value: &'a Container) -> Self {
+        Self {
+            flow: value.flow,
+            distrib: value.distrib,
+            align: value.align,
+        }
+    }
+}
+impl fmt::Display for ContainerInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.flow {
+            Flow::Horizontal => write!(f, ">")?,
+            Flow::Vertical => write!(f, "v")?,
+        }
+        write!(f, "d")?;
+        match self.distrib {
+            Distribution::Start => write!(f, "S")?,
+            Distribution::FillMain => write!(f, "C")?,
+            Distribution::End => write!(f, "E")?,
+        }
+        write!(f, "a")?;
+        match self.align {
+            Alignment::Start => write!(f, "S")?,
+            Alignment::Center => write!(f, "C")?,
+            Alignment::End => write!(f, "E")?,
+        }
+        Ok(())
+    }
+}
+struct Describe<'a, 'b, 'c> {
+    debug_name: &'a DebugNameItem<'b>,
+    rect: &'c LayoutRect,
+    infos: Option<ContainerInfo>,
+}
+impl<'a, 'b, 'c> Describe<'a, 'b, 'c> {
+    const fn new(
+        debug_name: &'a DebugNameItem<'b>,
+        rect: &'c LayoutRect,
+        infos: Option<ContainerInfo>,
+    ) -> Self {
+        Describe { debug_name, rect, infos }
+    }
+}
+impl fmt::Display for Describe<'_, '_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.debug_name.name {
+            Some(name) => writeln!(f, "{name}")?,
+            None => writeln!(f, "{:?}", self.debug_name.entity)?,
+        }
+        let r = self.rect;
+        let (width, height, x, y) = (r.size.width, r.size.height, r.pos().x, r.pos().y);
+        writeln!(f, "{width:.0}x{height:.0} ({x:.0},{y:.0})")?;
+        if let Some(infos) = &self.infos {
+            writeln!(f, "{infos}")?;
+        }
+        Ok(())
     }
 }
 fn outline_node(
-    entity: Entity,
+    debug_name: &DebugNameItem,
+    infos: Option<ContainerInfo>,
     rect: LayoutRect,
     margin: Size<f32>,
     rules: Size<RuleArrow>,
     flags: EnumSet<Flag>,
-    draw: &mut InsetGizmo,
+    draw: &mut Gizmodor,
 ) {
+    let entity = debug_name.entity;
     let hue = hue_from_entity(entity);
     let main_color = Color::hsl(hue, NODE_SATURATION, NODE_LIGHTNESS);
     let margin_color = Color::hsl(hue, NODE_SATURATION, MARGIN_LIGHTNESS);
 
+    if flags.contains(Flag::InfoText) {
+        // TODO(perf)
+        let text = Describe::new(debug_name, &rect, infos).to_string();
+        let pos = rect.pos() + Vec2::Y * rect.size().height;
+        draw.text.print(entity, &text, pos, main_color);
+    }
     if flags.contains(Flag::Outlines) {
         // first draw margins, as we will draw the actual outline on top
         draw.rect_2d(rect, margin, margin_color);
@@ -348,13 +492,15 @@ impl BevyPlugin for Plugin {
                 cycle_flags,
                 update_debug_camera,
                 outline_roots.after(crate::ComputeLayoutSet),
+                |mut u: TextGizmo| u.update(),
             )
                 .chain(),
         );
-        app.insert_resource(Options {
-            screen_space: cfg!(feature = "debug_bevy_ui"),
-            ..default()
-        });
+        app.init_resource::<ImmediateTexts>()
+            .insert_resource(Options {
+                screen_space: cfg!(feature = "debug_bevy_ui"),
+                ..default()
+            });
     }
     fn finish(&self, _app: &mut bevy::prelude::App) {
         info!(
