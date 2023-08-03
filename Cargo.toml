@@ -27,6 +27,7 @@ cuicui_layout = { version = "0.8.0", path = "./layout", default-features = false
 cuicui_layout_bevy_sprite = { version = "0.8.0", path = "./sprite", default-features = false }
 cuicui_layout_bevy_ui = { version = "0.8.0", path = "./ui" }
 cuicui_dsl = { version = "0.8.1", path = "./dsl" }
+cuicui = { version = "0.8.0", path = "./cuicui" }
 
 [workspace.metadata.release]
 dependent-version = "upgrade"
