@@ -41,7 +41,7 @@ fn main() {
                 watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
             }),
             cuicui_layout_bevy_sprite::Plugin,
-            // bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
+            bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)

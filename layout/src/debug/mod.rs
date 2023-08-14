@@ -32,7 +32,7 @@ mod inset;
 mod text;
 
 use inset::InsetGizmo;
-use text::{ImmediateTexts, TextGizmo};
+use text::TextGizmo;
 
 pub use enumset::{EnumSet, EnumSetType};
 
@@ -40,6 +40,7 @@ pub use enumset::{EnumSet, EnumSetType};
 pub const LAYOUT_DEBUG_CAMERA_ORDER: isize = 255;
 /// The [`RenderLayers`] used by the debug gizmos and the debug camera.
 pub const LAYOUT_DEBUG_LAYERS: RenderLayers = RenderLayers::none().with(16);
+const MAX_TEXT_OFFSET_RATIO: f32 = 1.5;
 
 /// For some reasons, gizmo lines' size is divided by 1.5, absolutely no idea why.
 const MARGIN_LIGHTNESS: f32 = 0.85;
@@ -50,7 +51,7 @@ const CHEVRON_RATIO: f32 = 1. / 4.;
 // TODO(clean) shitty name
 struct Gizmodor<'w, 's> {
     inset: InsetGizmo<'w, 's>,
-    text: ResMut<'w, ImmediateTexts>,
+    text: TextGizmo<'w, 's>,
 }
 impl<'w, 's> Gizmodor<'w, 's> {
     fn clear_scope(&mut self, rect: LayoutRect, margin: Size<f32>) {
@@ -61,7 +62,7 @@ impl<'w, 's> Gizmodor<'w, 's> {
         draw: Gizmos<'s>,
         cam: Query<'w, 's, (&'static Camera, &'static DebugOverlayCamera)>,
         line_width: f32,
-        text: ResMut<'w, ImmediateTexts>,
+        text: TextGizmo<'w, 's>,
     ) -> Self {
         Self {
             inset: InsetGizmo::new(draw, cam, line_width),
@@ -192,6 +193,7 @@ fn update_debug_camera(
             .id()
         };
         gizmo_config.enabled = true;
+        gizmo_config.depth_bias = 1.0;
         gizmo_config.render_layers = LAYOUT_DEBUG_LAYERS;
         let cam = *options.layout_gizmos_camera.get_or_insert_with(spawn_cam);
         let Ok(mut cam) = debug_cams.get_mut(cam) else {return;};
@@ -303,7 +305,7 @@ type CameraQuery<'w, 's> = Query<'w, 's, (&'static Camera, &'static DebugOverlay
 fn outline_roots(
     outline: OutlineParam,
     draw: Gizmos,
-    text: ResMut<ImmediateTexts>,
+    text: TextGizmo,
     cam: CameraQuery,
     roots: Query<(DebugName, &Root, &LayoutRect, Has<ScreenRoot>)>,
     window: Query<&Window, With<PrimaryWindow>>,
@@ -418,8 +420,10 @@ fn outline_node(
     if flags.contains(Flag::InfoText) {
         // TODO(perf)
         let text = Describe::new(debug_name, &rect, infos).to_string();
+        // let margin = Vec2::splat(TEXT_MARGIN);
         let pos = rect.pos() + Vec2::Y * rect.size().height;
-        draw.text.print(entity, &text, pos, main_color);
+        let max_offset = rect.size.height * MAX_TEXT_OFFSET_RATIO;
+        draw.text.print(entity, &text, pos, max_offset, main_color);
     }
     if flags.contains(Flag::Outlines) {
         // first draw margins, as we will draw the actual outline on top
@@ -492,11 +496,12 @@ impl BevyPlugin for Plugin {
                 cycle_flags,
                 update_debug_camera,
                 outline_roots.after(crate::ComputeLayoutSet),
+                text::overlay_dark_background,
                 |mut u: TextGizmo| u.update(),
             )
                 .chain(),
         );
-        app.init_resource::<ImmediateTexts>()
+        app.init_resource::<text::ImmediateTexts>()
             .insert_resource(Options {
                 screen_space: cfg!(feature = "debug_bevy_ui"),
                 ..default()
