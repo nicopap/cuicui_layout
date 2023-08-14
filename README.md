@@ -85,8 +85,8 @@ Secondly, add your chosen integration crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-cuicui_layout_bevy_ui = "0.8.0"
-cuicui_layout = "0.8.0"
+cuicui_layout_bevy_ui = "0.8.1"
+cuicui_layout = "0.8.1"
 ```
 
 Then, use `cuicui_layout` in your crate with the [`dsl!`] macro:
@@ -344,7 +344,7 @@ be used, since you'll be able to compute the relative size of each node yourself
 
 | bevy | latest supporting version      |
 |------|-------|
-| 0.11 | 0.8.0 |
+| 0.11 | 0.8.1 |
 | 0.10 | 0.3.0 |
 
 ## License
