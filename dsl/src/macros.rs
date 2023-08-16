@@ -503,6 +503,10 @@ macro_rules! dsl {
 #[doc(hidden)]
 #[cfg(feature = "test_and_doc")]
 pub mod __doc_helpers {
+    use std::fmt;
+    use std::num::ParseIntError;
+    use std::str::FromStr;
+
     pub use crate::{BaseDsl, DslBundle, IntoEntityCommands};
     pub use bevy::ecs::system::EntityCommands;
     pub use bevy::prelude::{
@@ -511,11 +515,30 @@ pub mod __doc_helpers {
     };
     use bevy::{ecs::system::CommandQueue, prelude::World};
 
+    #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Color;
     impl Color {
         pub const RED: Self = Self;
         pub const GREEN: Self = Self;
         pub const BLUE: Self = Self;
+    }
+    impl std::error::Error for Color {}
+    impl fmt::Display for Color {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "Color")
+        }
+    }
+    impl FromStr for Color {
+        type Err = Color;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "red" => Ok(Color),
+                "green" => Ok(Color),
+                "blue" => Ok(Color),
+                _ => Err(Color),
+            }
+        }
     }
 
     #[derive(Bundle, Default)]
@@ -535,22 +558,28 @@ pub mod __doc_helpers {
         pub inner: C,
         pub blink: Blink,
     }
-    impl DocDsl {
+    impl<C> DocDsl<C> {
         pub fn column(&mut self) {}
         pub fn main_margin(&mut self, _: f32) {}
         pub fn align_start(&mut self) {}
         pub fn image(&mut self, _: &impl Into<ImageMock>) {}
         pub fn row(&mut self) {}
-        pub fn width(&mut self, _: ()) {}
-        pub fn height(&mut self, _: ()) {}
-        pub fn button(&mut self, _: &str, _: &mut EntityCommands) {}
+        pub fn width(&mut self, _: Val) {}
+        pub fn height(&mut self, _: Val) {}
+        pub fn button(&mut self, _: &str, _: &mut EntityCommands) -> Entity {
+            Entity::PLACEHOLDER
+        }
         pub fn screen_root(&mut self) {}
         pub fn fill_main_axis(&mut self) {}
         pub fn color(&mut self, _color: Color) {}
-        pub fn spawn_ui(&mut self, _: &str, _: &mut EntityCommands) {}
+        pub fn spawn_ui(&mut self, _: &str, _: &mut EntityCommands) -> Entity {
+            Entity::PLACEHOLDER
+        }
 
         pub fn amplitude(&mut self, _: f32) {}
         pub fn frequency(&mut self, _: f32) {}
+
+        pub fn distrib_start(&mut self) {}
     }
     impl<C: DslBundle> DslBundle for DocDsl<C> {
         fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
@@ -560,8 +589,31 @@ pub mod __doc_helpers {
     pub type Dsl = DocDsl;
     pub type LayoutDsl = DocDsl;
 
-    pub fn px(_: i32) {}
-    pub fn pct(_: i32) {}
+    pub struct Val;
+    impl FromStr for Val {
+        type Err = ParseIntError;
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match () {
+                () if s.starts_with("px(") => {
+                    let number = &s[3..s.len() - 1];
+                    let _ = number.parse::<i32>()?;
+                    Ok(Val)
+                }
+                () if s.starts_with("pct(") => {
+                    let number = &s[4..s.len() - 1];
+                    let _ = number.parse::<i32>()?;
+                    Ok(Val)
+                }
+                () => Err("badnumber".parse::<i32>().unwrap_err()),
+            }
+        }
+    }
+    pub fn px(_: i32) -> Val {
+        Val
+    }
+    pub fn pct(_: i32) -> Val {
+        Val
+    }
 
     #[derive(Default, Component, Clone, Copy)]
     pub struct Blink {

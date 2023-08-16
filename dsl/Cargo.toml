@@ -15,5 +15,4 @@ default = []
 test_and_doc = ["bevy/bevy_render", "bevy/bevy_asset"]
 
 [dependencies]
-# workspace.winnow = true
 bevy = { version = "0.11", default-features = false }

@@ -13,8 +13,7 @@ pub mod macros;
 use bevy::prelude::{BuildChildren, ChildBuilder, Entity};
 use std::borrow::Cow;
 
-pub use bevy::core::Name;
-pub use bevy::ecs::system::EntityCommands;
+pub use bevy::{core::Name, ecs::system::EntityCommands};
 
 /// Convert this into an [`EntityCommands`].
 ///
