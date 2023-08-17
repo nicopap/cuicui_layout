@@ -1,0 +1,19 @@
+[package]
+name = "cuicui_format_derive"
+description = "Proc macros for the cuicui_format crate"
+categories = ["game-development", "gui", "value-formatting"]
+keywords = ["bevy"]
+readme = "README.md"
+version = "0.8.1"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true

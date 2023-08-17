@@ -1,0 +1,20 @@
+[package]
+name = "parse_dsl_macro"
+description = "Shows usage of the ParseDslImpl macro from cuicui_format"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "parse_dsl_macro"
+path = "main.rs"
+
+[dependencies]
+cuicui_format.workspace = true
+cuicui_dsl.workspace = true
+pretty_assertions.workspace = true
+bevy = "0.11"
+
+[package.metadata.release]
+release = false

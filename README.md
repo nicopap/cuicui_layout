@@ -135,12 +135,12 @@ fn setup(mut commands: Commands) {
     use cuicui_dsl::{IntoEntityCommands, DslBundle};
     let mut x = <Dsl>::default();
     x.screen_root();
-    x.node(commands.to_cmds(), |cmds| {
+    x.node(&mut commands.to_cmds(), |cmds| {
       let mut x = <Dsl>::default();
       x.margin(9.);
       x.border(5, Color::CYAN);
       x.bg(Color::NAVY);
-      x.node(cmds.to_cmds(), |cmds| {
+      x.node(&mut cmds.to_cmds(), |cmds| {
         let mut x = <Dsl>::default();
         let mut cmds = cmds.to_cmds();
         x.insert(&mut cmds);

@@ -10,7 +10,7 @@
 #[doc(hidden)]
 pub mod macros;
 
-use bevy::prelude::{BuildChildren, ChildBuilder, Entity};
+use bevy::prelude::{BuildChildren, ChildBuilder, Commands, Entity};
 use std::borrow::Cow;
 
 pub use bevy::{core::Name, ecs::system::EntityCommands};
@@ -18,21 +18,20 @@ pub use bevy::{core::Name, ecs::system::EntityCommands};
 /// Convert this into an [`EntityCommands`].
 ///
 /// This allows using the [`dsl!`] macro with common spawner types.
-pub trait IntoEntityCommands<'w, 's, 'a>: Sized {
+pub trait IntoEntityCommands<'w, 's>: Sized {
     /// Convert to [`EntityCommands`].
-    fn to_cmds(self) -> EntityCommands<'w, 's, 'a>;
+    fn to_cmds<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a>;
 }
-#[rustfmt::skip]
-mod impls {
-    use super::{IntoEntityCommands, ChildBuilder};
-    use bevy::ecs::system::{EntityCommands, Commands};
 
-    impl<'w, 's, 'a> IntoEntityCommands<'w, 's, 'a> for EntityCommands<'w, 's, 'a> {
-        fn to_cmds(self) -> EntityCommands<'w, 's, 'a> { self } }
-    impl<'w, 's, 'a> IntoEntityCommands<'w, 's, 'a> for &'a mut Commands<'w, 's> {
-        fn to_cmds(self) -> EntityCommands<'w, 's, 'a> { self.spawn_empty() } }
-    impl<'w, 's, 'a> IntoEntityCommands<'w, 's, 'a> for &'a mut ChildBuilder<'w, 's, '_> {
-        fn to_cmds(self) -> EntityCommands<'w, 's, 'a> { self.spawn_empty() } }
+impl<'w, 's> IntoEntityCommands<'w, 's> for Commands<'w, 's> {
+    fn to_cmds<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
+        self.spawn_empty()
+    }
+}
+impl<'w, 's> IntoEntityCommands<'w, 's> for ChildBuilder<'w, 's, '_> {
+    fn to_cmds<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
+        self.spawn_empty()
+    }
 }
 
 /// The base [`DslBundle`] for the [`crate::dsl!`] macro.
@@ -59,8 +58,8 @@ pub trait DslBundle: Default {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity;
 
     /// Spawn the entity as a container.
-    fn node(&mut self, mut cmds: EntityCommands, f: impl FnOnce(&mut ChildBuilder)) {
-        self.insert(&mut cmds);
+    fn node(&mut self, cmds: &mut EntityCommands, f: impl FnOnce(&mut ChildBuilder)) {
+        self.insert(cmds);
         cmds.with_children(f);
     }
 }

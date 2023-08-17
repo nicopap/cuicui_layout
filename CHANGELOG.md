@@ -1,3 +1,21 @@
+## 0.9.0
+
+## `cuicui_chirp`
+
+New crate! Define a custom file format, `.chirp`, to load from file `dsl!`s.
+The syntax is very similar to that of `dsl!` with the exception of `code`.
+
+* Define `ParseDsl` for deserialization of `.chirp` files.
+* Using the `parse_dsl_impl` macro, you can convert a `DslBundle` impl block
+  into a `ParseDsl` specification.
+
+## `cuicui_dsl`
+
+* Removed the `IntoEntityCommands` impl on `EntityCommands`
+* `DslBundle::node` accepts now a `&mut EntityCommands`.
+* `dsl!`: deprecated the field access syntax.
+* Added the `DslBundle` derive macro.
+
 ## `cuicui_dsl` 0.8.1
 
 * 53d6555 Improve `dsl!` error messages

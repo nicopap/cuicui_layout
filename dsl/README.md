@@ -48,7 +48,7 @@ x.main_margin(100.);
 x.align_start();
 x.image(&bg);
 x.row();
-x.node(cmds.to_cmds(), |cmds| {
+x.node(&mut cmds.to_cmds(), |cmds| {
     let mut x = <Dsl>::default();
     let mut leaf_cmd = cmds.to_cmds();
     x.color(Color::BLUE);
@@ -79,7 +79,7 @@ x.node(cmds.to_cmds(), |cmds| {
     x.fill_main_axis();
     x.image(&board);
     x.column();
-    x.node(cmds.spawn_empty(), |cmds| {
+    x.node(&mut node_cmd, |cmds| {
         let mut x = <Dsl>::default();
         let mut leaf_cmd = cmds.to_cmds();
         x.named("Title card");

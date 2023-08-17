@@ -187,7 +187,7 @@
 ///
 /// let mut x = <Dsl>::default();
 /// x.fill_main_axis();
-/// x.node(cmds.to_cmds(), |cmds| {
+/// x.node(&mut cmds.to_cmds(), |cmds| {
 ///     let mut x = <Dsl>::default();
 ///     x.color(Color::GREEN);
 ///     x.insert(&mut cmds.to_cmds());
@@ -284,7 +284,7 @@
 /// x.align_start();
 /// x.image(&bg);
 /// x.row();
-/// x.node(cmds.to_cmds(), |cmds| {
+/// x.node(&mut cmds.to_cmds(), |cmds| {
 ///     // Same goes with the children:
 ///     // button("Button text 1", color Color::BLUE, width 40., height 100.);
 ///     // button("Button text 2", color Color::RED, width 40., height 100.);
@@ -426,6 +426,11 @@ macro_rules! dsl {
         $x.$m($($m_args),*) $(; dsl!(@arg $x, $($t)*))?
     };
     (@arg $x:ident, $(.$f:ident)+ $set:expr $(,$($t:tt)*)?) => {
+        // #[deprecated(since = "0.9.0", note = "The Field setting method syntax is \
+        //     not compatible with cuicui_chirp. To simplify DslBundle implementation, \
+        //     you can now use the DslBundle derive macro.")]
+        // fn field_setting_method() {};
+        // field_setting_method();
         $x $(.$f)+ = $set $(; dsl!(@arg $x, $($t)*))?
     };
     (@arg $x:ident,) => {  };
@@ -457,7 +462,7 @@ macro_rules! dsl {
     (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
         let mut arg = <$d_ty>::default();
         dsl!(@arg arg, $($args)*);
-        arg.node($cmds.to_cmds(), |mut cmds| {
+        arg.node(&mut $cmds.to_cmds(), |mut cmds| {
             // Generate code for statements inside curly braces
             dsl!(@statement [$d_ty, cmds] $($inner)*);
         })

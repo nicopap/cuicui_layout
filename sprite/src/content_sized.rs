@@ -56,6 +56,7 @@ impl ComputeContentParam for SpriteContentSize<'static> {
     fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig {
         use bevy::ecs::schedule::common_conditions as cond;
 
+        #[allow(clippy::needless_pass_by_value)] // `Query` required as a run condition
         fn changed<C: Component>(q: Query<(), (Changed<C>, With<Node>)>) -> bool {
             !q.is_empty()
         }

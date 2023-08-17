@@ -15,7 +15,7 @@ type InterpResult = Result<(), InterpError>;
 #[allow(missing_docs)] // Already documented by error message.
 #[derive(Debug, Error)]
 pub enum InterpError {
-    // TODO(err): Integrate KDL spans for nice error reporting.
+    // TODO(err): Integrate parse spans for nice error reporting.
     #[error(
         "KDL method is malformed, it should have a name, either as \
         parameter name or as KDL argument string"
@@ -26,6 +26,19 @@ pub enum InterpError {
         argument position."
     )]
     BadArg,
+    #[error("'code' should have exactly one string argument, none were given")]
+    BadCode,
+    #[error("'code' should be a rust identifier, found '{0}'")]
+    CodeNonIdent(String),
+    #[error("Didn't find the code handle '{0}' in provided code handles")]
+    CodeNotPresent(String),
+    #[error("leaf nodes should have at least one argument to be passed as as value")]
+    LeafNoArgs,
+    #[error(
+        "leaf nodes expect values to have a str representation. You passed a \
+        custom-built Kdl document without specifying a leaf node representation"
+    )]
+    LeafBadKdl,
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
 }
@@ -69,13 +82,13 @@ impl<'h, 'h2, 'b, D: ParseDsl> DslInterpret<'h, 'h2, 'b, D> {
         let mut dsl_bundle = D::default();
         if kdl.name().value() == "code" {
             let Some(handle) = kdl.entries().first() else {
-                todo!("TODO(err): 'code' should have exactly one string argument");
+                return Err(InterpError::BadCode);
             };
             let Some(handle) = handle.value().as_string() else {
-                todo!("TODO(err): 'code's argument should be a single string identifier");
+                return Err(InterpError::CodeNonIdent(handle.to_string()));
             };
             let Some(to_run) = self.handles.get(handle) else {
-                todo!("TODO(err): {handle} was not found in list of handles");
+                return Err(InterpError::CodeNotPresent(handle.to_owned()));
             };
             to_run(cmds);
             return Ok(());
@@ -113,10 +126,10 @@ impl<'h, 'h2, 'b, D: ParseDsl> DslInterpret<'h, 'h2, 'b, D> {
         } else {
             if kdl.name().value() != "spawn" {
                 let Some(leaf_arg) = kdl.entries().first() else {
-                    todo!("TODO(err): leaf_node should at least have one argument");
+                    return Err(InterpError::LeafNoArgs);
                 };
                 let Some(leaf_arg) = leaf_arg.value_repr() else {
-                    todo!("TODO(err): leaf_node should have a value");
+                    return Err(InterpError::LeafBadKdl);
                 };
                 dsl_bundle.leaf_node(parse::InterpretLeafCtx {
                     name: kdl.name().value(),

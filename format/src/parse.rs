@@ -49,9 +49,12 @@ impl PartialEq for ArgError {
     }
 }
 
+/// [`ParseDsl`] method that didn't have the expected method in [`DslParseError`].
 #[derive(Debug)]
-enum ParseType {
+pub enum ParseType {
+    /// [`ParseDsl::method`].
     Method,
+    /// [`ParseDsl::leaf_node`].
     LeafNode,
 }
 impl fmt::Display for ParseType {
@@ -63,6 +66,8 @@ impl fmt::Display for ParseType {
     }
 }
 /// The input specification called a method not implemented in `D`.
+///
+/// Useful as a catchall when parsing a DSL calling an innexisting method.
 #[derive(Debug, Error)]
 #[error(
     "Didn't find {parse_type} '{method}' for parse DSL of type '{}'",
@@ -74,7 +79,8 @@ pub struct DslParseError<D> {
     _ty: PhantomData<D>,
 }
 impl<D> DslParseError<D> {
-    fn new(method: impl Into<String>, parse_type: ParseType) -> Self {
+    /// Create a [`DslParseError`] for `method` in `parse_type`.
+    pub fn new(method: impl Into<String>, parse_type: ParseType) -> Self {
         Self {
             method: method.into(),
             parse_type,
@@ -116,14 +122,28 @@ pub trait ParseDsl: DslBundle {
     /// Note that in a [parent node] statement, the initial identifier — if not
     /// `code` or `spawn` — is applied as the last method.
     ///
+    /// # Errors
+    /// This function may fail. With `anyhow::Error`, any error type may be used.
+    ///
+    /// You may chose to fail for any reason, the expected failure case
+    /// is failure to parse an argument in`ctx.args` or trying to call an
+    /// innexisting method with `ctx.name`.
+    ///
     /// [parent node]: cuicui_dsl::dsl#parent-node
     fn method(&mut self, ctx: InterpretMethodCtx) -> Result<(), anyhow::Error>;
-    /// Apply leaf node method named `name` to `self`.
+    /// Apply leaf node method named `ctx.name` to `self`.
     ///
     /// Called when encountering a [leaf node].
     ///
     /// Note that it respects the semantic of the DSL, `leaf_node` is only called
     /// after all other [methods] of the current [statement] are applied.
+    ///
+    /// # Errors
+    /// This function may fail. With `anyhow::Error`, any error type may be used.
+    ///
+    /// You may chose to fail for any reason, the expected failure case
+    /// is failure to parse an argument in`ctx.args` or trying to call an
+    /// innexisting method with `ctx.name`.
     ///
     /// [leaf node]: cuicui_dsl::dsl#leaf-node
     /// [methods]: cuicui_dsl::dsl#dsl-methods
@@ -192,6 +212,43 @@ pub mod quick {
 
     use super::{balanced_text, ArgError, FromStr};
 
+    macro_rules! dummy {
+        ($_ignore:tt, $($actual:tt)*) => { $($actual)* };
+    }
+    macro_rules! parse_iter {
+        (@single $bad_count:ident, $iter:ident) => {
+            $iter
+                .next()
+                .ok_or_else(|| $bad_count($iter.count))?
+                .map_err(anyhow::Error::from)?
+                .parse()
+                .map_err(anyhow::Error::from)?
+        };
+        (@ret $bad_count:ident, $iter:ident, $args:tt) => {
+            if $iter.next().is_some() {
+                Err($bad_count($iter.count + $iter.count()))
+            } else {
+                Ok($args)
+            }
+        };
+        ($name:ident, $count:literal, $($tys:ident),*) => {
+            pub fn $name <$( $tys: FromStr, )*>(input: &str) -> Result<($( $tys ),*), ArgError>
+            where $(
+                <$tys as FromStr>::Err: std::error::Error + Send + Sync + 'static,
+            )* {
+                let bad_count = |count| ArgError::CountMismatch($count, count);
+                match Args::new(input) {
+                    Args::Iter(mut iter) => {
+                        let args = ($( dummy!($tys, parse_iter!(@single bad_count, iter)) ),*);
+                        parse_iter!(@ret bad_count, iter, args)
+                    }
+                    mut args => Err(bad_count(args.count())),
+                }
+            }
+
+        }
+    }
+
     struct ArgIter<'a> {
         input: &'a str,
         count: usize,
@@ -219,9 +276,9 @@ pub mod quick {
         }
     }
     enum Args<'a> {
-        Iter(ArgIter<'a>),
         Empty,
         One(&'a str),
+        Iter(ArgIter<'a>),
     }
 
     impl<'a> Args<'a> {
@@ -234,108 +291,37 @@ pub mod quick {
         }
         fn count(&mut self) -> usize {
             match self {
-                Args::Iter(iter) => iter.count(),
                 Args::Empty => 0,
                 Args::One(_) => 1,
+                Args::Iter(iter) => iter.count(),
             }
         }
     }
     pub fn arg0(input: &str) -> Result<(), ArgError> {
+        let bad_count = |count| ArgError::CountMismatch(0, count);
         match Args::new(input) {
             Args::Empty => Ok(()),
-            mut args => Err(ArgError::CountMismatch(0, args.count())),
+            mut args => Err(bad_count(args.count())),
         }
     }
     pub fn arg1<T1: FromStr>(input: &str) -> Result<T1, ArgError>
     where
         T1::Err: std::error::Error + Send + Sync + 'static,
     {
-        let bad_count = |count: usize| ArgError::CountMismatch(1, count);
+        let bad_count = |count| ArgError::CountMismatch(1, count);
         match Args::new(input) {
             Args::One(input) => Ok(input.parse().map_err(anyhow::Error::from)?),
             Args::Iter(mut iter) => {
-                let arg1 = iter
-                    .next()
-                    .ok_or_else(|| bad_count(iter.count))?
-                    .map_err(anyhow::Error::from)?
-                    .parse()
-                    .map_err(anyhow::Error::from)?;
-                if iter.next().is_some() {
-                    Err(bad_count(iter.count + iter.count()))
-                } else {
-                    Ok(arg1)
-                }
+                let arg1 = parse_iter!(@single bad_count, iter);
+                parse_iter!(@ret bad_count, iter, arg1)
             }
-            mut args => Err(bad_count(args.count())),
+            Args::Empty => Err(bad_count(0)),
         }
     }
-    pub fn arg2<T1: FromStr, T2: FromStr>(input: &str) -> Result<(T1, T2), ArgError>
-    where
-        T1::Err: std::error::Error + Send + Sync + 'static,
-        T2::Err: std::error::Error + Send + Sync + 'static,
-    {
-        let bad_count = |count: usize| ArgError::CountMismatch(2, count);
-        match Args::new(input) {
-            Args::Iter(mut iter) => {
-                let arg1 = iter
-                    .next()
-                    .ok_or_else(|| bad_count(iter.count))?
-                    .map_err(anyhow::Error::from)?
-                    .parse()
-                    .map_err(anyhow::Error::from)?;
-                let arg2 = iter
-                    .next()
-                    .ok_or_else(|| bad_count(iter.count))?
-                    .map_err(anyhow::Error::from)?
-                    .parse()
-                    .map_err(anyhow::Error::from)?;
-                if iter.next().is_some() {
-                    Err(bad_count(iter.count + iter.count()))
-                } else {
-                    Ok((arg1, arg2))
-                }
-            }
-            mut args => Err(bad_count(args.count())),
-        }
-    }
-    pub fn arg3<T1: FromStr, T2: FromStr, T3: FromStr>(
-        input: &str,
-    ) -> Result<(T1, T2, T3), ArgError>
-    where
-        T1::Err: std::error::Error + Send + Sync + 'static,
-        T2::Err: std::error::Error + Send + Sync + 'static,
-        T3::Err: std::error::Error + Send + Sync + 'static,
-    {
-        let bad_count = |count: usize| ArgError::CountMismatch(3, count);
-        match Args::new(input) {
-            Args::Iter(mut iter) => {
-                let arg1 = iter
-                    .next()
-                    .ok_or_else(|| bad_count(iter.count))?
-                    .map_err(anyhow::Error::from)?
-                    .parse()
-                    .map_err(anyhow::Error::from)?;
-                let arg2 = iter
-                    .next()
-                    .ok_or_else(|| bad_count(iter.count))?
-                    .map_err(anyhow::Error::from)?
-                    .parse()
-                    .map_err(anyhow::Error::from)?;
-                let arg3 = iter
-                    .next()
-                    .ok_or_else(|| bad_count(iter.count))?
-                    .map_err(anyhow::Error::from)?
-                    .parse()
-                    .map_err(anyhow::Error::from)?;
-                if iter.next().is_some() {
-                    Err(bad_count(iter.count + iter.count()))
-                } else {
-                    Ok((arg1, arg2, arg3))
-                }
-            }
-            mut args => Err(bad_count(args.count())),
-        }
-    }
+    parse_iter!(arg2, 2, T1, T2);
+    parse_iter!(arg3, 3, T1, T2, T3);
+    parse_iter!(arg4, 4, T1, T2, T3, T4);
+    parse_iter!(arg5, 5, T1, T2, T3, T4, T5);
 }
 
 #[cfg(test)]

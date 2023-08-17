@@ -59,6 +59,7 @@ fn forward_layout_nodes(mut q: Query<&mut Transform, Added<LayoutRect>>) {
     }
 }
 
+#[allow(clippy::needless_pass_by_value)] // `Query` required as a system
 fn setup_debug(
     mut cmds: Commands,
     nodes: Query<Entity, Or<(With<Node>, With<Root>)>>,

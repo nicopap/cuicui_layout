@@ -300,6 +300,7 @@ enum RuleArrow {
     None,
 }
 impl RuleArrow {
+    #[allow(clippy::missing_const_for_fn)] // false positive: need const T::drop
     fn arrange<T>(self, inner: T, outer: T) -> Option<(T, T, Option<f32>)> {
         match self {
             RuleArrow::Outward(v) => Some((inner, outer, Some(v))),
