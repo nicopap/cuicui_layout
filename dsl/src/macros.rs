@@ -21,7 +21,6 @@
 /// - [**dsl methods**](#dsl-methods):
 ///   - [**name literal**](#name-literal)
 ///   - [**bare**](#method-calls)
-///   - [**field setting**](#method-calls)
 ///   - [**single argument**](#method-calls)
 ///   - [**multiple arguments**](#method-calls)
 ///
@@ -86,20 +85,24 @@
 ///     }
 /// }
 ///
-/// // That's it! Now we can use `frequency` and `amplitude` in `dsl!`
-/// // as if it wasn't even a big deal!
+/// // `dsl!` relies on method calls, so we need to define methods:
+/// impl<C> BlinkDsl<C> {
+///     pub fn frequency(&mut self, frequency: f32) {
+///         self.blink.frequency = frequency;
+///     }
+///     pub fn amplitude(&mut self, amplitude: f32) {
+///         self.blink.amplitude = amplitude;
+///     }
+/// }
 ///
 /// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
 /// type Dsl = BlinkDsl<BaseDsl>;
 /// dsl! {
 ///     &mut cmds,
-///     spawn(.blink.frequency 0.5, "FastBlinker");
-///     spawn(.blink.amplitude 2., .blink.frequency 3.0, "SlowBlinker");
+///     spawn(frequency 0.5, "FastBlinker");
+///     spawn(amplitude 2., frequency 3.0, "SlowBlinker");
 /// }
 /// ```
-///
-/// If we wanted a shorter way to set the `amplitude`, we would define a
-/// `pub fn amplitude(&mut self, value: f32)` method on `BlinkDsl`.
 ///
 /// If we want to use a pre-existing DSL with ours, we would nest them.
 /// Since we `#[deref] inner: C`, all methods on the inner DSL are available
@@ -112,8 +115,8 @@
 /// dsl! {
 ///     &mut cmds,
 ///     spawn_ui("Fast blink", frequency 0.5, color Color::GREEN);
-///     row(.blink.frequency 1., amplitude 1.0, main_margin 10., fill_main_axis) {
-///         spawn_ui("Some text", .blink.amplitude 10.0, color Color::BLUE);
+///     row(frequency 1., amplitude 1.0, main_margin 10., fill_main_axis) {
+///         spawn_ui("Some text", amplitude 10.0, color Color::BLUE);
 ///     }
 ///     spawn_ui("Slow blink", frequency 2., color Color::RED);
 /// }
@@ -364,7 +367,6 @@
 /// - bare methods
 /// - single argument methods
 /// - multiple arguments methods
-/// - field setting method
 ///
 /// ### Name literals
 ///
@@ -397,14 +399,12 @@
 /// Otherwise, methods are translated directly into rust method calls on `Dsl`:
 /// ```text
 /// some_method               // bare method
-/// .some.nested.field <expr> // field setting method
 /// method_with_arg <expr>    // single argument method
 /// several_args ([<expr>],*) // multiple arguments method
 /// ```
 /// Which would be translated into rust code as follow:
 /// ```ignore
 /// x.some_method();
-/// x.some.nested.field = vec![10, 34];
 /// x.method_with_arg(15 * 25. as u32);
 /// x.several_args("hi folks", variable_name, Color::RED);
 /// ```
@@ -426,11 +426,11 @@ macro_rules! dsl {
         $x.$m($($m_args),*) $(; dsl!(@arg $x, $($t)*))?
     };
     (@arg $x:ident, $(.$f:ident)+ $set:expr $(,$($t:tt)*)?) => {
-        // #[deprecated(since = "0.9.0", note = "The Field setting method syntax is \
-        //     not compatible with cuicui_chirp. To simplify DslBundle implementation, \
-        //     you can now use the DslBundle derive macro.")]
-        // fn field_setting_method() {};
-        // field_setting_method();
+        #[deprecated(since = "0.9.0", note = "The Field setting method syntax is \
+            not compatible with cuicui_chirp. To simplify DslBundle implementation, \
+            you can now use the DslBundle derive macro.")]
+        fn field_setting_method() {};
+        field_setting_method();
         $x $(.$f)+ = $set $(; dsl!(@arg $x, $($t)*))?
     };
     (@arg $x:ident,) => {  };
