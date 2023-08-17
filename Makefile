@@ -4,7 +4,7 @@ CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery
 .PHONY: check run pre-hook
 
 check:
-	cargo clippy -p cuicui_format_derive $(CLIPPY_ARGS)
+	cargo clippy -p cuicui_chirp_derive $(CLIPPY_ARGS)
 
 run:
 	cargo run -p parse_dsl_macro
@@ -14,7 +14,7 @@ run:
 
 pre-hook:
 	cargo test --package cuicui_dsl --features test_and_doc
-	cargo test --package cuicui_format --features test_and_doc
+	cargo test --package cuicui_chirp --features test_and_doc
 	cargo test --workspace --exclude cuicui_dsl
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 	cargo clippy --workspace $(CLIPPY_ARGS)

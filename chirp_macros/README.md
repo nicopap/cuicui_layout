@@ -1,11 +1,11 @@
 # cuicui format `ParseDslImpl` macro
 
-Generate `ParseDsl` implementations from an `impl` block.
+Generate `ParseDsl` implementations to parse chirp files from an `impl` block.
 
 ## Behavior
 
 ```text
-use cuicui_format::{ParseDslImpl, ParseDsl};
+use cuicui_chirp::{ParseDslImpl, ParseDsl};
 
 #[parse_dsl_impl(set_params <D: ParseDsl>, delegate = inner)]
 impl<D: DslBundle> LayoutDsl<D> {
@@ -59,9 +59,9 @@ For the snippet of code shown earlier, the macro output will be:
 impl<D: ParseDsl> ParseDsl for LayoutDsl<D> {
     fn method(
         &mut self,
-        data: cuicui_format::parse::InterpretMethodCtx,
-    ) -> Result<(), cuicui_format::anyhow::Error> {
-        use cuicui_format::parse::{quick, InterpretMethodCtx, DslParseError, ParseType};
+        data: cuicui_chirp::parse::InterpretMethodCtx,
+    ) -> Result<(), cuicui_chirp::anyhow::Error> {
+        use cuicui_chirp::parse::{quick, InterpretMethodCtx, DslParseError, ParseType};
         let InterpretMethodCtx { name, args } = data;
         match name {
             stringify!(column) => {
@@ -86,9 +86,9 @@ impl<D: ParseDsl> ParseDsl for LayoutDsl<D> {
     }
     fn leaf_node(
         &mut self,
-        mut data: cuicui_format::parse::InterpretLeafCtx,
+        mut data: cuicui_chirp::parse::InterpretLeafCtx,
     ) -> Result<Entity, anyhow::Error> {
-        use cuicui_format::parse::{quick, InterpretLeafCtx, DslParseError, ParseType};
+        use cuicui_chirp::parse::{quick, InterpretLeafCtx, DslParseError, ParseType};
         let InterpretLeafCtx { name, leaf_arg, cmds } = &mut data;
         match name {
             stringify!(empty_px) => {

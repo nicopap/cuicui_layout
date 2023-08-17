@@ -18,8 +18,8 @@ use kdl::KdlDocument;
 use interpret::DslInterpret;
 
 pub use anyhow;
-#[cfg(feature = "derive")]
-pub use cuicui_format_derive::parse_dsl_impl;
+#[cfg(feature = "macros")]
+pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use parse::{DslError, ParseDsl};
 
@@ -30,15 +30,15 @@ pub mod bevy_types {
 
 /// Deserialized `dsl!` object.
 ///
-/// Use [`DslFormat::parse`] to create a `DslFormat` from arbitrary byte slices.
+/// Use [`Chirp::parse`] to create a `Chirp` from arbitrary byte slices.
 ///
-/// Use [`DslFormat::interpret`] to interpret the `DslFormat` and add it to the
+/// Use [`Chirp::interpret`] to interpret the `Chirp` and add it to the
 /// world with provided `cmds` as root.
-pub struct DslFormat {
+pub struct Chirp {
     document: KdlDocument,
 }
-impl DslFormat {
-    /// Create a [`DslFormat`] from arbitrary byte slices.
+impl Chirp {
+    /// Create a [`Chirp`] from arbitrary byte slices.
     ///
     /// Currently, UTF-8 encoded KDL is expected.
     ///
@@ -47,7 +47,7 @@ impl DslFormat {
     pub fn parse(input: &[u8]) -> Result<Self, DslError> {
         let input_utf8 = str::from_utf8(input)?;
         let document = input_utf8.parse()?;
-        Ok(DslFormat { document })
+        Ok(Chirp { document })
     }
     /// Spawns UI according to KDL spec of this, using the `D` [`ParseDsl`].
     ///

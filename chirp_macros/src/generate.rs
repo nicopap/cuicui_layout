@@ -59,14 +59,14 @@ impl FnConfig {
 }
 
 pub(crate) struct ImplConfig {
-    format_path: syn::Path,
+    chirp_crate: syn::Path,
     delegate: Option<syn::Ident>,
     set_params: Option<syn::Generics>,
 }
 impl Default for ImplConfig {
     fn default() -> Self {
         ImplConfig {
-            format_path: syn::parse_quote!(::cuicui_format),
+            chirp_crate: syn::parse_quote!(::cuicui_chirp),
             delegate: None,
             set_params: None,
         }
@@ -74,8 +74,8 @@ impl Default for ImplConfig {
 }
 
 const CONFIG_ATTR_DESCR: &str = "\
-- `cuicui_format_path = alternate::path`: specify which path to use for the \
-  `cuicui_format` crate by default, it is `::cuicui_format`
+- `cuicui_chirp_path = alternate::path`: specify which path to use for the \
+  `cuicui_chirp` crate by default, it is `::cuicui_chirp`
 - `delegate = delegate_field`: (optional) Field to delegate `ParseDsl::leaf_node` \
   and `ParseDsl::method` implementations when encountering a name not implemented \
   in this `impl` block. This should be the field you mark with `#[deref_mut]`
@@ -88,9 +88,9 @@ impl<'a> ImplConfig {
     #[allow(clippy::needless_pass_by_value)] // false positive. Type necessary for calling it
     pub(crate) fn parse(&mut self, meta: ParseNestedMeta<'a>) -> syn::Result<()> {
         match () {
-            () if meta.path.is_ident("cuicui_format_path") => {
+            () if meta.path.is_ident("cuicui_chirp_path") => {
                 let value = meta.value()?;
-                self.format_path = value.parse()?;
+                self.chirp_crate = value.parse()?;
             }
             () if meta.path.is_ident("delegate") => {
                 let value = meta.value()?;
@@ -127,7 +127,7 @@ fn dsl_function_mut(item: &mut syn::ImplItem) -> Option<&mut syn::ImplItemFn> {
 pub(crate) fn parse_dsl_impl(config: &ImplConfig, block: &mut syn::ItemImpl) -> TokenStream {
     let this_generics = config.set_params.as_ref().unwrap_or(&block.generics);
     let this_type = block.self_ty.as_ref();
-    let this_crate = &config.format_path;
+    let this_crate = &config.chirp_crate;
 
     let functions = || block.items.iter().filter_map(dsl_function);
     let leaf_node_fn = leaf_node_fn_impl(config, functions);
@@ -151,7 +151,7 @@ fn method_fn_impl<'a, I: Iterator<Item = &'a syn::ImplItemFn>>(
     config: &ImplConfig,
     functions: impl FnOnce() -> I,
 ) -> TokenStream {
-    let this_crate = &config.format_path;
+    let this_crate = &config.chirp_crate;
     let funs = functions().map(method_branch);
     let catchall = config.delegate.as_ref().map_or_else(
         || quote!(Err(DslParseError::<Self>::new(name, ParseType::Method))),
@@ -175,7 +175,7 @@ fn leaf_node_fn_impl<'a, I: Iterator<Item = &'a syn::ImplItemFn>>(
     config: &ImplConfig,
     functions: impl FnOnce() -> I,
 ) -> TokenStream {
-    let this_crate = &config.format_path;
+    let this_crate = &config.chirp_crate;
     let funs = functions().map(leaf_node_branch);
     let catchall = config.delegate.as_ref().map_or_else(
         || quote!(Err(DslParseError::<Self>::new(name, ParseType::LeafNode))),
@@ -195,7 +195,7 @@ fn leaf_node_fn_impl<'a, I: Iterator<Item = &'a syn::ImplItemFn>>(
         }
     }
 }
-// Note: assumes cuicui_format::parse::quick is in scope and used correctly
+// Note: assumes cuicui_chirp::parse::quick is in scope and used correctly
 fn method_branch(fun: &syn::ImplItemFn) -> TokenStream {
     match FnConfig::parse_list(&fun.attrs) {
         Ok(FnConfig::LeafNode | FnConfig::Ignore) => return TokenStream::new(),

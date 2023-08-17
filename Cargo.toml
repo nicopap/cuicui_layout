@@ -4,8 +4,8 @@ exclude = ["assets/"]
 members = [
   "examples/*",
   "dsl",
-  "format",
-  "format_derive",
+  "chirp",
+  "chirp_macros",
   "layout",
   "sprite",
   "ui",
@@ -31,7 +31,7 @@ thiserror = "1.0.44"
 winnow = "0.5.10"
 
 cuicui_dsl = { version = "0.8.2", path = "./dsl" }
-cuicui_format = { version = "0.8.0", path = "./format" }
+cuicui_chirp = { version = "0.8.0", path = "./chirp" }
 cuicui_layout = { version = "0.8.1", path = "./layout", default-features = false }
 cuicui_layout_bevy_sprite = { version = "0.8.1", path = "./sprite", default-features = false }
 cuicui_layout_bevy_ui = { version = "0.8.1", path = "./ui" }

@@ -11,7 +11,7 @@ use crate::{parse, ParseDsl};
 
 type InterpResult = Result<(), InterpError>;
 
-/// An error occuring when adding a [`crate::DslFormat`] to the world.
+/// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
 #[derive(Debug, Error)]
 pub enum InterpError {
@@ -62,7 +62,7 @@ fn kdl_name(kdl: &KdlEntry) -> Result<&str, InterpError> {
 // TODO(clean) TODO(feat): Consider replacing this with a trait that takes
 // `handle(&str, &mut ChildBuilder)`, so that it is concievable of not relying
 // on dynamic dispatch.
-/// Registry of functions callable from the format file.
+/// Registry of functions used in `code` block in [`crate::Chirp`]s.
 pub type Handles<'h> = HashMap<String, &'h dyn Fn(&mut ChildBuilder)>;
 
 pub(super) struct DslInterpret<'h, 'h2, 'b, D> {

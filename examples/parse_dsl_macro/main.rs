@@ -5,8 +5,8 @@ use bevy::{
     prelude::{BuildChildren, Deref, DerefMut, Parent},
     utils::HashMap,
 };
+use cuicui_chirp::{parse_dsl_impl, Chirp, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands};
-use cuicui_format::{parse_dsl_impl, DslFormat, Handles, ParseDsl};
 use pretty_assertions::assert_eq;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
@@ -111,7 +111,7 @@ fn main() {
     let mut world1 = World::new();
     let mut state = SystemState::<Commands>::new(&mut world1);
     let mut cmds = state.get_mut(&mut world1);
-    let format_dsl = r#"
+    let chirp = r#"
 row rules="(px(10), pct(11))" {
     empty_px 30 rules="(pct(20), px(21))";
     empty_px 31;
@@ -120,7 +120,7 @@ column rules="(px(40), pct(41))" {
     empty_px 60 rules="(pct(50), px(51))";
     empty_px 61;
 }"#;
-    let parsed = DslFormat::parse(format_dsl.as_bytes()).unwrap();
+    let parsed = Chirp::parse(chirp.as_bytes()).unwrap();
     let handles: Handles = HashMap::new();
     let cmds = cmds.spawn_empty();
     parsed.interpret::<LayoutDsl>(cmds, &handles).unwrap();

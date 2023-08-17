@@ -11,7 +11,7 @@ name = "parse_dsl_macro"
 path = "main.rs"
 
 [dependencies]
-cuicui_format.workspace = true
+cuicui_chirp.workspace = true
 cuicui_dsl.workspace = true
 pretty_assertions.workspace = true
 bevy = "0.11"
