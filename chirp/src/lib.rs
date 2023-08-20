@@ -9,19 +9,19 @@
 mod interpret;
 pub mod parse;
 
-use std::str;
+use bevy::{
+    ecs::system::SystemState,
+    prelude::{error, Commands, World},
+};
 
-use bevy::prelude::BuildChildren;
-use cuicui_dsl::EntityCommands;
-use kdl::KdlDocument;
-
-use interpret::DslInterpret;
+use interpret::Interpreter;
 
 pub use anyhow;
 #[cfg(feature = "macros")]
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
-pub use parse::{DslError, ParseDsl};
+pub use parse::ParseDsl;
+use winnow::BStr;
 
 #[doc(hidden)]
 pub mod bevy_types {
@@ -30,38 +30,35 @@ pub mod bevy_types {
 
 /// Deserialized `dsl!` object.
 ///
-/// Use [`Chirp::parse`] to create a `Chirp` from arbitrary byte slices.
+/// Use [`Chirp::new`] to create a `Chirp` that will spawn stuff into the
+/// provided [`World`]. Note that you may create a bevy `Scene` and pass the
+/// `Scene`'s world instead of re-using the app world.
 ///
-/// Use [`Chirp::interpret`] to interpret the `Chirp` and add it to the
-/// world with provided `cmds` as root.
-pub struct Chirp {
-    document: KdlDocument,
+/// Use [`Chirp::interpret`] to interpret the `Chirp` file/text and add it to the
+/// world.
+pub struct Chirp<'a> {
+    /// The scene read from the provided input.
+    pub world: &'a mut World,
 }
-impl Chirp {
+impl<'a> Chirp<'a> {
+    /// Create a new `Chirp` that will write to the provided world.
+    ///
+    /// Note that you may create a temporary world instead of using the main
+    /// app world.
+    pub fn new(world: &'a mut World) -> Self {
+        Self { world }
+    }
     /// Create a [`Chirp`] from arbitrary byte slices.
     ///
-    /// Currently, UTF-8 encoded KDL is expected.
-    ///
-    /// # Errors
-    /// When parsing failed. See [`DslError`] for details.
-    pub fn parse(input: &[u8]) -> Result<Self, DslError> {
-        let input_utf8 = str::from_utf8(input)?;
-        let document = input_utf8.parse()?;
-        Ok(Chirp { document })
-    }
-    /// Spawns UI according to KDL spec of this, using the `D` [`ParseDsl`].
-    ///
-    /// # Errors
-    /// When interpretation failed. See [`InterpError`] for details.
-    pub fn interpret<D: ParseDsl>(
-        &self,
-        mut cmds: EntityCommands,
-        handles: &Handles,
-    ) -> Result<(), InterpError> {
-        let mut err = Ok(());
-        cmds.with_children(|cmds| {
-            err = DslInterpret::<D>::new(handles).statements(&self.document, cmds);
-        });
-        err
+    /// This directly interprets the input as a chirp file and creates a bevy
+    /// scene.
+    pub fn interpret<D: ParseDsl>(&mut self, _handles: &Handles, input: &[u8]) {
+        let mut state = SystemState::<Commands>::new(self.world);
+        let mut cmds = state.get_mut(self.world);
+        let mut input = BStr::new(input);
+        if let Err(err) = Interpreter::new::<D>(&mut cmds).statements(&mut input) {
+            error!("{err}");
+        };
+        state.apply(self.world);
     }
 }

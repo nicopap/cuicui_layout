@@ -21,11 +21,13 @@ impl<D: DslBundle> LayoutDsl<D> {
 
     // ...
 
-    #[parse_dsl(leaf_node)]
+    #[parse_dsl(ignore)]
     pub fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
       todo!()
     }
-    #[parse_dsl(leaf_node)]
+    // leaf_node methods will be removed in the future, therefore they are not
+    // supported in the cuicui chirp file format.
+    #[parse_dsl(ignore)]
     pub fn spawn_ui<M>(
         &mut self,
         ui_bundle: impl IntoUiBundle<M>,
@@ -39,16 +41,10 @@ impl<D: DslBundle> LayoutDsl<D> {
 All methods with a `&mut self` argument
 will automatically be added to the `ParseDsl::method` implementation.
 
-To add a method to the `ParseDsl::leaf_node` implementation instead, use the
-`#[parse_dsl(leaf_node)]` attribute. To ignore completely a function in the
-impl block, use `#[parse_dsl(ignore)]`.
+To ignore completely a function in the impl block, use `#[parse_dsl(ignore)]`.
 
-This relies on the `FromStr` trait, each non-self argument to a `method` or
-`leaf_node` should implement `FromStr`, so that it is possible to parse it
-from a string.
-
-If you dont properly mark [leaf nodes], you'll get a compilation error, as
-`&mut EntityCommands` does not implement `FromStr`.
+This relies on the `FromStr` trait, each non-self argument to a `method`
+should implement `FromStr`, so that it is possible to parse it from a string.
 
 For the snippet of code shown earlier, the macro output will be:
 
@@ -84,27 +80,5 @@ impl<D: ParseDsl> ParseDsl for LayoutDsl<D> {
             }
         }
     }
-    fn leaf_node(
-        &mut self,
-        mut data: cuicui_chirp::parse::InterpretLeafCtx,
-    ) -> Result<Entity, anyhow::Error> {
-        use cuicui_chirp::parse::{quick, InterpretLeafCtx, DslParseError, ParseType};
-        let InterpretLeafCtx { name, leaf_arg, cmds } = &mut data;
-        match name {
-            stringify!(empty_px) => {
-                let arg = quick::arg1(leaf_arg)?;
-                Ok(self.button(arg, cmds))
-            }
-            stringify!(spawn_ui) => {
-                let arg = quick::arg1(leaf_arg)?;
-                Ok(self.spawn_ui(arg, cmds))
-            }
-            name => {
-                self.inner.leaf_node(InterpretLeafCtx { name, leaf_arg, cmds })
-            }
-        }
-    }
 }
 ```
-
-[leaf nodes]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#leaf-node

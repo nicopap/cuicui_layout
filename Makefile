@@ -4,10 +4,10 @@ CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery
 .PHONY: check run pre-hook
 
 check:
-	cargo clippy -p cuicui_chirp_derive $(CLIPPY_ARGS)
+	cargo clippy  $(CLIPPY_ARGS)
 
 run:
-	cargo run -p parse_dsl_macro
+	cargo test -p parse_dsl_macro # --features cuicui_chirp/trace_parser
 	# RUST_BACKTRACE=1 cargo run -p bevypunk --features cuicui_layout/debug
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded
 	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc -p bevypunk -- -Z macro-backtrace

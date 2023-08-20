@@ -26,15 +26,15 @@ method
     | ident expr              // single argument method
     | ident '(' expr (',' expr)* ')' // multiple argument method
 
-method_head
+statement_head
    := 'spawn' '(' (method),* ')'
     | 'code' '(' ident ')'
     | ident '(' expr (',' method )* ')'
 
-method_tail := ';' | '{' statement* '}'
-ident       := RUST_IDENTIFIER
-expr        := TBD
-statement   := method_head method_tail
+statement_tail:= ';' | '{' statement* '}'
+ident         := RUST_IDENTIFIER
+expr          := TBD
+statement     := statement_head statement_tail
 ```
 
 ### Why not KDL

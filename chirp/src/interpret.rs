@@ -1,31 +1,23 @@
-use std::marker::PhantomData;
+use std::{cell::RefCell, fmt, mem};
 
 use bevy::{
-    prelude::{BuildChildren, ChildBuilder},
+    prelude::{trace, BuildChildren, ChildBuilder, Commands, Entity},
     utils::HashMap,
 };
-use kdl::{KdlDocument, KdlEntry, KdlNode, KdlValue};
+use smallvec::SmallVec;
 use thiserror::Error;
+use winnow::{stream::AsChar, BStr, PResult, Parser};
 
-use crate::{parse, ParseDsl};
-
-type InterpResult = Result<(), InterpError>;
+use crate::{
+    parse::{scoped_text, MethodCtx},
+    ParseDsl,
+};
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
 #[derive(Debug, Error)]
 pub enum InterpError {
     // TODO(err): Integrate parse spans for nice error reporting.
-    #[error(
-        "KDL method is malformed, it should have a name, either as \
-        parameter name or as KDL argument string"
-    )]
-    NoName,
-    #[error(
-        "The KDL method had a non-string arg. You should only use strings in \
-        argument position."
-    )]
-    BadArg,
     #[error("'code' should have exactly one string argument, none were given")]
     BadCode,
     #[error("'code' should be a rust identifier, found '{0}'")]
@@ -34,117 +26,119 @@ pub enum InterpError {
     CodeNotPresent(String),
     #[error("leaf nodes should have at least one argument to be passed as as value")]
     LeafNoArgs,
-    #[error(
-        "leaf nodes expect values to have a str representation. You passed a \
-        custom-built Kdl document without specifying a leaf node representation"
-    )]
-    LeafBadKdl,
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
 }
 
-fn kdl_args(kdl: &KdlEntry) -> Result<&str, InterpError> {
-    use KdlValue::{RawString, String};
-    match kdl.value() {
-        _ if kdl.name().is_none() => Ok(""),
-        RawString(value) | String(value) => Ok(value),
-        _ => Err(InterpError::BadArg),
-    }
-}
-fn kdl_name(kdl: &KdlEntry) -> Result<&str, InterpError> {
-    use KdlValue::{RawString, String};
-    match (kdl.name(), kdl.value()) {
-        (Some(name), _) => name.repr().ok_or(InterpError::NoName),
-        (None, RawString(name) | String(name)) => Ok(name),
-        _ => Err(InterpError::NoName),
-    }
-}
 // TODO(clean) TODO(feat): Consider replacing this with a trait that takes
 // `handle(&str, &mut ChildBuilder)`, so that it is concievable of not relying
 // on dynamic dispatch.
 /// Registry of functions used in `code` block in [`crate::Chirp`]s.
 pub type Handles<'h> = HashMap<String, &'h dyn Fn(&mut ChildBuilder)>;
 
-pub(super) struct DslInterpret<'h, 'h2, 'b, D> {
-    _dsl: PhantomData<D>,
-    handles: &'h Handles<'h2>,
-    load_context: PhantomData<&'b ()>,
+struct BevyCmds<'w, 's, 'a>(&'a mut Commands<'w, 's>);
+impl fmt::Debug for BevyCmds<'_, '_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "BevyCmds(Commands)")
+    }
 }
-impl<'h, 'h2, 'b, D: ParseDsl> DslInterpret<'h, 'h2, 'b, D> {
-    pub(super) fn new(handles: &'h Handles<'h2>) -> Self {
-        Self {
-            _dsl: PhantomData,
-            load_context: PhantomData,
-            handles,
-        }
+#[derive(Debug)]
+struct InnerInterpreter<'w, 's, 'a, D> {
+    cmds: BevyCmds<'w, 's, 'a>,
+    current: SmallVec<[Entity; 3]>,
+    dsl: D,
+}
+// TODO(perf): Can use an UnsafeCell instead, since we'll never access this
+// concurrently, as the parsing is linear.
+#[derive(Debug)]
+pub(crate) struct Interpreter<'w, 's, 'a, D>(RefCell<InnerInterpreter<'w, 's, 'a, D>>);
+
+impl<'w, 's, 'a> Interpreter<'w, 's, 'a, ()> {
+    pub fn new<D: ParseDsl>(builder: &'a mut Commands<'w, 's>) -> Interpreter<'w, 's, 'a, D> {
+        Interpreter(RefCell::new(InnerInterpreter {
+            cmds: BevyCmds(builder),
+            current: SmallVec::new(),
+            dsl: D::default(),
+        }))
     }
-    fn statement(&self, kdl: &KdlNode, cmds: &mut ChildBuilder) -> InterpResult {
-        let mut dsl_bundle = D::default();
-        if kdl.name().value() == "code" {
-            let Some(handle) = kdl.entries().first() else {
-                return Err(InterpError::BadCode);
-            };
-            let Some(handle) = handle.value().as_string() else {
-                return Err(InterpError::CodeNonIdent(handle.to_string()));
-            };
-            let Some(to_run) = self.handles.get(handle) else {
-                return Err(InterpError::CodeNotPresent(handle.to_owned()));
-            };
-            to_run(cmds);
-            return Ok(());
+}
+impl<'w, 's, 'a, D: ParseDsl> Interpreter<'w, 's, 'a, D> {
+    fn method(&self, (method, mut args): (&[u8], &[u8])) {
+        let name = String::from_utf8_lossy(method);
+        if args.first() == Some(&b'(') {
+            args = &args[1..args.len() - 1];
         }
-        let mut cmds = cmds.spawn_empty();
-        let mut entries = kdl.entries();
-        // Skip first entry if leaf-node (the first entry should be an argument
-        // to the leaf-node method)
-        if kdl.children().is_none() {
-            entries = &entries[1..];
-        }
-        for entry in entries {
-            dsl_bundle.method(parse::InterpretMethodCtx {
-                name: kdl_name(entry)?,
-                args: kdl_args(entry)?,
-            })?;
-        }
-        if let Some(document) = kdl.children() {
-            // Apply the parent node method.
-            if kdl.name().value() != "spawn" {
-                dsl_bundle
-                    .method(parse::InterpretMethodCtx { name: kdl.name().value(), args: "" })?;
-            }
-            dsl_bundle.insert(&mut cmds);
-            let mut err = Ok(());
-            cmds.with_children(|cmds| {
-                let children = Self {
-                    _dsl: PhantomData,
-                    handles: self.handles,
-                    load_context: PhantomData,
-                };
-                err = children.statements(document, cmds);
-            });
-            err
-        } else {
-            if kdl.name().value() != "spawn" {
-                let Some(leaf_arg) = kdl.entries().first() else {
-                    return Err(InterpError::LeafNoArgs);
-                };
-                let Some(leaf_arg) = leaf_arg.value_repr() else {
-                    return Err(InterpError::LeafBadKdl);
-                };
-                dsl_bundle.leaf_node(parse::InterpretLeafCtx {
-                    name: kdl.name().value(),
-                    leaf_arg,
-                    cmds: &mut cmds,
-                })?;
-            }
-            dsl_bundle.insert(&mut cmds);
-            Ok(())
-        }
+        let args = String::from_utf8_lossy(args);
+        trace!("Method: {name} '{args}'");
+        let ctx = MethodCtx { name, args };
+        let dsl = &mut self.0.borrow_mut().dsl;
+        dsl.method(ctx)
+            .expect("TODO(err): Handle user parsing errors");
     }
-    pub(super) fn statements(self, kdl: &KdlDocument, cmds: &mut ChildBuilder) -> InterpResult {
-        for node in kdl.nodes() {
-            self.statement(node, cmds)?;
+    fn statement_spawn(&self) -> Entity {
+        trace!("Spawning an entity with provided methods!");
+        let interp = &mut *self.0.borrow_mut();
+
+        let parent = interp.current.last().copied();
+        let mut dsl = mem::take(&mut interp.dsl); // we set to the default D
+        let mut cmds = interp.cmds.0.spawn_empty();
+        if let Some(parent) = parent {
+            cmds.set_parent(parent);
         }
-        Ok(())
+        dsl.insert(&mut cmds)
+    }
+    fn push_children(&self) {
+        let current = self.statement_spawn();
+        trace!(">>> Going deeper now…");
+        self.0.borrow_mut().current.push(current);
+    }
+    fn pop_children(&self) {
+        trace!("<<< Ended spawning entities within statements block, continuing");
+        self.0.borrow_mut().current.pop();
+    }
+    pub fn statements(&self, input: &mut &BStr) -> PResult<()> {
+        use winnow::combinator::{alt, delimited, opt, preceded, separated0, success};
+        use winnow::{ascii, token};
+
+        let (spc, spc1, opt) = (ascii::multispace0, ascii::multispace1, || opt(b' '));
+        // TODO(bug): Escape sequences
+        let str_literal = delimited(b'"', token::take_till0(b'"'), b'"');
+        let ident = || token::take_while(1.., (<u8 as AsChar>::is_alphanum, b'_'));
+        let args = alt((
+            preceded(spc1, ident()),
+            // TOOD(perf): split this in a sane way, re-parsing might be costly
+            preceded(spc, scoped_text.recognize()),
+        ));
+
+        let empty = success::<&BStr, &[u8], _>(b"");
+        let named: &[u8] = b"named";
+        let method = alt((
+            str_literal.map(|i| (named, i)),
+            (ident(), alt((args, empty))),
+        ))
+        .map(|i| self.method(i));
+        let comma_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, (b',', spc));
+        let methods = delimited((b'(', spc), comma_list(method), (spc, b')'));
+        let nest = |i: &mut _| {
+            self.push_children();
+            let ret = self.statements(i);
+            self.pop_children();
+            ret
+        };
+        let terminal = |_| {
+            self.statement_spawn();
+        };
+        let spawn_head = |(head, _, _)| {
+            if head != b"spawn" {
+                self.method((head, b""));
+            }
+        };
+        let head = (ident(), opt(), methods).map(spawn_head);
+        let tail = alt((b';'.map(terminal), delimited(b'{', nest, b'}')));
+        let statement = (head, opt(), tail);
+
+        let space_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, spc);
+        let mut statements = delimited(spc, space_list(statement), spc);
+        statements.parse_next(input)
     }
 }

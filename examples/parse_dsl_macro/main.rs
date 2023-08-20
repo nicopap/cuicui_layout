@@ -2,7 +2,8 @@ use std::{fmt, num::ParseIntError, str::FromStr};
 
 use bevy::{
     ecs::{prelude::*, system::SystemState},
-    prelude::{BuildChildren, Deref, DerefMut, Parent},
+    log::Level,
+    prelude::{App, BuildChildren, Deref, DerefMut, Parent, Plugin},
     utils::HashMap,
 };
 use cuicui_chirp::{parse_dsl_impl, Chirp, Handles, ParseDsl};
@@ -12,15 +13,30 @@ use pretty_assertions::assert_eq;
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 enum Flow {
     #[default]
+    None,
     Top,
     Left,
 }
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord)]
 enum Rule {
     Pct(i32),
     Px(i32),
     #[default]
     None,
+}
+impl fmt::Debug for Rule {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Rule::Pct(v) => write!(f, "{v}pct"),
+            Rule::Px(v) => write!(f, "{v}px"),
+            Rule::None => write!(f, "none"),
+        }
+    }
+}
+impl fmt::Debug for Pixels {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} pixels", self.0)
+    }
 }
 const fn pct(i: i32) -> Rule {
     Rule::Pct(i)
@@ -34,11 +50,11 @@ impl FromStr for Rule {
         match () {
             () if s.starts_with("px(") => {
                 let number = &s[3..s.len() - 1];
-                Ok(Rule::Px(number.parse()?))
+                Ok(Rule::Px(dbg!(number.parse())?))
             }
             () if s.starts_with("pct(") => {
                 let number = &s[4..s.len() - 1];
-                Ok(Rule::Pct(number.parse()?))
+                Ok(Rule::Pct(dbg!(number.parse())?))
             }
             () => Err("badnumber".parse::<i32>().unwrap_err()),
         }
@@ -51,6 +67,7 @@ struct LayoutDsl<T = BaseDsl> {
     width: Rule,
     height: Rule,
     flow: Flow,
+    px: Option<u16>,
 }
 
 #[derive(Debug, Clone, Component, PartialEq, Eq, PartialOrd, Ord)]
@@ -59,9 +76,54 @@ struct LayoutNode {
     height: Rule,
     flow: Flow,
 }
-#[derive(Debug, Clone, Component, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Component, PartialEq, Eq, PartialOrd, Ord)]
 struct Pixels(u16);
 
+fn show<T: Clone>(t: Option<&T>) -> Show<T> {
+    Show(t.cloned())
+}
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Sample {
+    entity: Entity,
+    pxls: Show<Pixels>,
+    lay: Show<LayoutNode>,
+    p: Option<Entity>,
+}
+impl Sample {
+    fn new(
+        entity: Entity,
+        pxls: Option<&Pixels>,
+        lay: Option<&LayoutNode>,
+        p: Option<&Parent>,
+    ) -> Self {
+        Self {
+            entity,
+            pxls: show(pxls),
+            lay: show(lay),
+            p: p.map(Parent::get),
+        }
+    }
+}
+fn sample(
+    (a, b, c, d): (
+        Entity,
+        Option<&Pixels>,
+        Option<&LayoutNode>,
+        Option<&Parent>,
+    ),
+) -> Sample {
+    Sample::new(a, b, c, d)
+}
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Show<T>(Option<T>);
+impl<T: fmt::Debug> fmt::Debug for Show<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.0 {
+            Some(v) => write!(f, "{v:?}"),
+            None => write!(f, "xxxxxxx"),
+        }
+    }
+}
 impl<D: DslBundle> DslBundle for LayoutDsl<D> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         cmds.insert(LayoutNode {
@@ -69,12 +131,20 @@ impl<D: DslBundle> DslBundle for LayoutDsl<D> {
             height: self.height,
             flow: self.flow,
         });
+        if let Some(px) = self.px {
+            cmds.with_children(|cmds| {
+                cmds.spawn(Pixels(px));
+            });
+        }
         self.inner.insert(cmds)
     }
 }
 
 #[parse_dsl_impl(set_params <D: ParseDsl + fmt::Debug>, delegate = inner)]
 impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
+    fn empty_px(&mut self, pixels: u16) {
+        self.px = Some(pixels);
+    }
     #[parse_dsl(ignore)]
     fn flow(&mut self, flow: Flow) {
         self.flow = flow;
@@ -92,14 +162,6 @@ impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
 
     // ...
 
-    #[parse_dsl(leaf_node)]
-    fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
-        println!("{self:?}");
-        cmds.with_children(|cmds| {
-            cmds.spawn(Pixels(pixels));
-        });
-        cmds.id()
-    }
     #[parse_dsl(ignore)]
     #[allow(clippy::needless_pass_by_value)] // false positive
     fn _spawn_ui<M>(&mut self, _ui_bundle: impl Into<M>, _cmds: &mut EntityCommands) -> Entity {
@@ -108,57 +170,56 @@ impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
 }
 
 fn main() {
+    bevy::log::LogPlugin { level: Level::TRACE, ..Default::default() }.build(&mut App::new());
     let mut world1 = World::new();
-    let mut state = SystemState::<Commands>::new(&mut world1);
-    let mut cmds = state.get_mut(&mut world1);
     let chirp = r#"
-row rules="(px(10), pct(11))" {
-    empty_px 30 rules="(pct(20), px(21))";
-    empty_px 31;
-}
-column rules="(px(40), pct(41))" {
-    empty_px 60 rules="(pct(50), px(51))";
-    empty_px 61;
-}"#;
-    let parsed = Chirp::parse(chirp.as_bytes()).unwrap();
+            row(rules(px(10), pct(11))) {
+                spawn(rules(pct(20), px(21)), empty_px 30);
+                spawn(empty_px 31);
+            }
+            column(rules(px(40), pct(41))) {
+                spawn(rules(pct(50), px(51)), empty_px 60);
+                spawn(empty_px 61);
+            }
+"#;
     let handles: Handles = HashMap::new();
-    let cmds = cmds.spawn_empty();
-    parsed.interpret::<LayoutDsl>(cmds, &handles).unwrap();
-    state.apply(&mut world1);
+    let mut world_chirp = Chirp::new(&mut world1);
+    world_chirp.interpret::<LayoutDsl>(&handles, chirp.as_bytes());
 
     let mut world2 = World::new();
     let mut state = SystemState::<Commands>::new(&mut world2);
     let mut cmds = state.get_mut(&mut world2);
-    cmds.spawn_empty().with_children(|cmds| {
-        dsl! { <LayoutDsl> cmds,
-            row(rules(px(10), pct(11))) {
-                empty_px(30, rules(pct(20), px(21)));
-                empty_px(31);
-            }
-            column(rules(px(40), pct(41))) {
-                empty_px(60, rules(pct(50), px(51)));
-                empty_px(61);
-            }
-        };
-    });
+    dsl! { <LayoutDsl> cmds,
+        row(rules(px(10), pct(11))) {
+            spawn(rules(pct(20), px(21)), empty_px 30);
+            spawn(empty_px 31);
+        }
+        column(rules(px(40), pct(41))) {
+            spawn(rules(pct(50), px(51)), empty_px 60);
+            spawn(empty_px 61);
+        }
+    };
     state.apply(&mut world2);
 
-    let get = Parent::get;
-    let mut query = world1.query::<(Option<&Pixels>, Option<&LayoutNode>, Option<&Parent>)>();
-    let mut w1_entities = query
-        .iter(&world1)
-        .map(|(a, b, c)| (a.cloned(), b.cloned(), c.map(get)))
-        .collect::<Vec<_>>();
-    w1_entities.sort_unstable();
+    let mut query = world1.query::<(
+        Entity,
+        Option<&Pixels>,
+        Option<&LayoutNode>,
+        Option<&Parent>,
+    )>();
+    let mut parse_entities = query.iter(&world1).map(sample).collect::<Vec<_>>();
+    parse_entities.sort_unstable();
 
-    let mut query = world2.query::<(Option<&Pixels>, Option<&LayoutNode>, Option<&Parent>)>();
-    let mut w2_entities = query
-        .iter(&world2)
-        .map(|(a, b, c)| (a.cloned(), b.cloned(), c.map(get)))
-        .collect::<Vec<_>>();
-    w2_entities.sort_unstable();
+    let mut query = world2.query::<(
+        Entity,
+        Option<&Pixels>,
+        Option<&LayoutNode>,
+        Option<&Parent>,
+    )>();
+    let mut macro_entities = query.iter(&world2).map(sample).collect::<Vec<_>>();
+    macro_entities.sort_unstable();
 
-    assert_eq!(w1_entities, w2_entities);
+    assert_eq!(parse_entities, macro_entities);
 }
 #[test]
 fn parse_dsl_macro_identical() {

@@ -7,15 +7,9 @@ enum FnConfig {
     #[default]
     Method,
     Ignore,
-    LeafNode,
 }
 const METHOD_ATTR_DESCR: &str = "\
 - `parse_dsl(ignore)`: Do not add this method to the parse_dsl_impl implementation
-- `parse_dsl(leaf_node)`: Add this method to the `ParseDsl::leaf_node` method instead of \
-  `ParseDsl::method`. Leaf node methods must follow a specific type signature, \
-  please read the following for more details:
-
-https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#leaf-node
 
 There is currently no other accepted parse_dsl_impl method attribute config options.\n";
 
@@ -37,10 +31,6 @@ impl FnConfig {
         match () {
             () if meta.path.is_ident("ignore") => {
                 *self = Self::Ignore;
-                Ok(())
-            }
-            () if meta.path.is_ident("leaf_node") => {
-                *self = Self::LeafNode;
                 Ok(())
             }
             () => {
@@ -129,15 +119,27 @@ pub(crate) fn parse_dsl_impl(config: &ImplConfig, block: &mut syn::ItemImpl) -> 
     let this_type = block.self_ty.as_ref();
     let this_crate = &config.chirp_crate;
 
-    let functions = || block.items.iter().filter_map(dsl_function);
-    let leaf_node_fn = leaf_node_fn_impl(config, functions);
-    let method_fn = method_fn_impl(config, functions);
+    let funs = block.items.iter().filter_map(dsl_function);
+    let funs = funs.map(method_branch);
+    let catchall = config.delegate.as_ref().map_or_else(
+        || quote!(Err(DslParseError::<Self>::new(name))),
+        |ident| quote!(self.#ident.method(MethodCtx { name, args })),
+    );
     let parse_dsl_block = quote! {
         #[automatically_derived]
-        #[allow(all)]
+        #[allow(clippy::let_unit_value)]
         impl #this_generics #this_crate::ParseDsl for #this_type {
-            #method_fn
-            #leaf_node_fn
+            fn method(
+                &mut self,
+                data: #this_crate::parse::MethodCtx,
+            ) -> Result<(), #this_crate::anyhow::Error> {
+                use #this_crate::parse::{quick, MethodCtx, DslParseError};
+                let MethodCtx { name, args } = data;
+                match name.as_ref() {
+                    #(#funs)*
+                    _name => { #catchall }
+                }
+            }
         }
     };
     // Remove `parse_dsl` attributes from block items, as otherwise rust
@@ -147,85 +149,25 @@ pub(crate) fn parse_dsl_impl(config: &ImplConfig, block: &mut syn::ItemImpl) -> 
     }
     quote!(#block #parse_dsl_block)
 }
-fn method_fn_impl<'a, I: Iterator<Item = &'a syn::ImplItemFn>>(
-    config: &ImplConfig,
-    functions: impl FnOnce() -> I,
-) -> TokenStream {
-    let this_crate = &config.chirp_crate;
-    let funs = functions().map(method_branch);
-    let catchall = config.delegate.as_ref().map_or_else(
-        || quote!(Err(DslParseError::<Self>::new(name, ParseType::Method))),
-        |ident| quote!(self.#ident.method(InterpretMethodCtx { name, args })),
-    );
-    quote! {
-        fn method(
-            &mut self,
-            data: #this_crate::parse::InterpretMethodCtx,
-        ) -> Result<(), #this_crate::anyhow::Error> {
-            use #this_crate::parse::{quick, InterpretMethodCtx, DslParseError, ParseType};
-            let InterpretMethodCtx { name, args } = data;
-            match name {
-                #(#funs)*
-                name => { #catchall }
-            }
-        }
-    }
-}
-fn leaf_node_fn_impl<'a, I: Iterator<Item = &'a syn::ImplItemFn>>(
-    config: &ImplConfig,
-    functions: impl FnOnce() -> I,
-) -> TokenStream {
-    let this_crate = &config.chirp_crate;
-    let funs = functions().map(leaf_node_branch);
-    let catchall = config.delegate.as_ref().map_or_else(
-        || quote!(Err(DslParseError::<Self>::new(name, ParseType::LeafNode))),
-        |ident| quote!(self.#ident.leaf_node(InterpretLeafCtx { name, leaf_arg, cmds })),
-    );
-    quote! {
-        fn leaf_node(
-            &mut self,
-            data: #this_crate::parse::InterpretLeafCtx,
-        ) -> Result<#this_crate::bevy_types::Entity, #this_crate::anyhow::Error> {
-            use #this_crate::parse::{quick, InterpretLeafCtx, DslParseError, ParseType};
-            let InterpretLeafCtx { name, leaf_arg, mut cmds } = data;
-            match name {
-                #(#funs)*
-                name => { #catchall }
-            }
-        }
-    }
-}
 // Note: assumes cuicui_chirp::parse::quick is in scope and used correctly
 fn method_branch(fun: &syn::ImplItemFn) -> TokenStream {
     match FnConfig::parse_list(&fun.attrs) {
-        Ok(FnConfig::LeafNode | FnConfig::Ignore) => return TokenStream::new(),
+        Ok(FnConfig::Ignore) => return TokenStream::new(),
+        Ok(FnConfig::Method) => {}
         Err(err) => return err.into_compile_error(),
-        _ => {}
     };
-    let index = syn::Index::from;
     let arg_count = fun.sig.inputs.len() - 1;
     let arg_n = format_ident!("arg{arg_count}", span = fun.sig.inputs.span());
-    let fun_args = (0..arg_count).map(index).map(|i| quote!(args.#i));
+
+    let index = syn::Index::from;
+    let quote_arg = |i: syn::Index| if arg_count == 1 { quote!(args) } else { quote!(args.#i) };
+    let fun_args = (0..arg_count).map(index).map(quote_arg);
     let ident = &fun.sig.ident;
     quote_spanned! { fun.sig.inputs.span() =>
         stringify!(#ident) => {
-            let args = quick::#arg_n(args)?;
+            let args = quick::#arg_n(args.as_ref())?;
             self.#ident(#(#fun_args),*);
             Ok(())
-        }
-    }
-}
-fn leaf_node_branch(fun: &syn::ImplItemFn) -> TokenStream {
-    match FnConfig::parse_list(&fun.attrs) {
-        Ok(FnConfig::Method | FnConfig::Ignore) => return TokenStream::new(),
-        Err(err) => return err.into_compile_error(),
-        _ => {}
-    };
-    let ident = &fun.sig.ident;
-    quote_spanned! { fun.sig.inputs[1].span() =>
-        stringify!(#ident) => {
-            let arg = quick::arg1(leaf_arg)?;
-            Ok(self.#ident(arg, &mut cmds))
         }
     }
 }

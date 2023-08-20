@@ -20,11 +20,11 @@ reflect = []
 
 [dependencies]
 anyhow.workspace = true
-thiserror.workspace = true
 bevy_mod_sysfail.workspace = true
-bevy = { version = "0.11", default-features = false }
-cuicui_dsl.workspace = true
 enumset.workspace = true
+thiserror.workspace = true
+cuicui_dsl.workspace = true
+bevy = { version = "0.11", default-features = false }
 
 [package.metadata.release]
 pre-release-replacements = [

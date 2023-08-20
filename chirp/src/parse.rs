@@ -1,30 +1,15 @@
 //! Parse a DSL.
 
-use core::fmt;
-use std::{
-    marker::PhantomData,
-    str::{FromStr, Utf8Error},
-};
+use std::{borrow::Cow, marker::PhantomData, str::FromStr};
 
-use bevy::prelude::Entity;
-use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
-use kdl::KdlError;
+use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
 use winnow::{
+    ascii,
     error::{ContextError, ErrMode, StrContext},
-    PResult,
+    BStr, PResult, Parser,
 };
-
-/// Error occuring at the initial KDL parsing of the DSL.
-#[allow(missing_docs)] // Already documented by error message.
-#[derive(Debug, Error)]
-pub enum DslError {
-    #[error("Input data is not valid UTF8: {0}")]
-    Utf8(#[from] Utf8Error),
-    #[error("Input file is not a valid KDL file: {0}")]
-    Kdl(#[from] KdlError),
-}
 
 /// Error returned by one of the `argN` functions.
 #[allow(missing_docs)] // Already documented by error message.
@@ -49,70 +34,38 @@ impl PartialEq for ArgError {
     }
 }
 
-/// [`ParseDsl`] method that didn't have the expected method in [`DslParseError`].
-#[derive(Debug)]
-pub enum ParseType {
-    /// [`ParseDsl::method`].
-    Method,
-    /// [`ParseDsl::leaf_node`].
-    LeafNode,
-}
-impl fmt::Display for ParseType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ParseType::Method => write!(f, "method"),
-            ParseType::LeafNode => write!(f, "leaf node"),
-        }
-    }
-}
 /// The input specification called a method not implemented in `D`.
 ///
 /// Useful as a catchall when parsing a DSL calling an innexisting method.
 #[derive(Debug, Error)]
 #[error(
-    "Didn't find {parse_type} '{method}' for parse DSL of type '{}'",
+    "Didn't find method '{method}' for parse DSL of type '{}'",
     std::any::type_name::<D>(),
 )]
 pub struct DslParseError<D> {
     method: String,
-    parse_type: ParseType,
     _ty: PhantomData<D>,
 }
 impl<D> DslParseError<D> {
     /// Create a [`DslParseError`] for `method` in `parse_type`.
-    pub fn new(method: impl Into<String>, parse_type: ParseType) -> Self {
-        Self {
-            method: method.into(),
-            parse_type,
-            _ty: PhantomData,
-        }
+    pub fn new(method: impl Into<String>) -> Self {
+        Self { method: method.into(), _ty: PhantomData }
     }
 }
 
 /// Argument to [`ParseDsl::method`].
-pub struct InterpretMethodCtx<'a> {
+pub struct MethodCtx<'a> {
     /// The method name.
-    pub name: &'a str,
+    pub name: Cow<'a, str>,
     /// The method arguments (notice **plural**).
     ///
     /// Use the [`quick`] module to split the argument in as many relevant
     /// sections as necessary.
-    pub args: &'a str,
+    pub args: Cow<'a, str>,
     // let path = AssetPath::new_ref(load_context.path(), Some(&label));
     // load_context.get_handle(path)?
     // pub load_context: LoadContext<'b>,
     // TODO(perf): Consider re-using cuicui_fab::Binding
-}
-
-/// Argument to [`ParseDsl::leaf_node`].
-pub struct InterpretLeafCtx<'n, 'a, 'c, 'w, 's> {
-    /// The leaf node name.
-    pub name: &'n str,
-    /// The first method to the leaf node.
-    pub leaf_arg: &'n str,
-    /// The [`EntityCommands`] for the current statement's [`Entity`].
-    pub cmds: &'c mut EntityCommands<'w, 's, 'a>,
-    // pub load_context: LoadContext<'b>,
 }
 
 /// A [`DslBundle`] that can be parsed.
@@ -130,67 +83,51 @@ pub trait ParseDsl: DslBundle {
     /// innexisting method with `ctx.name`.
     ///
     /// [parent node]: cuicui_dsl::dsl#parent-node
-    fn method(&mut self, ctx: InterpretMethodCtx) -> Result<(), anyhow::Error>;
-    /// Apply leaf node method named `ctx.name` to `self`.
-    ///
-    /// Called when encountering a [leaf node].
-    ///
-    /// Note that it respects the semantic of the DSL, `leaf_node` is only called
-    /// after all other [methods] of the current [statement] are applied.
-    ///
-    /// # Errors
-    /// This function may fail. With `anyhow::Error`, any error type may be used.
-    ///
-    /// You may chose to fail for any reason, the expected failure case
-    /// is failure to parse an argument in`ctx.args` or trying to call an
-    /// innexisting method with `ctx.name`.
-    ///
-    /// [leaf node]: cuicui_dsl::dsl#leaf-node
-    /// [methods]: cuicui_dsl::dsl#dsl-methods
-    /// [statement]: cuicui_dsl::dsl#dsl-statements
-    fn leaf_node(&mut self, ctx: InterpretLeafCtx) -> Result<Entity, anyhow::Error>;
+    fn method(&mut self, ctx: MethodCtx) -> Result<(), anyhow::Error>;
 }
 impl ParseDsl for BaseDsl {
-    fn method(&mut self, data: InterpretMethodCtx) -> Result<(), anyhow::Error> {
-        let InterpretMethodCtx { name, args, .. } = data;
-        match name {
+    fn method(&mut self, data: MethodCtx) -> Result<(), anyhow::Error> {
+        let MethodCtx { name, args, .. } = data;
+        match name.as_ref() {
             "named" => {
-                self.named(args.to_owned());
+                self.named(match args {
+                    Cow::Borrowed(b) => b.to_owned(),
+                    Cow::Owned(o) => o,
+                });
                 Ok(())
             }
-            method => Err(DslParseError::<Self>::new(method, ParseType::Method).into()),
+            method => Err(DslParseError::<Self>::new(method).into()),
         }
     }
-    fn leaf_node(&mut self, data: InterpretLeafCtx) -> Result<Entity, anyhow::Error> {
-        Err(DslParseError::<Self>::new(data.name, ParseType::LeafNode).into())
-    }
 }
-fn balanced_text<'i>(input: &mut &'i str) -> PResult<&'i str> {
+const SCOPE_TERMINATE: [u8; 7] = *b"()[]{}\\";
+const SCOPE_ESCAPE: [u8; 8] = *b"()[]{},\\";
+const EXPOSED_TERMINATE: [u8; 6] = *b"([{},\\";
+#[inline]
+pub(crate) fn scoped_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8]> {
     use winnow::{
-        ascii::escaped,
         combinator::{dispatch, fail, repeat, terminated},
         token::{any, one_of, take_till1},
-        Parser,
     };
-    const SCOPE_TERMINATE: [char; 7] = ['(', ')', '[', ']', '{', '}', '\\'];
-    const SCOPE_ESCAPE: [char; 9] = ['(', ')', '[', ']', '{', '}', '|', ',', '\\'];
-    const EXPOSED_TERMINATE: [char; 7] = ['(', '[', '{', '}', '|', ',', '\\'];
-    fn scope<'i>(input: &mut &'i str) -> PResult<&'i str> {
-        let semi_exposed = || escaped(take_till1(SCOPE_TERMINATE), '\\', one_of(SCOPE_ESCAPE));
-        let repeat = |f| repeat::<_, _, (), _, _>(0.., f);
-        let inner = move || (semi_exposed(), repeat((scope, semi_exposed())));
-        let dispatch = dispatch! {any;
-            '{' => terminated(inner(), '}'),
-            '[' => terminated(inner(), ']'),
-            '(' => terminated(inner(), ')'),
-            _ => fail,
-        };
-        dispatch.recognize().parse_next(input)
-    }
-    let exposed = || escaped(take_till1(EXPOSED_TERMINATE), '\\', one_of(SCOPE_ESCAPE));
+    let semi_exposed = || ascii::escaped(take_till1(SCOPE_TERMINATE), '\\', one_of(SCOPE_ESCAPE));
+    let repeat = |f| repeat::<_, _, (), _, _>(0.., f);
+    let inner = move || (semi_exposed(), repeat((scoped_text, semi_exposed())));
+    let dispatch = dispatch! {any;
+        b'{' => terminated(inner(), b'}'),
+        b'[' => terminated(inner(), b']'),
+        b'(' => terminated(inner(), b')'),
+        _ => fail,
+    };
+    dispatch.recognize().parse_next(input)
+}
+#[inline]
+pub(crate) fn balanced_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8]> {
+    use winnow::{combinator::repeat, token::one_of, token::take_till1};
+
+    let exposed = || ascii::escaped(take_till1(EXPOSED_TERMINATE), '\\', one_of(SCOPE_ESCAPE));
 
     let repeat = |f| repeat::<_, _, (), _, _>(0.., f);
-    (exposed(), repeat((scope, exposed())))
+    (exposed(), repeat((scoped_text, exposed())))
         .recognize()
         .parse_next(input)
 }
@@ -208,7 +145,9 @@ fn balanced_text<'i>(input: &mut &'i str) -> PResult<&'i str> {
 #[allow(missing_docs, clippy::missing_errors_doc)]
 pub mod quick {
 
-    use winnow::{ascii::multispace0, combinator::preceded, Parser};
+    use std::str::from_utf8_unchecked;
+
+    use winnow::{ascii::multispace0, combinator::preceded, BStr, Parser};
 
     use super::{balanced_text, ArgError, FromStr};
 
@@ -250,13 +189,13 @@ pub mod quick {
     }
 
     struct ArgIter<'a> {
-        input: &'a str,
+        input: &'a BStr,
         count: usize,
     }
 
     impl<'a> ArgIter<'a> {
         fn new(input: &'a str) -> Self {
-            Self { input: &input[1..input.len() - 1], count: 0 }
+            Self { input: BStr::new(input), count: 0 }
         }
     }
     impl<'a> Iterator for ArgIter<'a> {
@@ -268,16 +207,19 @@ pub mod quick {
             self.count += 1;
             let err = ArgError::ArgParse;
             if self.count - 1 == 0 {
-                Some(balanced_text.parse_next(&mut self.input).map_err(err))
+                let text = balanced_text.parse_next(&mut self.input).map_err(err);
+                // SAFETY: `ArgIter.input` is always valid utf8 because of the
+                // constructor and the parser working exclusively on ASCII
+                Some(text.map(|t| unsafe { from_utf8_unchecked(t) }))
             } else {
-                let mut parser = preceded((',', multispace0), balanced_text);
-                Some(parser.parse_next(&mut self.input).map_err(err))
+                let mut parser = preceded((b',', multispace0), balanced_text);
+                let text = parser.parse_next(&mut self.input).map_err(err);
+                Some(text.map(|t| unsafe { from_utf8_unchecked(t) }))
             }
         }
     }
     enum Args<'a> {
         Empty,
-        One(&'a str),
         Iter(ArgIter<'a>),
     }
 
@@ -285,14 +227,12 @@ pub mod quick {
         fn new(input: &str) -> Args {
             match () {
                 () if input.is_empty() => Args::Empty,
-                () if !input.starts_with('(') => Args::One(input),
                 () => Args::Iter(ArgIter::new(input)),
             }
         }
         fn count(&mut self) -> usize {
             match self {
                 Args::Empty => 0,
-                Args::One(_) => 1,
                 Args::Iter(iter) => iter.count(),
             }
         }
@@ -301,7 +241,7 @@ pub mod quick {
         let bad_count = |count| ArgError::CountMismatch(0, count);
         match Args::new(input) {
             Args::Empty => Ok(()),
-            mut args => Err(bad_count(args.count())),
+            Args::Iter(args) => Err(bad_count(args.count())),
         }
     }
     pub fn arg1<T1: FromStr>(input: &str) -> Result<T1, ArgError>
@@ -310,7 +250,6 @@ pub mod quick {
     {
         let bad_count = |count| ArgError::CountMismatch(1, count);
         match Args::new(input) {
-            Args::One(input) => Ok(input.parse().map_err(anyhow::Error::from)?),
             Args::Iter(mut iter) => {
                 let arg1 = parse_iter!(@single bad_count, iter);
                 parse_iter!(@ret bad_count, iter, arg1)
@@ -338,38 +277,32 @@ mod tests {
         // 0 arguments expected
         assert_eq!(quick::arg0(""), Ok(()));
         assert_eq!(quick::arg0("some text"), Err(count(0, 1)));
-        assert_eq!(quick::arg0("(some text, text)"), Err(count(0, 2)));
+        assert_eq!(quick::arg0("some text, text"), Err(count(0, 2)));
 
         // 1 argument expected
         assert_eq!(quick::arg1::<String>(""), Err(count(1, 0)));
         assert_eq!(quick::arg1::<String>("some text"), Ok(s("some text")));
-        assert_eq!(quick::arg1::<String>("(some text)"), Ok(s("some text")));
         assert_eq!(quick::arg1::<u32>("4263"), Ok(4263));
-        assert_eq!(quick::arg1::<u32>("(1337)"), Ok(1337));
-        assert_eq!(quick::arg1::<u32>("(badnumber)"), Err(badnumber_error()));
-        assert_eq!(quick::arg1::<u32>("(1337, text)"), Err(count(1, 2)));
+        assert_eq!(quick::arg1::<u32>("badnumber"), Err(badnumber_error()));
+        assert_eq!(quick::arg1::<u32>("1337, text"), Err(count(1, 2)));
 
         // 2 argument expected
         assert_eq!(quick::arg2::<String, String>(""), Err(count(2, 0)));
         assert_eq!(quick::arg2::<String, String>("some text"), Err(count(2, 1)));
         assert_eq!(
-            quick::arg2::<String, String>("(some text)"),
-            Err(count(2, 1))
-        );
-        assert_eq!(
-            quick::arg2::<u32, String>("(4263,     some text)"),
+            quick::arg2::<u32, String>("4263, some text"),
             Ok((4263, s("some text")))
         );
         assert_eq!(
-            quick::arg2::<String, u32>("(some text, 1337)"),
+            quick::arg2::<String, u32>("some text, 1337"),
             Ok((s("some text"), 1337))
         );
         assert_eq!(
-            quick::arg2::<String, u32>("(some text, badnumber)"),
+            quick::arg2::<String, u32>("some text, badnumber"),
             Err(badnumber_error())
         );
         assert_eq!(
-            quick::arg2::<u32, u32>("(1337, 4263, Too many arguments)"),
+            quick::arg2::<u32, u32>("1337, 4263, Too many arguments"),
             Err(count(2, 3))
         );
 
