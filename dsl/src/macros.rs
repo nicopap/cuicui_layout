@@ -114,11 +114,11 @@
 /// type Dsl = BlinkDsl<LayoutDsl>;
 /// dsl! {
 ///     &mut cmds,
-///     spawn_ui("Fast blink", frequency 0.5, color Color::GREEN);
+///     spawn(ui "Fast blink", frequency 0.5, color Color::GREEN);
 ///     row(frequency 1., amplitude 1.0, main_margin 10., fill_main_axis) {
-///         spawn_ui("Some text", amplitude 10.0, color Color::BLUE);
+///         spawn(ui "Some text", amplitude 10.0, color Color::BLUE);
 ///     }
-///     spawn_ui("Slow blink", frequency 2., color Color::RED);
+///     spawn(ui "Slow blink", frequency 2., color Color::RED);
 /// }
 /// ```
 ///
@@ -203,46 +203,38 @@
 /// a list of children statement between braces, it ends with a semicolon:
 ///
 /// ```text
-/// <ident>(<expr>, [dsl methods]*);
+/// <ident>([dsl methods]*);
 /// ```
 /// Concretely:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
 /// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
 /// # dsl!{ &mut cmds,
-/// button("Button Text", color Color::BLUE, width px(40), height pct(100));
+/// button_named("Button Text", color Color::BLUE, width px(40), height pct(100));
 /// # }
 /// ```
 ///
-/// The methods are called similarly to a Parent node statement.
-/// With the difference that `button` will be called with `<expr>` and
-/// an `EntityCommands`:
+/// The methods are called similarly to a Parent node statement:
 ///
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
 /// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
 /// let mut x = <Dsl>::default();
 /// let mut c = cmds.to_cmds();
+/// x.named("Button Text");
 /// x.color(Color::BLUE);
 /// x.width(px(40));
 /// x.height(pct(100));
+/// x.button_named();
 /// x.insert(&mut c);
-/// x.button("Button Text", &mut c);
 /// ```
 ///
 /// This means that methods valid in leaf node position have the following
-/// signature, where `_` is the type of `<expr>`:
+/// signature:
 ///
 /// ```ignore
-/// fn leaf_node_method(value: _, cmds: &mut EntityCommands) -> Entity;
+/// fn leaf_node_method(&mut self);
 /// ```
-///
-/// > **Note**: Notice that we call `insert` followed by `button`.
-/// > This is to accommodate `DerefMut`-based [`DslBundle`]s.
-/// >
-/// > If we were to call `button` directly, and `button` is a
-/// > method on a `DerefMut` target of `Dsl` rather than `Dsl` itself,
-/// > we would lose all the data related to `Dsl`!
 ///
 /// ### Parent node
 ///
@@ -258,8 +250,8 @@
 /// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let (bg, board) = ((),());
 /// # dsl!{ &mut cmds,
 /// row(screen_root, "root", main_margin 100., align_start, image &bg) {
-///     button("Button text 1", color Color::BLUE, width px(40), height pct(100));
-///     button("Button text 2", color Color::RED, width px(40), height pct(100));
+///     button_named("Button text 1", color Color::BLUE, width px(40), height pct(100));
+///     button_named("Button text 2", color Color::RED, width px(40), height pct(100));
 ///     column("menu", width px(310), main_margin 10., fill_main_axis, image &board) {
 ///         spawn("Title card", height px(100), width pct(100));
 ///     }
@@ -270,7 +262,7 @@
 /// The part between parenthesis (`()`) is a list of [DSL methods](#dsl-methods).
 /// They are applied to the `Dsl` [`DslBundle`] each one after the other.
 /// Then, the `<ident>` (here `row`) DSL method is applied.
-/// And finally, an entity is spawn with the so-constructed bundle,
+/// And finally, an entity is spawned with the so-constructed bundle,
 /// following, the DSL statements within braces (`{}`) are spawned
 /// as children of the parent node entity.
 ///
@@ -289,8 +281,8 @@
 /// x.row();
 /// x.node(&mut cmds.to_cmds(), |cmds| {
 ///     // Same goes with the children:
-///     // button("Button text 1", color Color::BLUE, width 40., height 100.);
-///     // button("Button text 2", color Color::RED, width 40., height 100.);
+///     // button_named("Button text 1", color Color::BLUE, width 40., height 100.);
+///     // button_named("Button text 2", color Color::RED, width 40., height 100.);
 ///     // column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
 ///     //     spawn(title_card, "Title card", height px 100, width %100);
 ///     // }
@@ -350,7 +342,7 @@
 ///     row(height pct(100), fill_main_axis) {
 ///         code(let my_cmds) {
 ///             for name in &menu_buttons {
-///                 dsl!(my_cmds, button(name, color Color::BLUE);)
+///                 dsl!(my_cmds, spawn(button name, color Color::BLUE);)
 ///             }
 ///         }
 ///     }
@@ -441,7 +433,12 @@ macro_rules! dsl {
         compile_error!(concat!(
             "`", dsl!(@before_coma [] $($t)*), "` is an invalid DSL method",
             "\n\nPossible methods syntax is described at:",
-            "https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-methods"
+            "\nhttps://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-methods\n",
+            "\nYou may see this message because you previously used a leaf_node method. ",
+            "Leaf node methods has been removed directly without deprecation. ",
+            "I'm sorry for the inconvinience, but there were no other ways to handle it. ",
+            "See the following for guidance on how to migrate to the new syntax.\n",
+            "https://github.com/nicopap/cuicui_layout/blob/v0.9.0/CHANGELOG.md#how-to-migrate-leaf-nodes\n",
         ));
     };
 
@@ -469,30 +466,8 @@ macro_rules! dsl {
         // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
-    (@statement [$d_ty:ty, $cmds:expr] $leaf_node:ident ( $value:expr $(, $($args:tt)*)? ) ; $($($t:tt)+)?) => {
-        let mut leaf_cmd = $cmds.to_cmds();
-        let mut x = <$d_ty>::default();
-        dsl!(@arg x, $($($args)*)?);
-        x.insert(&mut leaf_cmd);
-        x.$leaf_node($value, &mut leaf_cmd)
-        // Generate the rest of the code
-        $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
-    };
-    (@statement [$d_ty:ty, $cmds:expr] $leaf_node:ident ($($($args:tt)+)?) ; $($($t:tt)+)?) => {
-        compile_error!(concat!(
-            "Leaf node DSL statements (see dsl! docs) need a valid expression (<expr>) as first method \
-            within parenthesis, this expression will be passed as argument to the method. \
-            If you need to call method `",
-            stringify!($leaf_node), "` on `", stringify!($d_ty), "` \
-            make sure to use to use a leaf node in the form:\n`",
-            stringify!($leaf_node), "(<expr>, ", stringify!($($($args)+)?), ");`",
-            "\n\nThe precise syntax spec is available at:",
-            "https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-statements"
-        ));
-    };
-    (@statement [$d_ty:ty, $cmds:expr] $parent_node:ident ($($($args:tt)+)?) {$($inner:tt)*} $($t:tt)*) => {
-        // Call the @statement spawn with curly braces
-        dsl!(@statement [$d_ty, $cmds] spawn ($($($args)+,)? $parent_node) {$($inner)*} $($t)*)
+    (@statement [$d_ty:ty, $cmds:expr] $node_name:ident ($($($args:tt)+)?) $($t:tt)*) => {
+        dsl!(@statement [$d_ty, $cmds] spawn ($($($args)+,)? $node_name) $($t)*)
     };
     (<$builder:ty> $cmds:expr, $($t:tt)*) => {{
         use $crate::{IntoEntityCommands, DslBundle};
@@ -571,15 +546,12 @@ pub mod __doc_helpers {
         pub fn row(&mut self) {}
         pub fn width(&mut self, _: Val) {}
         pub fn height(&mut self, _: Val) {}
-        pub fn button(&mut self, _: &str, _: &mut EntityCommands) -> Entity {
-            Entity::PLACEHOLDER
-        }
+        pub fn button(&mut self, _: &str) {}
+        pub fn button_named(&mut self) {}
         pub fn screen_root(&mut self) {}
         pub fn fill_main_axis(&mut self) {}
         pub fn color(&mut self, _color: Color) {}
-        pub fn spawn_ui(&mut self, _: &str, _: &mut EntityCommands) -> Entity {
-            Entity::PLACEHOLDER
-        }
+        pub fn ui(&mut self, _: &str) {}
 
         pub fn amplitude(&mut self, _: f32) {}
         pub fn frequency(&mut self, _: f32) {}

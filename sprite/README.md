@@ -5,7 +5,7 @@ with the following features:
 
 - Sprite background color
 - Sprite background image
-- Direct spawning of text and images as argument to [`spawn_ui`].
+- Direct spawning of text and images as argument to [`ui`].
 
 Note that this is in addition to the methods `LayoutDsl` already supports.
 
@@ -21,6 +21,6 @@ Check the following crates for details:
 [`cuicui_layout`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/
 [`bevy_sprite`]: https://docs.rs/bevy_sprite/latest/bevy_sprite/
 [`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/latest/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
-[`spawn_ui`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html#method.spawn_ui
+[`ui`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html#method.ui
 [`ContentSized`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.ContentSized.html
 [`cuicui_dsl`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/

@@ -20,8 +20,8 @@ let board: Handle<_> = serv.load("board.png");
 dsl! {
     &mut cmds,
     row(screen_root, "root", main_margin 100., align_start, image &bg) {
-        button("Button text 1", color Color::BLUE, width px(40), height pct(100));
-        button("Button text 2", color Color::RED, width px(40), height pct(100));
+        spawn(button "Button text 1", color Color::BLUE, width px(40), height pct(100));
+        spawn(button "Button text 2", color Color::RED, width px(40), height pct(100));
         column("menu", fill_main_axis, image &board) {
             spawn("Title card", height px(100), width pct(100));
         }
@@ -51,27 +51,19 @@ x.row();
 x.node(&mut cmds.to_cmds(), |cmds| {
     let mut x = <Dsl>::default();
     let mut leaf_cmd = cmds.to_cmds();
+    x.button("Button text 1");
     x.color(Color::BLUE);
     x.width(px(40));
     x.height(pct(100));
     x.insert(&mut leaf_cmd);
-    x.button("Button text 1", &mut leaf_cmd);
 
     let mut x = <Dsl>::default();
     let mut leaf_cmd = cmds.to_cmds();
+    x.button("Button text 2");
     x.color(Color::RED);
     x.width(px(40));
     x.height(pct(100));
     x.insert(&mut leaf_cmd);
-    x.button("Button text 2", &mut leaf_cmd);
-
-    let mut x = <Dsl>::default();
-    let mut leaf_cmd = cmds.to_cmds();
-    x.color(Color::BLUE);
-    x.width(px(40));
-    x.height(pct(100));
-    x.insert(&mut leaf_cmd);
-    x.button("Button text 1", &mut leaf_cmd);
 
     let mut x = <Dsl>::default();
     let mut node_cmd = cmds.to_cmds();

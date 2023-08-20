@@ -43,11 +43,11 @@ dsl! {
     row(screen_root, "root", main_margin 100., distrib_start, align_start, image &bg) {
         column("menu", width px(310), height pct(100), main_margin 40., image &board) {
             spawn(image &title_card, "Title card", width pct(100));
-            spawn_ui(title_card, "Title card 2", width pct(50));
+            spawn(ui title_card, "Title card 2", width pct(50));
             code(let cmds) {
                 for n in &menu_buttons {
                     let name = format!("{n} button");
-                    dsl!(cmds, spawn_ui(*n, named name, image &button, height px(33)););
+                    dsl!(cmds, spawn(ui *n, named name, image &button, height px(33)););
                 }
             }
         }
@@ -109,7 +109,7 @@ fn setup(mut commands: Commands) {
         // Use screen_root to follow the screen's boundaries
         row(screen_root) {
             row(margin 9., border(5, Color::CYAN), bg Color::NAVY) {
-                spawn_ui("Hello world!");
+                spawn(ui "Hello world!");
             }
         }
     };
@@ -143,8 +143,8 @@ fn setup(mut commands: Commands) {
       x.node(&mut cmds.to_cmds(), |cmds| {
         let mut x = <Dsl>::default();
         let mut cmds = cmds.to_cmds();
+        x.ui("Hello world!");
         x.insert(&mut cmds);
-        x.spawn_ui("Hello world!", &mut cmds);
       });
     });
 }
@@ -338,6 +338,10 @@ the margin?
 We don't know, different people will have different expectations. This avoids
 any confusion. In any case, _this is_ a situation where empty nodes can
 be used, since you'll be able to compute the relative size of each node yourself.
+
+### Change log
+
+See the [./CHANGELOG.md] file.
 
 
 ### Version matrix

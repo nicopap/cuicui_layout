@@ -1,5 +1,7 @@
 //! The [`LayoutDsl`] type used to bring layout bundles to the [`cuicui_dsl::dsl`] macro.
 
+use std::mem;
+
 use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
@@ -10,7 +12,7 @@ use crate::{Root, ScreenRoot};
 
 /// Something that can be converted into a bevy [`Bundle`].
 ///
-/// Implement this trait on anything you want, then you can use [`LayoutDsl::spawn_ui`]
+/// Implement this trait on anything you want, then you can use [`LayoutDsl::ui`]
 /// with anything you want!
 ///
 /// `Marker` is completely ignored. It only exists to make it easier for
@@ -43,9 +45,9 @@ use crate::{Root, ScreenRoot};
 ///
 ///     dsl! {
 ///         <LayoutDsl> &mut cmds,
-///         spawn_ui("Hello world", width px(350));
-///         spawn_ui("Even hi!", width px(350));
-///         spawn_ui("Howdy partner", width px(350));
+///         spawn(ui "Hello world", width px(350));
+///         spawn(ui "Even hi!", width px(350));
+///         spawn(ui "Howdy partner", width px(350));
 ///     };
 /// }
 /// ```
@@ -54,7 +56,7 @@ pub trait IntoUiBundle<Marker> {
     type Target: Bundle;
 
     /// Convert `self` into an [`Self::Target`], will be directly inserted by
-    /// [`LayoutDsl::spawn_ui`] with an additional [`Node`] component.
+    /// [`LayoutDsl::ui`] with an additional [`Node`] component.
     ///
     /// Since `Target` is inserted _after_ the [`Node`] component, you can
     /// overwrite it by including it in the bundle.
@@ -122,7 +124,7 @@ enum RootKind {
 /// - [`Distribution::FillMain`]
 /// - [`Alignment::Center`]
 ///
-/// For terminal nodes (spawned through `spawn` or `spawn_ui`) the default
+/// For terminal nodes (spawned through `spawn` or `ui`) the default
 /// size is [`LeafRule::Fixed(0.)`], or content-sized.
 ///
 /// [`EntityCommands`]: bevy::ecs::system::EntityCommands
@@ -132,7 +134,10 @@ pub struct LayoutDsl<T = BaseDsl> {
     inner: T,
     root: RootKind,
     layout: Layout,
+    // TODO(clean): Shouldn't layout.flow: Option<Flow> instead?
     set_flow: bool,
+    ui_bundle: Option<Box<dyn FnOnce(&mut EntityCommands)>>,
+    layout_bundle: Option<LayoutBundle>,
 }
 
 impl<C: DslBundle> LayoutDsl<C> {
@@ -246,58 +251,62 @@ impl<C: DslBundle> LayoutDsl<C> {
     ///
     /// # Panics
     /// If `percent` is greater than 100. It would mean this node overflows its parent.
-    pub fn empty_pct(&mut self, percent: u8, cmds: &mut EntityCommands) -> Entity {
+    pub fn empty_pct(&mut self, percent: u8) {
         assert!(percent <= 100);
         let node = Node::Axis(Oriented {
             main: LeafRule::Parent(f32::from(percent) / 100.0),
             cross: LeafRule::Fixed(0.0),
         });
-        cmds.insert(LayoutBundle { node, ..Default::default() })
-            .id()
+        self.layout_bundle = Some(LayoutBundle { node, ..Default::default() });
     }
 
     /// Spawn an empty [`Node::Axis`] with the `main` axis set to `pixels` pixels
     /// and the `cross` axis to 0.
-    pub fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
+    pub fn empty_px(&mut self, pixels: u16) {
         let node = Node::Axis(Oriented {
             main: LeafRule::Fixed(f32::from(pixels)),
             cross: LeafRule::Fixed(0.0),
         });
-        cmds.insert(LayoutBundle { node, ..Default::default() })
-            .id()
+        self.layout_bundle = Some(LayoutBundle { node, ..Default::default() });
     }
     /// Spawn `ui_bundle`.
     ///
     /// Note that axis without set rules or [`Rule::Children`]
     /// are considered [content-sized](crate::ComputeContentSize).
-    pub fn spawn_ui<M>(
-        &mut self,
-        ui_bundle: impl IntoUiBundle<M>,
-        cmds: &mut EntityCommands,
-    ) -> Entity {
+    pub fn ui<M>(&mut self, ui_bundle: impl IntoUiBundle<M>) {
         let ui_bundle = ui_bundle.into_ui_bundle();
-        let size = self.layout.size.map(LeafRule::from_rule);
-        cmds.insert(LayoutBundle::boxy(size)).insert(ui_bundle).id()
+        self.ui_bundle = Some(Box::new(move |cmds| {
+            cmds.insert(ui_bundle);
+        }));
     }
 }
 impl<C: DslBundle> DslBundle for LayoutDsl<C> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
-        self.inner.insert(cmds);
-        if !self.set_flow {
-            return self.spawn_ui((), cmds);
+        if self.set_flow {
+            let container = self.layout.container();
+            let root_bundle = || RootBundle::new(self.layout);
+            let non_screen_root_bundle = || {
+                let r = RootBundle::new(self.layout);
+                (r.pos_rect, r.root)
+            };
+            match self.root {
+                RootKind::ScreenRoot => cmds.insert(root_bundle()),
+                RootKind::Root => cmds.insert(non_screen_root_bundle()),
+                RootKind::None => cmds.insert(LayoutBundle::node(container)),
+            };
+        } else {
+            let size = self.layout.size.map(LeafRule::from_rule);
+            cmds.insert(LayoutBundle::boxy(size));
         }
-        let container = self.layout.container();
-        let root_bundle = || RootBundle::new(self.layout);
-        let non_screen_root_bundle = || {
-            let r = RootBundle::new(self.layout);
-            (r.pos_rect, r.root)
-        };
-        match self.root {
-            RootKind::ScreenRoot => cmds.insert(root_bundle()),
-            RootKind::Root => cmds.insert(non_screen_root_bundle()),
-            RootKind::None => cmds.insert(LayoutBundle::node(container)),
-        };
-        cmds.id()
+        if let Some(layout) = mem::take(&mut self.layout_bundle) {
+            cmds.insert(layout);
+        }
+        if let Some(ui_bundle_fn) = mem::take(&mut self.ui_bundle) {
+            let size = self.layout.size.map(LeafRule::from_rule);
+            cmds.insert(LayoutBundle::boxy(size));
+            ui_bundle_fn(cmds);
+        }
+        self.inner.insert(cmds)
     }
 }
 

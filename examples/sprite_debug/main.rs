@@ -145,21 +145,21 @@ fn setup(mut cmds: Commands) {
         &mut cmds,
         column("root", screen_root, margins(50., 100.)) {
             row("horiz_cont1", align_start, width pct(85), main_margin 30.) {
-                spawn_ui(Fixed(10, 10), "h1_1_fix");
-                spawn_ui(Fixed(30, 10), "h1_2_fix");
-                spawn_ui(Fixed(50, 20), "h1_3_fix");
-                empty_pct(10, "h1_4_spacer");
-                spawn_ui(Fixed(51, 32), "h1_5_fix");
+                spawn (ui Fixed(10, 10), "h1_1_fix");
+                spawn (ui Fixed(30, 10), "h1_2_fix");
+                spawn (ui Fixed(50, 20), "h1_3_fix");
+                spawn (empty_pct 10, "h1_4_spacer");
+                spawn (ui Fixed(51, 32), "h1_5_fix");
             }
             row("deep1", rules(pct(80), pct(10))) {
-                empty_px(5);
+                spawn (empty_px 5);
                 row("deepA1", rules(px(300), pct(100))) {
                     row("deepA2", rules(pct(85), pct(100))) {
                         row("deepA3", rules(pct(85), pct(100))) {
                             row("deepA4", rules(pct(85), pct(100))) {
                                 row("deepA5", rules(pct(85), pct(100))) {
                                     row("deepA6", rules(pct(85), pct(100))) {
-                                        spawn_ui(Fixed(30, 30), "deepA7");
+                                        spawn (ui Fixed(30, 30), "deepA7");
                                     }
                                 }
                             }
@@ -171,53 +171,53 @@ fn setup(mut cmds: Commands) {
                         row("deepB4", rules(child(1.5), child(1.))) {
                             row("deepB5", rules(child(1.5), child(1.))) {
                                 row("deepB6", rules(child(4.), child(1.5))) {
-                                    spawn_ui(Fixed(10, 10), "deepB7");
+                                    spawn (ui Fixed(10, 10), "deepB7");
                                 }
                             }
                         }
                     }
                 }
-                empty_px(0);
+                spawn (empty_px 0);
             }
             row("single_child", rules(child(2.), child(2.))) {
-                spawn_ui(Fixed(40, 40), "fix2");
+                spawn (ui Fixed(40, 40), "fix2");
             }
-            spawn("horiz_cont2", layout ">dSaC", main_margin 30.) {
-                spawn_ui(Fixed(10, 14), "h2_1_fix");
-                spawn_ui(Fixed(12, 12), "h2_2_fix");
-                spawn_ui(Fixed(14, 10), "h2_3_fix");
+            spawn ("horiz_cont2", layout ">dSaC", main_margin 30.) {
+                spawn (ui Fixed(10, 14), "h2_1_fix");
+                spawn (ui Fixed(12, 12), "h2_2_fix");
+                spawn (ui Fixed(14, 10), "h2_3_fix");
             }
             row("horiz_cont3", width pct(100), main_margin 30.) {
                 // row("horiz_cont4", fill_main) {
-                //     spawn_ui(Fixed(10, 14), "h4_1" );
-                //     spawn_ui(Fixed(12, 12), "h4_2" );
-                //     spawn_ui(Fixed(14, 10), "h4_3" );
+                //     spawn (ui Fixed(10, 14), "h4_1" );
+                //     spawn (ui Fixed(12, 12), "h4_2" );
+                //     spawn (ui Fixed(14, 10), "h4_3" );
                 // }
                 column("vert_cont1", align_start, width pct(25), margins(30., 5.0)) {
-                    spawn_ui(Fixed(10, 21), "v1_1_fix");
-                    spawn_ui(Fixed(12, 12), "v1_2_fix");
-                    spawn_ui(Fixed(14, 20), "v1_3_fix");
-                    spawn_ui(Fixed(16, 21), "v1_4_fix");
-                    spawn_ui(Fixed(18, 12), "v1_5_fix");
-                    spawn_ui(Fixed(20, 20), "v1_6_fix");
+                    spawn (ui Fixed(10, 21), "v1_1_fix");
+                    spawn (ui Fixed(12, 12), "v1_2_fix");
+                    spawn (ui Fixed(14, 20), "v1_3_fix");
+                    spawn (ui Fixed(16, 21), "v1_4_fix");
+                    spawn (ui Fixed(18, 12), "v1_5_fix");
+                    spawn (ui Fixed(20, 20), "v1_6_fix");
                 }
                 row("horiz_inner", distrib_end, height child(4.), margins(30., 5.0)) {
-                    spawn_ui(Fixed(10, 21), "v2_1_fix");
-                    spawn_ui(Fixed(12, 12), "v2_2_fix");
-                    spawn_ui(Fixed(14, 20), "v2_3_fix");
-                    spawn_ui(Fixed(16, 21), "v2_4_fix");
-                    spawn_ui(Fixed(18, 12), "v2_5_fix");
-                    spawn_ui(Fixed(20, 20), "v2_6_fix");
+                    spawn (ui Fixed(10, 21), "v2_1_fix");
+                    spawn (ui Fixed(12, 12), "v2_2_fix");
+                    spawn (ui Fixed(14, 20), "v2_3_fix");
+                    spawn (ui Fixed(16, 21), "v2_4_fix");
+                    spawn (ui Fixed(18, 12), "v2_5_fix");
+                    spawn (ui Fixed(20, 20), "v2_6_fix");
                 }
-                spawn("vert_cont3", layout "vdSaE", margins(30., 5.)) {
-                    spawn_ui(Fixed(10, 21), "v3_1_fix");
-                    spawn_ui(Fixed(12, 12), "v3_2_fix");
-                    spawn_ui(Fixed(14, 20), "v3_3_fix");
-                    spawn_ui(Fixed(16, 21), "v3_4_fix");
-                    spawn_ui(Fixed(18, 12), "v3_5_fix");
-                    spawn_ui(Fixed(20, 20), "v3_6_fix");
+                spawn ("vert_cont3", layout "vdSaE", margins(30., 5.)) {
+                    spawn (ui Fixed(10, 21), "v3_1_fix");
+                    spawn (ui Fixed(12, 12), "v3_2_fix");
+                    spawn (ui Fixed(14, 20), "v3_3_fix");
+                    spawn (ui Fixed(16, 21), "v3_4_fix");
+                    spawn (ui Fixed(18, 12), "v3_5_fix");
+                    spawn (ui Fixed(20, 20), "v3_6_fix");
                 }
-                empty_pct(4, "spacer4");
+                spawn (empty_pct 4, "spacer4");
             }
         }
     }

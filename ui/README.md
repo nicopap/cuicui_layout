@@ -6,7 +6,7 @@ with the following features:
 - `Style` border color and width (but only uniform)
 - UI node background color
 - UI node background image
-- Direct spawning of text and images as argument to [`spawn_ui`].
+- Direct spawning of text and images as argument to [`ui`].
 
 Note that this is in addition to the methods `LayoutDsl` already supports.
 
@@ -22,6 +22,6 @@ Check the following crates for details:
 [`cuicui_layout`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/
 [`bevy_ui`]: https://docs.rs/bevy_ui/latest/bevy_ui/
 [`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/latest/cuicui_layout_bevy_ui/struct.UiDsl.html
-[`spawn_ui`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html#method.spawn_ui
+[`ui`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html#method.ui
 [`ContentSized`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.ContentSized.html
 [`cuicui_dsl`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/

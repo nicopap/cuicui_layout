@@ -118,7 +118,6 @@ impl<C> SpriteDsl<C> {
 
 impl<C: DslBundle> DslBundle for SpriteDsl<C> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
-        let id = self.inner.insert(cmds);
         match (self.bg_color.take(), self.bg_image.take()) {
             (Some(color), Some(texture)) => {
                 let sprite = sprite::Sprite { color, ..default() };
@@ -131,6 +130,6 @@ impl<C: DslBundle> DslBundle for SpriteDsl<C> {
             (None, Some(texture)) => cmds.insert((sprite::SpriteBundle { texture, ..default() },)),
             (None, None) => cmds.insert(SpatialBundle::default()),
         };
-        id
+        self.inner.insert(cmds)
     }
 }

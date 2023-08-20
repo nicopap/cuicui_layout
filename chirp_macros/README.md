@@ -25,16 +25,6 @@ impl<D: DslBundle> LayoutDsl<D> {
     pub fn empty_px(&mut self, pixels: u16, cmds: &mut EntityCommands) -> Entity {
       todo!()
     }
-    // leaf_node methods will be removed in the future, therefore they are not
-    // supported in the cuicui chirp file format.
-    #[parse_dsl(ignore)]
-    pub fn spawn_ui<M>(
-        &mut self,
-        ui_bundle: impl IntoUiBundle<M>,
-        cmds: &mut EntityCommands,
-    ) -> Entity {
-      todo!()
-    }
 }
 ```
 
