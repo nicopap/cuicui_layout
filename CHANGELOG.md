@@ -82,7 +82,9 @@ This means the signature of `spawn_ui` is expected to be:
 You can check the diff of the commit where this change was applied for
 inspiration.
 
-Commit: <TODO> have to actually commit the change and update this line after.
+Commit: [9932df5adb05f397aba570e7e11290446262d4b6]
+
+[9932df5adb05f397aba570e7e11290446262d4b6]: https://github.com/nicopap/cuicui_layout/commit/9932df5adb05f397aba570e7e11290446262d4b6#diff-eebbb45eb1330ed943fde105912f9c71cb8af1f7b1dc49c832fd6f5b9204fe01
 
 Sorry for the inconvinience. The goal is to make the library easier to understand
 and use! The reasoning for this change is recorded in
