@@ -78,6 +78,7 @@ fn setup_debug(
                     MaterialMesh2dBundle {
                         mesh: mesh.clone().into(),
                         material: mats.add(color_from_entity(node).into()),
+                        transform: Transform::from_xyz(0., 0., -0.5),
                         ..default()
                     },
                     DebugChild,
