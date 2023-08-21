@@ -16,8 +16,6 @@ macros = ["cuicui_chirp_macros"]
 test_and_doc = ["cuicui_dsl/test_and_doc"]
 # For debugging the parser EXTREMELY SLOW COMPILE TIMES
 trace_parser = ["winnow/debug"]
-# Enable bevy_asset support and hot reloading of chirp files.
-bevy_asset = ["bevy/bevy_asset", "bevy/bevy_scene"]
 
 [dependencies]
 anyhow.workspace = true
@@ -26,4 +24,4 @@ thiserror.workspace = true
 winnow.workspace = true
 cuicui_chirp_macros = { version = "0.8.1", path = "../chirp_macros", optional = true }
 cuicui_dsl.workspace = true
-bevy = { version = "0.11", default-features = false }
+bevy = { version = "0.11", default-features = false, features = ["bevy_asset", "bevy_scene"] }

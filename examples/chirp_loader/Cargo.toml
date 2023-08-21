@@ -13,7 +13,7 @@ path = "main.rs"
 [dependencies]
 bevy-inspector-egui.workspace = true
 bevy-scene-hook.workspace = true
-cuicui_chirp = { version = "0.8.1", path = "../../chirp", features = ["bevy_asset"] }
+cuicui_chirp.workspace = true
 cuicui_dsl.workspace = true
 cuicui_layout_bevy_ui.workspace = true
 cuicui_layout.workspace = true

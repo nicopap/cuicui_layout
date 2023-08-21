@@ -174,8 +174,7 @@ This repository contains several crates:
   syntax. It creates a scene identical to what the same text passed to the
   `dsl!` macro would produce.
   \
-  With the `bevy_asset` feature, it also includes a bevy plugin to load
-  `.chirp` files defined in this format.
+  It also includes a bevy plugin to load `.chirp` files defined in this format.
 - `cuicui_layout` ([layout](layout)): The base algorithm and components, does not make any assumption
   about how it is used, beside the requirement that layout nodes be bevy `Entitiy` and
   uses `bevy_hierarchy`. Exports a `LayoutDsl` to use with the `dsl!` macro.
@@ -188,8 +187,6 @@ This repository contains several crates:
 
 ## Cargo features
 
-- `cuicui_chirp/bevy_asset` (**off** by default): Define and export a bevy plugin
-  to load `.chirp` files as bevy `Scene`s.
 - `cuicui_chirp/macros` (on by default): Define and export the `parse_dsl_impl`
   attribute macro. This allows deriving `ParseDsl` automatically from an `impl`
   block.
