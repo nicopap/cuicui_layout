@@ -7,6 +7,8 @@
 )]
 
 mod interpret;
+#[cfg(feature = "bevy_asset")]
+pub mod loader;
 pub mod parse;
 
 use bevy::{

@@ -131,6 +131,7 @@ pub struct UiDsl<C = cuicui_layout::dsl::LayoutDsl> {
     border_color: Option<BorderColor>,
     border_px: Option<u16>,
 }
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <C: cuicui_chirp::ParseDsl>)]
 impl<C> UiDsl<C> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.
@@ -144,6 +145,7 @@ impl<C> UiDsl<C> {
         self.border_px = Some(pixels);
     }
     /// Set the node's border [color](Self::border_color) and [width](Self::border_px).
+    #[parse_dsl(ignore)] // TODO(feat): reflect-based input parsing
     pub fn border(&mut self, pixels: u16, color: Color) {
         self.border_px(pixels);
         self.border_color(color);
@@ -155,14 +157,17 @@ impl<C> UiDsl<C> {
     ///
     /// This is because it would be otherwise impossible to arrange children
     /// independently of parent properties.
+    #[parse_dsl(ignore)] // TODO(feat): reflect-based input parsing
     pub fn border_color(&mut self, color: Color) {
         self.border_color = Some(color.into());
     }
     /// Set the node's background color.
+    #[parse_dsl(ignore)] // TODO(feat): reflect-based input parsing
     pub fn bg(&mut self, color: Color) {
         self.bg_color = Some(color.into());
     }
     /// Set the node's background image.
+    #[parse_dsl(ignore)] // TODO(feat): `Handle<A>` loading
     pub fn image(&mut self, image: &Handle<Image>) {
         self.bg_image = Some(image.clone().into());
     }

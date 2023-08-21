@@ -170,6 +170,12 @@ and the `IntoEntityCommands` trait (for the `to_cmds` method).
 This repository contains several crates:
 
 - `cuicui_dsl` ([dsl](dsl)): The `dsl!` macro and `DslBundle`.
+- `cuicui_chirp` ([chirp](chirp)): A parser for files that follow the `dsl!`
+  syntax. It creates a scene identical to what the same text passed to the
+  `dsl!` macro would produce.
+  \
+  With the `bevy_asset` feature, it also includes a bevy plugin to load
+  `.chirp` files defined in this format.
 - `cuicui_layout` ([layout](layout)): The base algorithm and components, does not make any assumption
   about how it is used, beside the requirement that layout nodes be bevy `Entitiy` and
   uses `bevy_hierarchy`. Exports a `LayoutDsl` to use with the `dsl!` macro.
@@ -182,12 +188,17 @@ This repository contains several crates:
 
 ## Cargo features
 
-- `cuicui_layout/debug` (off by default): An overlay showing layout outlines & the rule type used
+- `cuicui_chirp/bevy_asset` (**off** by default): Define and export a bevy plugin
+  to load `.chirp` files as bevy `Scene`s.
+- `cuicui_chirp/macros` (on by default): Define and export the `parse_dsl_impl`
+  attribute macro. This allows deriving `ParseDsl` automatically from an `impl`
+  block.
+- `cuicui_layout/debug` (**off** by default): An overlay showing layout outlines & the rule type used
   by nodes. See [debug.md] for a detailed feature list.
-- `cuicui_layout_bevy_sprite/sprite_text` (on by default): implement content-sized layout nodes
-  for `Text2dBundle`.
 - `cuicui_layout/reflect` (on by default): Derive `bevy_reflect` traits for cuicui_layout
   types & register them.
+- `cuicui_layout_bevy_sprite/sprite_text` (on by default): implement content-sized layout nodes
+  for `Text2dBundle`.
 
 [debug.md]: https://docs.rs/cuicui_layout/latest/cuicui_layout/debug/index.html
 

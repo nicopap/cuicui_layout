@@ -26,6 +26,8 @@ The syntax is very similar to that of `dsl!` with the exception of `code`.
 * Define `ParseDsl` for deserialization of `.chirp` files.
 * Using the `parse_dsl_impl` macro, you can convert a `DslBundle` impl block
   into a `ParseDsl` specification.
+* `IntoUiBundle` now requires `Reflect`! This let us use it with the chirp
+  file format.
 
 ## `cuicui_dsl`
 

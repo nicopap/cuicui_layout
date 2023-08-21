@@ -9,6 +9,7 @@ use bevy::{
     prelude::{trace, Children, Component, Entity, Name, Query, Vec2},
     utils::FloatOrd,
 };
+use thiserror::Error;
 
 const WIDTH: Flow = Flow::Horizontal;
 const HEIGHT: Flow = Flow::Vertical;
@@ -26,7 +27,7 @@ use crate::{
 ///
 /// [`pos`]: Self::pos
 #[derive(Component, Debug, Clone, Copy, Default, PartialEq)]
-#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
 pub struct LayoutRect {
     pub(crate) size: Size<f32>,
     pub(crate) pos: Size<f32>,
@@ -425,34 +426,50 @@ pub enum Rule {
     /// The container's size is equal to precisely `f32` pixels.
     Fixed(f32),
 }
+#[derive(Debug, Error)]
+pub enum RuleParseError {
+    #[error(transparent)]
+    ParseFloat(#[from] ParseFloatError),
+    #[error(
+        "Provided a negative pixel amount ({0:.0}), this is not how you get 'negative space' \
+        there is no such thing as a negative pixel, provide a positive value instead."
+    )]
+    NegativePixels(f32),
+    #[error("The provided percent for '%' was out of range. {0:.0} ∉ [0..100] (inclusive)")]
+    BadPercent(f32),
+    #[error("The provided ratio for '*' was out of range. {0:.3} ∉ [0..1] (inclusive)")]
+    BadRatio(f32),
+    #[error("Rule format was not recognized: '{0}', available are '99%', '0.34*' and '1234px'")]
+    BadFormat(String),
+}
 impl Default for Rule {
     fn default() -> Self {
         Rule::Children(1.)
     }
 }
 impl FromStr for Rule {
-    type Err = Option<ParseFloatError>;
+    type Err = RuleParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(pixels) = s.strip_suffix("px") {
             let pixels = pixels.parse()?;
             if pixels < 0. {
-                return Err(None);
+                return Err(RuleParseError::NegativePixels(pixels));
             }
             Ok(Self::Fixed(pixels))
         } else if let Some(percents) = s.strip_suffix('%') {
             let percents: f32 = percents.parse()?;
             if percents > 100. || percents < 0. {
-                return Err(None);
+                return Err(RuleParseError::BadPercent(percents));
             }
             Ok(Self::Parent(percents / 100.))
         } else if let Some(child_ratio) = s.strip_suffix('*') {
             let ratio: f32 = child_ratio.parse()?;
             if ratio > 1. || ratio < 0. {
-                return Err(None);
+                return Err(RuleParseError::BadRatio(ratio));
             }
             Ok(Self::Children(ratio))
         } else {
-            Err(None)
+            Err(RuleParseError::BadFormat(s.to_string()))
         }
     }
 }

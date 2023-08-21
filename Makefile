@@ -8,7 +8,7 @@ check:
 
 run:
 	# cargo test -p parse_dsl_macro # --features cuicui_chirp/trace_parser
-	RUST_BACKTRACE=1 cargo run -p sprite_debug --features cuicui_layout/debug
+	RUST_BACKTRACE=1 cargo run -p chirp_loader --features cuicui_layout/debug
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded
 	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc -p bevypunk -- -Z macro-backtrace
 

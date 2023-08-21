@@ -21,11 +21,8 @@ impl FnConfig {
     #[allow(clippy::needless_pass_by_value)] // false positive. Type necessary for calling it
     fn parse(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
         if *self != Self::default() {
-            let msg = format!(
-                "More than one `parse_dsl` meta attribute was declared \
-                for this method, can't know which one to chose! Only use one.\n\
-                {METHOD_ATTR_DESCR}"
-            );
+            let msg = "More than one `parse_dsl` meta attribute was declared \
+                for this method, can't know which one to chose! Only use one.";
             return Err(meta.error(msg));
         }
         match () {
@@ -34,7 +31,12 @@ impl FnConfig {
                 Ok(())
             }
             () => {
-                let msg = format!("Unrecognized `parse_dsl` meta attribute\n{METHOD_ATTR_DESCR}");
+                let path = &meta.path;
+                let ident = quote!(#path);
+                let msg = format!(
+                    "Unrecognized `parse_dsl` meta attribute: \
+                    `{ident}`\n{METHOD_ATTR_DESCR}"
+                );
                 Err(meta.error(msg))
             }
         }
@@ -90,8 +92,12 @@ impl<'a> ImplConfig {
                 self.set_params = Some(meta.input.parse()?);
             }
             () => {
-                let msg =
-                    format!("Unrecognized parse_dsl_impl meta attribute\n{CONFIG_ATTR_DESCR}");
+                let path = &meta.path;
+                let ident = quote!(#path);
+                let msg = format!(
+                    "Unrecognized parse_dsl_impl meta attribute: \
+                    {ident}\n{CONFIG_ATTR_DESCR}"
+                );
                 return Err(meta.error(msg));
             }
         }
@@ -145,7 +151,7 @@ pub(crate) fn parse_dsl_impl(config: &ImplConfig, block: &mut syn::ItemImpl) -> 
     // Remove `parse_dsl` attributes from block items, as otherwise rust
     // vainly tries to understand them.
     for item_fn in block.items.iter_mut().filter_map(dsl_function_mut) {
-        item_fn.attrs.retain(|a| !a.path().is_ident("parse_dsl"));
+        item_fn.attrs.retain(|a| !is_parse_dsl_attr(&a));
     }
     quote!(#block #parse_dsl_block)
 }
@@ -154,7 +160,13 @@ fn method_branch(fun: &syn::ImplItemFn) -> TokenStream {
     match FnConfig::parse_list(&fun.attrs) {
         Ok(FnConfig::Ignore) => return TokenStream::new(),
         Ok(FnConfig::Method) => {}
-        Err(err) => return err.into_compile_error(),
+        Err(err) => {
+            // Since we use this as a `pat => match_branch`, we can't simply return
+            // the value of err.into_compile_error(). We need to add the pattern,
+            // otherwise, we get a syntax error, not the compilation error we want…
+            let compile_error = err.into_compile_error();
+            return quote!(_ => {#compile_error});
+        }
     };
     let arg_count = fun.sig.inputs.len() - 1;
     let arg_n = format_ident!("arg{arg_count}", span = fun.sig.inputs.span());

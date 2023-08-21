@@ -13,3 +13,5 @@ interprets the bits.
 * **`macros`** (default): Define the `parse_dsl_impl` macro. If you are not using
   the proc macro and defining `ParseDsl` implementations manually, you can
   disable this feature for faster compile times.
+* **`bevy_asset`**: Define a bevy `AssetLoader` for the `.chirp` file format
+  that supports hot-reloading.

@@ -140,8 +140,10 @@ pub struct LayoutDsl<T = BaseDsl> {
     layout_bundle: Option<LayoutBundle>,
 }
 
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <C: cuicui_chirp::ParseDsl>)]
 impl<C: DslBundle> LayoutDsl<C> {
     /// Set the flow direction of a container node.
+    #[parse_dsl(ignore)]
     pub fn flow(&mut self, flow: Flow) {
         self.set_flow = true;
         self.layout.flow = flow;
@@ -183,6 +185,7 @@ impl<C: DslBundle> LayoutDsl<C> {
     ///
     /// # Panics
     /// If the `spec` format is invalid.
+    #[parse_dsl(ignore)] // TODO(feat): Need to extend the macro to support this
     pub fn layout(&mut self, spec: &str) {
         assert_eq!(spec.len(), 5, "accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
         self.set_flow = true;
@@ -273,6 +276,7 @@ impl<C: DslBundle> LayoutDsl<C> {
     ///
     /// Note that axis without set rules or [`Rule::Children`]
     /// are considered [content-sized](crate::ComputeContentSize).
+    #[parse_dsl(ignore)] // TODO(feat): We definitively can lean on Reflect deserialization for this.
     pub fn ui<M>(&mut self, ui_bundle: impl IntoUiBundle<M>) {
         let ui_bundle = ui_bundle.into_ui_bundle();
         self.ui_bundle = Some(Box::new(move |cmds| {
