@@ -140,8 +140,8 @@ pub struct LayoutDsl<T = BaseDsl> {
     layout_bundle: Option<LayoutBundle>,
 }
 
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <C: cuicui_chirp::ParseDsl>)]
-impl<C: DslBundle> LayoutDsl<C> {
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <D: cuicui_chirp::ParseDsl>)]
+impl<D: DslBundle> LayoutDsl<D> {
     /// Set the flow direction of a container node.
     #[parse_dsl(ignore)]
     pub fn flow(&mut self, flow: Flow) {
@@ -284,7 +284,7 @@ impl<C: DslBundle> LayoutDsl<C> {
         }));
     }
 }
-impl<C: DslBundle> DslBundle for LayoutDsl<C> {
+impl<D: DslBundle> DslBundle for LayoutDsl<D> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         if self.set_flow {
             let container = self.layout.container();

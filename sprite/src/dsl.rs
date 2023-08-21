@@ -99,13 +99,13 @@ impl IntoUiBundle<SpriteDsl> for TextBundle {
 }
 /// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default, Deref, DerefMut)]
-pub struct SpriteDsl<C = cuicui_layout::dsl::LayoutDsl> {
+pub struct SpriteDsl<D = cuicui_layout::dsl::LayoutDsl> {
     #[deref]
-    inner: C,
+    inner: D,
     bg_color: Option<Color>,
     bg_image: Option<Handle<Image>>,
 }
-impl<C> SpriteDsl<C> {
+impl<D> SpriteDsl<D> {
     /// Set the node's background color.
     pub fn bg(&mut self, color: Color) {
         self.bg_color = Some(color);
@@ -116,7 +116,7 @@ impl<C> SpriteDsl<C> {
     }
 }
 
-impl<C: DslBundle> DslBundle for SpriteDsl<C> {
+impl<D: DslBundle> DslBundle for SpriteDsl<D> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         match (self.bg_color.take(), self.bg_image.take()) {
             (Some(color), Some(texture)) => {

@@ -71,12 +71,12 @@
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
 /// #[derive(Deref, DerefMut, Default)]
-/// struct BlinkDsl<C = ()> {
+/// struct BlinkDsl<D = ()> {
 ///     #[deref]
-///     inner_dsl: C,
+///     inner_dsl: D,
 ///     pub blink: Blink,
 /// }
-/// impl<C: DslBundle> DslBundle for BlinkDsl<C> {
+/// impl<D: DslBundle> DslBundle for BlinkDsl<D> {
 ///     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
 ///         // We insert first `Blink`, as to avoid overwriting things
 ///         // `inner_dsl.insert`  might insert itself.
@@ -86,7 +86,7 @@
 /// }
 ///
 /// // `dsl!` relies on method calls, so we need to define methods:
-/// impl<C> BlinkDsl<C> {
+/// impl<D> BlinkDsl<D> {
 ///     pub fn frequency(&mut self, frequency: f32) {
 ///         self.blink.frequency = frequency;
 ///     }
@@ -105,7 +105,7 @@
 /// ```
 ///
 /// If we want to use a pre-existing DSL with ours, we would nest them.
-/// Since we `#[deref] inner: C`, all methods on the inner DSL are available
+/// Since we `#[deref] inner: D`, all methods on the inner DSL are available
 /// on the outer DSL.
 ///
 /// ```
@@ -533,12 +533,12 @@ pub mod __doc_helpers {
     }
 
     #[derive(Deref, DerefMut, Default)]
-    pub struct DocDsl<C = BaseDsl> {
+    pub struct DocDsl<D = BaseDsl> {
         #[deref]
-        pub inner: C,
+        pub inner: D,
         pub blink: Blink,
     }
-    impl<C> DocDsl<C> {
+    impl<D> DocDsl<D> {
         pub fn column(&mut self) {}
         pub fn main_margin(&mut self, _: f32) {}
         pub fn align_start(&mut self) {}
@@ -558,7 +558,7 @@ pub mod __doc_helpers {
 
         pub fn distrib_start(&mut self) {}
     }
-    impl<C: DslBundle> DslBundle for DocDsl<C> {
+    impl<D: DslBundle> DslBundle for DocDsl<D> {
         fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
             self.inner.insert(cmds)
         }

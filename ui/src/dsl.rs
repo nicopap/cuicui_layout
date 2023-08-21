@@ -123,16 +123,16 @@ impl IntoUiBundle<UiDsl> for TextBundle {
 
 /// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default, Deref, DerefMut)]
-pub struct UiDsl<C = cuicui_layout::dsl::LayoutDsl> {
+pub struct UiDsl<D = cuicui_layout::dsl::LayoutDsl> {
     #[deref]
-    inner: C,
+    inner: D,
     bg_color: Option<BackgroundColor>,
     bg_image: Option<UiImage>,
     border_color: Option<BorderColor>,
     border_px: Option<u16>,
 }
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <C: cuicui_chirp::ParseDsl>)]
-impl<C> UiDsl<C> {
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <D: cuicui_chirp::ParseDsl>)]
+impl<D> UiDsl<D> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.
     ///
@@ -173,7 +173,7 @@ impl<C> UiDsl<C> {
     }
 }
 
-impl<C: DslBundle> DslBundle for UiDsl<C> {
+impl<D: DslBundle> DslBundle for UiDsl<D> {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         let mut node_bundle = bevy_ui::NodeBundle::default();
         if self.bg_image.is_some() {

@@ -71,7 +71,7 @@ const CONFIG_ATTR_DESCR: &str = "\
 - `delegate = delegate_field`: (optional) Field to delegate `ParseDsl::leaf_node` \
   and `ParseDsl::method` implementations when encountering a name not implemented \
   in this `impl` block. This should be the field you mark with `#[deref_mut]`
-- `set_params <C: ParseDsl>`: Instead of re-using the `impl` block's generics \
+- `set_params <D: ParseDsl>`: Instead of re-using the `impl` block's generics \
   in the `impl<XXX> ParseDsl for Type` use the expression within parenthesis.
 
 There is currently no other accepted parse_dsl_impl attribute config options.\n";
