@@ -181,14 +181,15 @@ pub mod quick {
     impl<'a> Iterator for ArgIter<'a> {
         type Item = Result<&'a str, ArgError>;
         fn next(&mut self) -> Option<Self::Item> {
+            #[cold]
+            #[allow(clippy::missing_const_for_fn)] // false positive
+            fn err<T>(_: T) -> ArgError {
+                ArgError::ArgParse
+            }
             if self.input.is_empty() {
                 return None;
             }
             self.count += 1;
-            #[cold]
-            fn err<T>(_: T) -> ArgError {
-                ArgError::ArgParse
-            }
             if self.count - 1 == 0 {
                 let text = balanced_text.parse_next(&mut self.input).map_err(err);
                 // SAFETY: `ArgIter.input` is always valid utf8 because of the

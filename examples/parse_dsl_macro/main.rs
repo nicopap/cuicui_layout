@@ -173,10 +173,15 @@ fn main() {
 
     let mut world1 = World::new();
     let chirp = r#"
-        row("first row", rules(px(10), pct(11))) {
-            spawn(rules(pct(20), px(21)), "first child", empty_px 30);
-            spawn(empty_px 31, "2");
+        // Some comments
+        row(
+            "first row", // demonstrating
+            rules(px(10), pct(11))
+        ) { // that it is possible
+            spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
+            spawn(empty_px 31, "2"); // add comments
         }
+        // To a chirp file
         column("second element", rules(px(40), pct(41))) {
             spawn(rules(pct(50), px(51)), empty_px 60, "child3");
             spawn(empty_px 61, "so called \"fourth\" child");
@@ -190,10 +195,15 @@ fn main() {
     let mut state = SystemState::<Commands>::new(&mut world2);
     let mut cmds = state.get_mut(&mut world2);
     dsl! { <LayoutDsl> cmds,
-        row("first row", rules(px(10), pct(11))) {
-            spawn(rules(pct(20), px(21)), "first child", empty_px 30);
-            spawn(empty_px 31, "2");
+        // Some comments
+        row(
+            "first row", // demonstrating
+            rules(px(10), pct(11))
+        ) { // that it is possible
+            spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
+            spawn(empty_px 31, "2"); // add comments
         }
+        // To a chirp file
         column("second element", rules(px(40), pct(41))) {
             spawn(rules(pct(50), px(51)), empty_px 60, "child3");
             spawn(empty_px 61, "so called \"fourth\" child");

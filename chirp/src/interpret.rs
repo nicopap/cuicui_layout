@@ -123,13 +123,18 @@ impl<'w, 's, 'a, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, 'll, 'r, 
     pub fn statements(&self, input: &mut &BStr) -> PResult<(), ()> {
         use winnow::{
             ascii,
-            combinator::{alt, delimited, opt, preceded, separated0, separated_pair, success},
+            combinator::{
+                alt, delimited, opt, preceded, repeat, separated0, separated_pair, success,
+            },
             token::{one_of, take_till1},
         };
         // Note: we use `void` to reduce the size of input/output types. It's
         // a major source of performance problems in winnow.
+        let line_comment = || preceded(b"//", take_till1(b'\n'));
+        let repeat = repeat::<_, _, (), _, _>;
+        let spc_trail = || repeat(.., (line_comment(), ascii::multispace0));
         let (spc, spc1, opt) = (
-            || ascii::multispace0.void(),
+            || (ascii::multispace0, spc_trail()).void(),
             || ascii::multispace1.void(),
             || opt(b' ').void(),
         );
