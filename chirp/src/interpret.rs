@@ -1,4 +1,4 @@
-use std::{cell::RefCell, fmt, mem};
+use std::{borrow::Cow, cell::RefCell, fmt, mem};
 
 use bevy::{
     asset::LoadContext,
@@ -8,7 +8,7 @@ use bevy::{
 };
 use smallvec::SmallVec;
 use thiserror::Error;
-use winnow::{stream::AsChar, BStr, PResult, Parser};
+use winnow::{BStr, PResult, Parser};
 
 use crate::{
     parse::{scoped_text, MethodCtx},
@@ -86,7 +86,8 @@ impl<'w, 's, 'a, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'l, 'll, 'r, ()> {
     }
 }
 impl<'w, 's, 'a, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, 'll, 'r, D> {
-    fn method(&self, (method, mut args): (&[u8], &[u8])) {
+    fn method(&self, method: &[u8], args: impl AsRef<[u8]>) {
+        let mut args = args.as_ref();
         if args.first() == Some(&b'(') {
             args = &args[1..args.len() - 1];
         }
@@ -119,29 +120,38 @@ impl<'w, 's, 'a, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, 'll, 'r, 
         trace!("<<< Ended spawning entities within statements block, continuing");
         self.0.borrow_mut().current.pop();
     }
-    pub fn statements(&self, input: &mut &BStr) -> PResult<()> {
-        use winnow::combinator::{alt, delimited, opt, preceded, separated0, success};
-        use winnow::{ascii, token};
-
-        let (spc, spc1, opt) = (ascii::multispace0, ascii::multispace1, || opt(b' '));
-        // TODO(bug): Escape sequences
-        let str_literal = delimited(b'"', token::take_till0(b'"'), b'"');
-        let ident = || token::take_while(1.., (<u8 as AsChar>::is_alphanum, b'_'));
+    pub fn statements(&self, input: &mut &BStr) -> PResult<(), ()> {
+        use winnow::{
+            ascii,
+            combinator::{alt, delimited, opt, preceded, separated0, separated_pair, success},
+            token::{one_of, take_till1},
+        };
+        // Note: we use `void` to reduce the size of input/output types. It's
+        // a major source of performance problems in winnow.
+        let (spc, spc1, opt) = (
+            || ascii::multispace0.void(),
+            || ascii::multispace1.void(),
+            || opt(b' ').void(),
+        );
+        let str_literal = delimited(
+            b'"',
+            ascii::escaped(take_till1(b"\\\""), '\\', one_of(b"\\\"")).recognize(),
+            b'"',
+        );
+        let ident = || take_till1(b" \n\t;\",()\\{}");
         let args = alt((
-            preceded(spc1, ident()),
-            // TOOD(perf): split this in a sane way, re-parsing might be costly
-            preceded(spc, scoped_text.recognize()),
+            preceded(spc1(), ident()),
+            // TODO(perf): split this in a sane way, re-parsing might be costly
+            preceded(spc(), scoped_text),
         ));
 
         let empty = success::<&BStr, &[u8], _>(b"");
-        let named: &[u8] = b"named";
         let method = alt((
-            str_literal.map(|i| (named, i)),
-            (ident(), alt((args, empty))),
-        ))
-        .map(|i| self.method(i));
-        let comma_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, (b',', spc));
-        let methods = delimited((b'(', spc), comma_list(method), (spc, b')'));
+            str_literal.map(|i| self.method(b"named", escape_literal(i))),
+            (ident(), alt((args, empty))).map(|(n, arg)| self.method(n, arg)),
+        ));
+        let comma_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, (b',', spc()));
+        let methods = delimited(b'(', delimited(spc(), comma_list(method), spc()), b')');
         let nest = |i: &mut _| {
             self.push_children();
             let ret = self.statements(i);
@@ -151,17 +161,74 @@ impl<'w, 's, 'a, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, 'll, 'r, 
         let terminal = |_| {
             self.statement_spawn();
         };
-        let spawn_head = |(head, _, _)| {
-            if head != b"spawn" {
-                self.method((head, b""));
-            }
+        // TODO(perf): replace this + let head with a dispatch!
+        let spawn_head = |(head, _): (&[u8], _)| match head {
+            b"code" | b"spawn" => {}
+            method => self.method(method, b""),
         };
-        let head = (ident(), opt(), methods).map(spawn_head);
+        let head = separated_pair(ident(), opt(), methods).map(spawn_head);
         let tail = alt((b';'.map(terminal), delimited(b'{', nest, b'}')));
-        let statement = (head, opt(), tail);
+        let statement = separated_pair(head, opt(), tail);
 
-        let space_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, spc);
-        let mut statements = delimited(spc, space_list(statement), spc);
+        let space_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, spc());
+        let mut statements = delimited(spc(), space_list(statement), spc());
         statements.parse_next(input)
+    }
+}
+
+fn fast_contains(check: &[u8], contains: u8) -> bool {
+    // SAFETY: [u8;4] is a valid u32
+    let (head, body, tail) = unsafe { check.align_to::<u32>() };
+    let out_of_body = head.iter().chain(tail).any(|c| *c == contains);
+    let mask0 = u32::from_le_bytes([0, 0, 0, contains]);
+    let mask1 = u32::from_le_bytes([0, 0, contains, 0]);
+    let mask2 = u32::from_le_bytes([0, contains, 0, 0]);
+    let mask3 = u32::from_le_bytes([contains, 0, 0, 0]);
+    out_of_body
+        || body.iter().any(|&value| {
+            (value & mask0 == mask0)
+                | (value & mask1 == mask1)
+                | (value & mask2 == mask2)
+                | (value & mask3 == mask3)
+        })
+}
+fn escape_literal(to_escape: &[u8]) -> Cow<[u8]> {
+    #[cold]
+    fn owned(bytes: &[u8]) -> Cow<[u8]> {
+        let mut ret = bytes.to_vec();
+        let mut prev_bs = false;
+        let should_keep = |c: &_| {
+            let is_bs = c == &b'\\';
+            let keep = !is_bs | prev_bs;
+            prev_bs = !keep & is_bs;
+            keep
+        };
+        ret.retain(should_keep);
+        Cow::Owned(ret)
+    }
+    if fast_contains(to_escape, b'\\') {
+        owned(to_escape)
+    } else {
+        Cow::Borrowed(to_escape)
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_escape() {
+        let output = escape_literal(br#"ab\\c\\\d\e"#);
+        assert_eq!(BStr::new(br#"ab\c\de"#), BStr::new(&output));
+    }
+    #[test]
+    fn test_escape_escape_escape_first() {
+        let output = escape_literal(br#"\\ab\\c\\\d\ef\g\h\\"#);
+        assert_eq!(BStr::new(br#"\ab\c\defgh\"#), BStr::new(&output));
+    }
+    #[test]
+    fn test_escape_escape_first() {
+        let output = escape_literal(br#"\ab\\c\\\de\\"#);
+        assert_eq!(BStr::new(br#"ab\c\de\"#), BStr::new(&output));
     }
 }

@@ -105,6 +105,8 @@ from_delegate_impl! {
     [String, Text],
     |self| Text::from_section(self, TextStyle::default()).into_ui_bundle()
 }
+// TODO(perf): bevy_ui::ImageBundle's `content_size` field force-inlines
+// ContentSize::drop, as a result, we have several copies of it here.
 from_delegate_impl!([Handle<Image>, UiImage]);
 from_delegate_impl!([Text, TextBundle]);
 from_delegate_impl!([UiImage, ImageBundle]);

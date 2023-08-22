@@ -6,22 +6,18 @@ use bevy::{asset::LoadContext, reflect::TypeRegistryInternal as TypeRegistry};
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
-use winnow::{
-    ascii,
-    error::{ContextError, ErrMode, StrContext},
-    BStr, PResult, Parser,
-};
+use winnow::{ascii, BStr, PResult, Parser};
 
 /// Error returned by one of the `argN` functions.
 #[allow(missing_docs)] // Already documented by error message.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum ArgError {
     #[error("Expected {0} arguments, got {1}")]
     CountMismatch(u32, usize),
     // TODO(perf): theoretically can be removed, as we already parsed everything
     // before passing it to `argN`
-    #[error("Parser error: {0}")]
-    ArgParse(ErrMode<ContextError<StrContext>>),
+    #[error("Parser error")]
+    ArgParse,
 }
 
 /// The input specification called a method not implemented in `D`.
@@ -96,7 +92,7 @@ const SCOPE_TERMINATE: [u8; 7] = *b"()[]{}\\";
 const SCOPE_ESCAPE: [u8; 8] = *b"()[]{},\\";
 const EXPOSED_TERMINATE: [u8; 6] = *b"([{},\\";
 #[inline]
-pub(crate) fn scoped_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8]> {
+pub(crate) fn scoped_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8], ()> {
     use winnow::{
         combinator::{dispatch, fail, repeat, terminated},
         token::{any, one_of, take_till1},
@@ -113,7 +109,7 @@ pub(crate) fn scoped_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8]> {
     dispatch.recognize().parse_next(input)
 }
 #[inline]
-pub(crate) fn balanced_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8]> {
+pub(crate) fn balanced_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8], ()> {
     use winnow::{combinator::repeat, token::one_of, token::take_till1};
 
     let exposed = || ascii::escaped(take_till1(EXPOSED_TERMINATE), '\\', one_of(SCOPE_ESCAPE));
@@ -189,7 +185,10 @@ pub mod quick {
                 return None;
             }
             self.count += 1;
-            let err = ArgError::ArgParse;
+            #[cold]
+            fn err<T>(_: T) -> ArgError {
+                ArgError::ArgParse
+            }
             if self.count - 1 == 0 {
                 let text = balanced_text.parse_next(&mut self.input).map_err(err);
                 // SAFETY: `ArgIter.input` is always valid utf8 because of the

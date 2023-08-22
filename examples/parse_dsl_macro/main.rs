@@ -8,7 +8,7 @@ use bevy::{
     utils::HashMap,
 };
 use cuicui_chirp::{parse_dsl_impl, Chirp, Handles, ParseDsl};
-use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands};
+use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands, Name};
 use pretty_assertions::assert_eq;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Reflect)]
@@ -88,32 +88,25 @@ struct Sample {
     entity: Entity,
     pxls: Show<Pixels>,
     lay: Show<LayoutNode>,
-    p: Option<Entity>,
-}
-impl Sample {
-    fn new(
-        entity: Entity,
-        pxls: Option<&Pixels>,
-        lay: Option<&LayoutNode>,
-        p: Option<&Parent>,
-    ) -> Self {
-        Self {
-            entity,
-            pxls: show(pxls),
-            lay: show(lay),
-            p: p.map(Parent::get),
-        }
-    }
+    p: Show<Entity>,
+    name: Show<String>,
 }
 fn sample(
-    (a, b, c, d): (
+    (entity, pxls, lay, p, name): (
         Entity,
         Option<&Pixels>,
         Option<&LayoutNode>,
         Option<&Parent>,
+        Option<&Name>,
     ),
 ) -> Sample {
-    Sample::new(a, b, c, d)
+    Sample {
+        entity,
+        pxls: show(pxls),
+        lay: show(lay),
+        p: Show(p.map(Parent::get)),
+        name: Show(name.map(|n| n.as_str().to_owned())),
+    }
 }
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct Show<T>(Option<T>);
@@ -180,14 +173,14 @@ fn main() {
 
     let mut world1 = World::new();
     let chirp = r#"
-            row(rules(px(10), pct(11))) {
-                spawn(rules(pct(20), px(21)), empty_px 30);
-                spawn(empty_px 31);
-            }
-            column(rules(px(40), pct(41))) {
-                spawn(rules(pct(50), px(51)), empty_px 60);
-                spawn(empty_px 61);
-            }
+        row("first row", rules(px(10), pct(11))) {
+            spawn(rules(pct(20), px(21)), "first child", empty_px 30);
+            spawn(empty_px 31, "2");
+        }
+        column("second element", rules(px(40), pct(41))) {
+            spawn(rules(pct(50), px(51)), empty_px 60, "child3");
+            spawn(empty_px 61, "so called \"fourth\" child");
+        }
 "#;
     let handles: Handles = HashMap::new();
     let mut world_chirp = Chirp::new(&mut world1);
@@ -197,13 +190,13 @@ fn main() {
     let mut state = SystemState::<Commands>::new(&mut world2);
     let mut cmds = state.get_mut(&mut world2);
     dsl! { <LayoutDsl> cmds,
-        row(rules(px(10), pct(11))) {
-            spawn(rules(pct(20), px(21)), empty_px 30);
-            spawn(empty_px 31);
+        row("first row", rules(px(10), pct(11))) {
+            spawn(rules(pct(20), px(21)), "first child", empty_px 30);
+            spawn(empty_px 31, "2");
         }
-        column(rules(px(40), pct(41))) {
-            spawn(rules(pct(50), px(51)), empty_px 60);
-            spawn(empty_px 61);
+        column("second element", rules(px(40), pct(41))) {
+            spawn(rules(pct(50), px(51)), empty_px 60, "child3");
+            spawn(empty_px 61, "so called \"fourth\" child");
         }
     };
     state.apply(&mut world2);
@@ -213,6 +206,7 @@ fn main() {
         Option<&Pixels>,
         Option<&LayoutNode>,
         Option<&Parent>,
+        Option<&Name>,
     )>();
     let mut parse_entities = query.iter(&world1).map(sample).collect::<Vec<_>>();
     parse_entities.sort_unstable();
@@ -222,6 +216,7 @@ fn main() {
         Option<&Pixels>,
         Option<&LayoutNode>,
         Option<&Parent>,
+        Option<&Name>,
     )>();
     let mut macro_entities = query.iter(&world2).map(sample).collect::<Vec<_>>();
     macro_entities.sort_unstable();

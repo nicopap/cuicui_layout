@@ -18,24 +18,38 @@ type UiRegistry = HashMap<
 
 ## Grammar
 
-```scala
-method
-   := '"' [quoted_string] '"' // name literal
-    | ident                   // bare method
-    | ('.' ident)+ expr       // field access (may be left out)
-    | ident expr              // single argument method
-    | ident '(' expr (',' expr)* ')' // multiple argument method
+```ungrammar
+Method
+   = StringLiteral            // name literal
+   | 'ident'                  // bare method
+   | 'ident' 'expr'           // single argument method
+   | 'ident' '(' ExprList ')' // multiple argument method
 
-statement_head
-   := 'spawn' '(' (method),* ')'
-    | 'code' '(' ident ')'
-    | ident '(' expr (',' method )* ')'
+StatementHead
+   = 'code'  '(' 'ident' ')'
+   | 'spawn' '(' MethodList ')'
+   | 'ident' '(' MethodList ')'
 
-statement_tail:= ';' | '{' statement* '}'
-ident         := RUST_IDENTIFIER
-expr          := TBD
-statement     := statement_head statement_tail
+Statement     = StatementHead statementTail
+StatementTail = ';' | '{' Statement* '}'
+MethodList    = Method (',' Method)* ','?
+ExprList      = 'expr' (',' 'expr')* ','?
+StringLiteral = 'string'
 ```
+
+Quirks:
+* `'ident'` (identifiers) are any sequence of characters
+  that is not whitespaces or any of `;",()\{}`.
+  Note that they should be rust identifiers
+  if `ParseDsl` is implemented using `parse_dsl_impl`.
+* Only accepts 1 or 0 space between `'ident'` and `(`
+* Only accepts 1 or 0 space between `)` and `{`
+* Only accepts 1 or 0 space between `)` and `;`
+* `'string'`s accept only quote and backslash escaping
+* chirp expressions (`'expr'`) are very naive. They act like the `exposed`
+  node in [`cuicui_richtext`'s grammar][richgram]
+
+[richgram]: https://github.com/nicopap/cuicui/blob/12ad8f1fb36e13ee389ac162c61d1638e45503c1/design_doc/richtext/informal_grammar.md#L4
 
 ### Why not KDL
 

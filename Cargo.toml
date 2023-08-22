@@ -24,6 +24,9 @@ bevy_mod_sysfail = "3"
 bevy-scene-hook = "7.0.0"
 css-color = "0.2.5"
 enumset = "1.1"
+# This is only for the binary examples, we shouldn't set the log level for the
+# library crates
+log = { version = "0.4.20", features = ["release_max_level_warn"] }
 pretty_assertions = "1.4.0"
 proc-macro2 = "1.0.66"
 quote = "1.0.32"
@@ -42,3 +45,11 @@ cuicui = { version = "0.8.0", path = "./cuicui" }
 
 [workspace.metadata.release]
 dependent-version = "upgrade"
+
+# This is only to profile & analyse ASM output of the binary examples
+[profile.release]
+codegen-units = 1
+opt-level = 3
+lto = "fat"
+split-debuginfo = "packed"
+debug = 1
