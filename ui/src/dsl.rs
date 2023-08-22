@@ -1,23 +1,26 @@
 //! Bundles wrapping [`bevy::ui::node_bundles`] with additional [`cuicui_layout`]
 //! components.
 use bevy::{
+    asset::LoadContext,
     ecs::system::EntityCommands,
     prelude::{
-        BuildChildren, Bundle, Color, Deref, DerefMut, Entity, Handle, Image, NodeBundle, Text,
-        TextStyle, UiImage,
+        default, BuildChildren, Bundle, Color, Deref, DerefMut, Entity, Handle, Image, NodeBundle,
+        Text, TextStyle, UiImage,
     },
+    reflect::TypeRegistryInternal as Registry,
     text::TextLayoutInfo,
     ui::{
         node_bundles as bevy_ui,
         widget::{TextFlags, UiImageSize},
         BackgroundColor, BorderColor, ContentSize, UiRect, Val,
     },
-    utils::default,
 };
+use css_color::Srgb;
 use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;
 #[cfg(doc)]
 use cuicui_layout::{LeafRule, Rule};
+use thiserror::Error;
 
 /// An image leaf node wrapping a [`bevy_ui::ImageBundle`].
 ///
@@ -121,6 +124,25 @@ impl IntoUiBundle<UiDsl> for TextBundle {
     }
 }
 
+/// Error occuring when failing to parse a bevy [`Color`] according to the
+/// [`css_color`] crate implementation.
+#[derive(Debug, Error)]
+#[error(
+    "'{0}' is not a valid color, try using the syntax found in the `css-color` crate\n\n\
+    https://lib.rs/crates/css-color"
+)]
+pub struct ParseColorError(String);
+
+fn parse_color(
+    _: &Registry,
+    _: Option<&LoadContext>,
+    input: &str,
+) -> Result<Color, ParseColorError> {
+    let err = |_| ParseColorError(input.to_string());
+    let Srgb { red, green, blue, alpha } = input.parse::<Srgb>().map_err(err)?;
+    Ok(Color::rgba(red, green, blue, alpha))
+}
+
 /// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default, Deref, DerefMut)]
 pub struct UiDsl<D = cuicui_layout::dsl::LayoutDsl> {
@@ -131,7 +153,11 @@ pub struct UiDsl<D = cuicui_layout::dsl::LayoutDsl> {
     border_color: Option<BorderColor>,
     border_px: Option<u16>,
 }
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <D: cuicui_chirp::ParseDsl>)]
+#[cuicui_chirp::parse_dsl_impl(
+    delegate = inner,
+    set_params <D: cuicui_chirp::ParseDsl>,
+    type_parsers(Color = parse_color)
+)]
 impl<D> UiDsl<D> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.
@@ -145,7 +171,6 @@ impl<D> UiDsl<D> {
         self.border_px = Some(pixels);
     }
     /// Set the node's border [color](Self::border_color) and [width](Self::border_px).
-    #[parse_dsl(ignore)] // TODO(feat): reflect-based input parsing
     pub fn border(&mut self, pixels: u16, color: Color) {
         self.border_px(pixels);
         self.border_color(color);
@@ -157,17 +182,14 @@ impl<D> UiDsl<D> {
     ///
     /// This is because it would be otherwise impossible to arrange children
     /// independently of parent properties.
-    #[parse_dsl(ignore)] // TODO(feat): reflect-based input parsing
     pub fn border_color(&mut self, color: Color) {
         self.border_color = Some(color.into());
     }
     /// Set the node's background color.
-    #[parse_dsl(ignore)] // TODO(feat): reflect-based input parsing
     pub fn bg(&mut self, color: Color) {
         self.bg_color = Some(color.into());
     }
     /// Set the node's background image.
-    #[parse_dsl(ignore)] // TODO(feat): `Handle<A>` loading
     pub fn image(&mut self, image: &Handle<Image>) {
         self.bg_image = Some(image.clone().into());
     }

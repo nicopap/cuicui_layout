@@ -140,10 +140,14 @@ pub struct LayoutDsl<T = BaseDsl> {
     layout_bundle: Option<LayoutBundle>,
 }
 
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, set_params <D: cuicui_chirp::ParseDsl>)]
+#[cuicui_chirp::parse_dsl_impl(
+    delegate = inner,
+    set_params <D: cuicui_chirp::ParseDsl>,
+    type_parsers(Rule = from_str),
+)]
 impl<D: DslBundle> LayoutDsl<D> {
     /// Set the flow direction of a container node.
-    #[parse_dsl(ignore)]
+    #[parse_dsl(ignore)] // TODO(feat): When the reflect feature is disable, this doesn't compile.
     pub fn flow(&mut self, flow: Flow) {
         self.set_flow = true;
         self.layout.flow = flow;
@@ -185,7 +189,6 @@ impl<D: DslBundle> LayoutDsl<D> {
     ///
     /// # Panics
     /// If the `spec` format is invalid.
-    #[parse_dsl(ignore)] // TODO(feat): Need to extend the macro to support this
     pub fn layout(&mut self, spec: &str) {
         assert_eq!(spec.len(), 5, "accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
         self.set_flow = true;

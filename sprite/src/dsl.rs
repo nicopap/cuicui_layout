@@ -3,13 +3,16 @@
 #[cfg(feature = "sprite_text")]
 use bevy::text::{Text, Text2dBundle, TextStyle};
 use bevy::{
+    asset::LoadContext,
     ecs::system::EntityCommands,
-    prelude::{Bundle, Color, Deref, DerefMut, Entity, Handle, Image, SpatialBundle},
+    prelude::{default, Bundle, Color, Deref, DerefMut, Entity, Handle, Image, SpatialBundle},
+    reflect::TypeRegistryInternal as Registry,
     sprite,
-    utils::default,
 };
+use css_color::Srgb;
 use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;
+use thiserror::Error;
 
 /// An image leaf node wrapping a [`bevy::sprite::SpriteBundle`].
 ///
@@ -97,6 +100,25 @@ impl IntoUiBundle<SpriteDsl> for TextBundle {
         self
     }
 }
+/// Error occuring when failing to parse a bevy [`Color`] according to the
+/// [`css_color`] crate implementation.
+#[derive(Debug, Error)]
+#[error(
+    "'{0}' is not a valid color, try using the syntax found in the `css-color` crate\n\n\
+    https://lib.rs/crates/css-color"
+)]
+pub struct ParseColorError(String);
+
+fn parse_color(
+    _: &Registry,
+    _: Option<&LoadContext>,
+    input: &str,
+) -> Result<Color, ParseColorError> {
+    let err = |_| ParseColorError(input.to_string());
+    let Srgb { red, green, blue, alpha } = input.parse::<Srgb>().map_err(err)?;
+    Ok(Color::rgba(red, green, blue, alpha))
+}
+
 /// The [`DslBundle`] for `bevy_ui`.
 #[derive(Default, Deref, DerefMut)]
 pub struct SpriteDsl<D = cuicui_layout::dsl::LayoutDsl> {
@@ -105,6 +127,11 @@ pub struct SpriteDsl<D = cuicui_layout::dsl::LayoutDsl> {
     bg_color: Option<Color>,
     bg_image: Option<Handle<Image>>,
 }
+#[cuicui_chirp::parse_dsl_impl(
+    delegate = inner,
+    set_params <D: cuicui_chirp::ParseDsl>,
+    type_parsers(Color = parse_color)
+)]
 impl<D> SpriteDsl<D> {
     /// Set the node's background color.
     pub fn bg(&mut self, color: Color) {

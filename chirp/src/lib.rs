@@ -9,10 +9,13 @@
 mod interpret;
 pub mod loader;
 pub mod parse;
+pub mod wrapparg;
 
 use bevy::{
+    asset::LoadContext,
     ecs::system::SystemState,
     prelude::{error, Commands, World},
+    reflect::TypeRegistryInternal as TypeRegistry,
 };
 
 use interpret::Interpreter;
@@ -53,11 +56,19 @@ impl<'a> Chirp<'a> {
     ///
     /// This directly interprets the input as a chirp file and creates a bevy
     /// scene.
-    pub fn interpret<D: ParseDsl>(&mut self, _handles: &Handles, input: &[u8]) {
+    pub fn interpret<D: ParseDsl>(
+        &mut self,
+        _handles: &Handles,
+        load_context: Option<&LoadContext>,
+        registry: &TypeRegistry,
+        input: &[u8],
+    ) {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
         let mut input = BStr::new(input);
-        if let Err(err) = Interpreter::new::<D>(&mut cmds).statements(&mut input) {
+        if let Err(err) =
+            Interpreter::new::<D>(&mut cmds, load_context, registry).statements(&mut input)
+        {
             error!("{err}");
         };
         state.apply(self.world);

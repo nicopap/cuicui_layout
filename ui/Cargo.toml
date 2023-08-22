@@ -20,6 +20,8 @@ reflect = ["cuicui_layout/reflect"]
 
 [dependencies]
 bevy_mod_sysfail.workspace = true
+css-color.workspace = true
+thiserror.workspace = true
 cuicui_chirp = { version = "0.8.1", path = "../chirp" }#, optional = true }
 cuicui_dsl.workspace = true
 cuicui_layout.workspace = true

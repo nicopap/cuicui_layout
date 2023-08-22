@@ -4,23 +4,26 @@ use std::marker::PhantomData;
 use anyhow::Result;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
-    prelude::{AddAsset, App, Plugin as BevyPlugin, World},
+    prelude::{AddAsset, App, AppTypeRegistry, FromWorld, Plugin as BevyPlugin, World},
+    reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry},
     scene::Scene,
     utils::HashMap,
 };
 
 use crate::{Chirp, ParseDsl};
 
-struct InternalLoader<'a, 'w, D> {
+struct InternalLoader<'a, 'w, 'r, D> {
     ctx: &'a mut LoadContext<'w>,
+    registry: &'r TypeRegistry,
     _parse_dsl: PhantomData<fn(D)>,
 }
 
 /// Loads a bevy [`Scene`] declared with a
-pub struct ChirpLoader<D>(PhantomData<fn(D)>);
-impl<D> Default for ChirpLoader<D> {
-    fn default() -> Self {
-        Self(PhantomData)
+pub struct ChirpLoader<D>(TypeRegistryArc, PhantomData<fn(D)>);
+impl<D> FromWorld for ChirpLoader<D> {
+    fn from_world(world: &mut World) -> Self {
+        let type_registry = world.resource::<AppTypeRegistry>();
+        Self(type_registry.0.clone(), PhantomData)
     }
 }
 
@@ -31,8 +34,9 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
         load_context: &'a mut LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<()>> {
         Box::pin(async move {
-            let mut loader = InternalLoader::<D>::new(load_context);
-            loader.load(bytes);
+            let registry = self.0.internal.read();
+            InternalLoader::<D>::new(load_context, &registry).load(bytes);
+            drop(registry);
             Ok(())
         })
     }
@@ -41,9 +45,9 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
         &["chirp"]
     }
 }
-impl<'a, 'w, D: ParseDsl + 'static> InternalLoader<'a, 'w, D> {
-    fn new(ctx: &'a mut LoadContext<'w>) -> Self {
-        Self { ctx, _parse_dsl: PhantomData }
+impl<'a, 'w, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'r, D> {
+    fn new(ctx: &'a mut LoadContext<'w>, registry: &'r TypeRegistry) -> Self {
+        Self { ctx, registry, _parse_dsl: PhantomData }
     }
 
     fn load(&mut self, file: &[u8]) {
@@ -54,7 +58,7 @@ impl<'a, 'w, D: ParseDsl + 'static> InternalLoader<'a, 'w, D> {
         let mut world = World::new();
         let mut chirp = Chirp::new(&mut world);
         let handles = HashMap::new();
-        chirp.interpret::<D>(&handles, file);
+        chirp.interpret::<D>(&handles, Some(self.ctx), self.registry, file);
         Scene::new(world)
     }
 }

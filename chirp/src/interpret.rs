@@ -1,7 +1,9 @@
 use std::{cell::RefCell, fmt, mem};
 
 use bevy::{
+    asset::LoadContext,
     prelude::{trace, BuildChildren, ChildBuilder, Commands, Entity},
+    reflect::TypeRegistryInternal as TypeRegistry,
     utils::HashMap,
 };
 use smallvec::SmallVec;
@@ -42,35 +44,56 @@ impl fmt::Debug for BevyCmds<'_, '_, '_> {
         write!(f, "BevyCmds(Commands)")
     }
 }
+struct LoadCtx<'l, 'll, 'r>(Option<&'l LoadContext<'ll>>, &'r TypeRegistry);
+impl fmt::Debug for LoadCtx<'_, '_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.0.is_some() {
+            write!(f, "LoadCtx(Some(&LoadContext), &TypeRegistry)")
+        } else {
+            write!(f, "LoadCtx(None, &TypeRegistry)")
+        }
+    }
+}
 #[derive(Debug)]
 struct InnerInterpreter<'w, 's, 'a, D> {
     cmds: BevyCmds<'w, 's, 'a>,
     current: SmallVec<[Entity; 3]>,
     dsl: D,
 }
+// TODO(clean): Use named struct.
 // TODO(perf): Can use an UnsafeCell instead, since we'll never access this
 // concurrently, as the parsing is linear.
 #[derive(Debug)]
-pub(crate) struct Interpreter<'w, 's, 'a, D>(RefCell<InnerInterpreter<'w, 's, 'a, D>>);
+pub(crate) struct Interpreter<'w, 's, 'a, 'l, 'll, 'r, D>(
+    RefCell<InnerInterpreter<'w, 's, 'a, D>>,
+    LoadCtx<'l, 'll, 'r>,
+);
 
-impl<'w, 's, 'a> Interpreter<'w, 's, 'a, ()> {
-    pub fn new<D: ParseDsl>(builder: &'a mut Commands<'w, 's>) -> Interpreter<'w, 's, 'a, D> {
-        Interpreter(RefCell::new(InnerInterpreter {
-            cmds: BevyCmds(builder),
-            current: SmallVec::new(),
-            dsl: D::default(),
-        }))
+impl<'w, 's, 'a, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'l, 'll, 'r, ()> {
+    pub fn new<D: ParseDsl>(
+        builder: &'a mut Commands<'w, 's>,
+        load_ctx: Option<&'l LoadContext<'ll>>,
+        registry: &'r TypeRegistry,
+    ) -> Interpreter<'w, 's, 'a, 'l, 'll, 'r, D> {
+        Interpreter(
+            RefCell::new(InnerInterpreter {
+                cmds: BevyCmds(builder),
+                current: SmallVec::new(),
+                dsl: D::default(),
+            }),
+            LoadCtx(load_ctx, registry),
+        )
     }
 }
-impl<'w, 's, 'a, D: ParseDsl> Interpreter<'w, 's, 'a, D> {
+impl<'w, 's, 'a, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, 'll, 'r, D> {
     fn method(&self, (method, mut args): (&[u8], &[u8])) {
-        let name = String::from_utf8_lossy(method);
         if args.first() == Some(&b'(') {
             args = &args[1..args.len() - 1];
         }
+        let name = String::from_utf8_lossy(method);
         let args = String::from_utf8_lossy(args);
         trace!("Method: {name} '{args}'");
-        let ctx = MethodCtx { name, args };
+        let ctx = MethodCtx { name, args, ctx: self.1 .0, registry: self.1 .1 };
         let dsl = &mut self.0.borrow_mut().dsl;
         dsl.method(ctx)
             .expect("TODO(err): Handle user parsing errors");

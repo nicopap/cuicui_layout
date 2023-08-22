@@ -4,13 +4,14 @@ use bevy::{
     ecs::{prelude::*, system::SystemState},
     log::Level,
     prelude::{App, BuildChildren, Deref, DerefMut, Parent, Plugin},
+    reflect::{Reflect, TypeRegistryInternal as TypeRegistry},
     utils::HashMap,
 };
 use cuicui_chirp::{parse_dsl_impl, Chirp, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands};
 use pretty_assertions::assert_eq;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Reflect)]
 enum Flow {
     #[default]
     None,
@@ -140,12 +141,15 @@ impl<D: DslBundle> DslBundle for LayoutDsl<D> {
     }
 }
 
-#[parse_dsl_impl(set_params <D: ParseDsl + fmt::Debug>, delegate = inner)]
+#[parse_dsl_impl(
+    set_params <D: ParseDsl + fmt::Debug>,
+    delegate = inner,
+    type_parsers(Rule = from_str),
+)]
 impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
     fn empty_px(&mut self, pixels: u16) {
         self.px = Some(pixels);
     }
-    #[parse_dsl(ignore)]
     fn flow(&mut self, flow: Flow) {
         self.flow = flow;
     }
@@ -171,6 +175,9 @@ impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
 
 fn main() {
     bevy::log::LogPlugin { level: Level::TRACE, ..Default::default() }.build(&mut App::new());
+    let mut registry = TypeRegistry::new();
+    registry.register::<Flow>();
+
     let mut world1 = World::new();
     let chirp = r#"
             row(rules(px(10), pct(11))) {
@@ -184,7 +191,7 @@ fn main() {
 "#;
     let handles: Handles = HashMap::new();
     let mut world_chirp = Chirp::new(&mut world1);
-    world_chirp.interpret::<LayoutDsl>(&handles, chirp.as_bytes());
+    world_chirp.interpret::<LayoutDsl>(&handles, None, &registry, chirp.as_bytes());
 
     let mut world2 = World::new();
     let mut state = SystemState::<Commands>::new(&mut world2);

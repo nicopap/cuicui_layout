@@ -28,6 +28,7 @@ The syntax is very similar to that of `dsl!` with the exception of `code`.
   into a `ParseDsl` specification.
 * `IntoUiBundle` now requires `Reflect`! This let us use it with the chirp
   file format.
+* `ParseDsl` is implemented for all DSLs exported by cuicui crates.
 
 ## `cuicui_dsl`
 

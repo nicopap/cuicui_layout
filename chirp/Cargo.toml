@@ -19,6 +19,7 @@ trace_parser = ["winnow/debug"]
 
 [dependencies]
 anyhow.workspace = true
+ron.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true
 winnow.workspace = true

@@ -51,6 +51,8 @@ This looks very similar to KDL, so why not directly use KDL?
 6. name literals work
 7. I already have a grammar and I've enough experience with winnow to know I can
    complete it.
+8. It turned out that implementing a custom parser is less code than exploring
+   the KDL document AST.
 
 ### Why KDL
 
@@ -78,7 +80,7 @@ Methods with generic arguments are difficult to handle, because we take
 advantage of the `FromStr` trait to implicitly parse the `str` we get from
 parsing the file format.
 
-### How to handle references & function handles & asset `Handle`s
+### How to handle references & function handles
 
 The `AssetLoader` lives separately from the call site, and there is no way to
 associate metadata with specific loaded files.
@@ -97,3 +99,108 @@ struct CuicuiLoaderRequest {
   channel: Sender<LoaderConfigRequest>,
 }
 ```
+
+### Handle `Handle`s
+
+It's a bit easier to figure out `Handle`:
+
+- `LoadContext::get_hanlde(&self)` (non-mutable!) is a thing
+- We only need an asset path to refer to handles (string literal)
+
+However, the problem lies in going from `&str` (or `&[u8]`) to a `Handle<T>`.
+Currently we use `FromStr` which can't take a `LoadContext`.
+
+Ideally, we could support a `Reflect` deserialization variant as well.
+
+Options:
+
+- A trait similar to `FromStr`, but also accepts a `LoadContext`, blanket-impl
+  the trait on `FromStr`.
+- Wrapper types (with pub fields and `Deref` + `DerefMut`) to let users control
+  how their method arguments get interpreted
+  --> Downside is: require changing type of the method to make it work. Which
+  is really bad for the `dsl!` macro ergonomics I don't like it.
+- Add an attribute to control how to deserialize specific arguments (takes a
+  function to call as argument)
+- Why not both put together?
+
+```rust
+#[parse_dsl_impl(
+  delegate = inner,
+  set_params <D: ParseDsl>,
+  type_parsers(Rule = from_str),
+)]
+impl<D> LayoutDsl<D> {
+  // `from_reflect` and `from_str` could be just functions. Imported in the macro,
+  // and user can provide their own.
+  // Another option is to accept an expression instead and it would be possible
+  // to define a closure in-line!
+  #[parse_dsl(args(height = from_str, width = from_str))]
+  fn some_method(&mut self, offset: u16, name: &'a str, height: Rule, width: Rule) {
+    todo!();
+  }
+  #[parse_dsl(args(Rule = from_str))]
+  fn some_method(&mut self, offset: u16, name: &'a str, height: Rule, width: Rule) {
+    todo!();
+  }
+  #[parse_dsl(arg(height = from_str))]
+  #[parse_dsl(arg(width = from_str))]
+  fn some_method(&mut self, offset: u16, name: &'a str, height: Rule, width: Rule) {
+    todo!();
+  }
+  fn some_method(
+    &mut self,
+    offset: u16,
+    name: &'a str,
+    #[parse_dsl(from_str)]
+    height: Rule,
+    #[parse_dsl(from_str)]
+    width: Rule,
+  ) {
+    todo!();
+  }
+  fn some_method(
+    &mut self,
+    offset: u16,
+    name: &'a str,
+    #[from_str]
+    height: Rule,
+    #[from_str]
+    width: Rule,
+  ) {
+    todo!();
+  }
+  fn some_method(
+    &mut self,
+    offset: FromStrArg<u16>,
+    name: &'a str,
+    rule: FromReflectArg<Rule>,
+    image: Handle<Image>
+  ) {
+    // gawd that's horrible
+    todo!();
+  }
+}
+```
+
+Considered designs:
+
+- Inline the attribute to mark the argument specifically rather than at the item-level.
+  This would avoid allocation.
+- Inline AND do not nest into a `parse_dsl`. This reduces boilerplate, making the
+  required code the minimal possible
+- Use the attribute at the item level, nested in a `parse_dsl`, considered names were:
+  - `parser`: Bit redundant with `parse_dsl`
+  - `arguments`: A bit too long, and either way, we know what `arg` is
+  - `arg`: blarg—!
+  - `args`
+- Use the attribute at the item level, declaring a list of `name = ident` of which parser
+  to use for given argument.
+- Use the attribute at the item level, having several attributes instead of having
+  a list in a single attribute.
+- Use the attribute at the item level, but associate a **type** instead of an argument
+- Associate a type to a parser at the `impl` block level. Considered names:
+  - `method_arguments`: It's not very descript isn't it?
+  - `type_parsers`: I like this!
+- Use trait reflection, read from the type registry. **Does not work** since it would
+  require the `FromStr` bound on every type

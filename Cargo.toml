@@ -22,10 +22,12 @@ anyhow = "1.0.72"
 bevy-inspector-egui = "0.19"
 bevy_mod_sysfail = "3"
 bevy-scene-hook = "7.0.0"
+css-color = "0.2.5"
 enumset = "1.1"
 pretty_assertions = "1.4.0"
 proc-macro2 = "1.0.66"
 quote = "1.0.32"
+ron = "0.8.1"
 syn = { version = "2.0.28", default-features = false, features = ["full", "parsing", "proc-macro", "printing"] }
 smallvec = { version = "1.11.0", features = ["union", "const_generics"] }
 thiserror = "1.0.44"

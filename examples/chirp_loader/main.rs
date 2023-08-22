@@ -35,7 +35,7 @@ fn main() {
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
     cmds.spawn(reload::SceneBundle {
-        scene: SceneBundle { scene: assets.load("trivial.chirp"), ..default() },
-        reload: Hook::new(|_, _, _, _| {}, "trivial.chirp".to_string()),
+        scene: SceneBundle { scene: assets.load("bevypunk.chirp"), ..default() },
+        reload: Hook::new(|_, _, _, _| {}, "bevypunk.chirp".to_string()),
     });
 }

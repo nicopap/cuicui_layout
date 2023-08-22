@@ -1,7 +1,8 @@
 //! Parse a DSL.
 
-use std::{borrow::Cow, marker::PhantomData, str::FromStr};
+use std::{borrow::Cow, marker::PhantomData};
 
+use bevy::{asset::LoadContext, reflect::TypeRegistryInternal as TypeRegistry};
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
@@ -13,25 +14,14 @@ use winnow::{
 
 /// Error returned by one of the `argN` functions.
 #[allow(missing_docs)] // Already documented by error message.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum ArgError {
     #[error("Expected {0} arguments, got {1}")]
     CountMismatch(u32, usize),
-    #[error(transparent)]
-    Parse(#[from] anyhow::Error),
+    // TODO(perf): theoretically can be removed, as we already parsed everything
+    // before passing it to `argN`
     #[error("Parser error: {0}")]
     ArgParse(ErrMode<ContextError<StrContext>>),
-}
-impl PartialEq for ArgError {
-    fn eq(&self, other: &Self) -> bool {
-        use ArgError::{ArgParse, CountMismatch, Parse};
-        match (self, other) {
-            (CountMismatch(l1, l2), CountMismatch(r1, r2)) => (l1 == r1) & (l2 == r2),
-            (Parse(l), Parse(r)) => l.to_string() == r.to_string(),
-            (ArgParse(l), ArgParse(r)) => l == r,
-            (CountMismatch(..) | Parse(_) | ArgParse(_), _) => false,
-        }
-    }
 }
 
 /// The input specification called a method not implemented in `D`.
@@ -54,7 +44,7 @@ impl<D> DslParseError<D> {
 }
 
 /// Argument to [`ParseDsl::method`].
-pub struct MethodCtx<'a> {
+pub struct MethodCtx<'a, 'l, 'll, 'r> {
     /// The method name.
     pub name: Cow<'a, str>,
     /// The method arguments (notice **plural**).
@@ -62,10 +52,12 @@ pub struct MethodCtx<'a> {
     /// Use the [`quick`] module to split the argument in as many relevant
     /// sections as necessary.
     pub args: Cow<'a, str>,
-    // let path = AssetPath::new_ref(load_context.path(), Some(&label));
-    // load_context.get_handle(path)?
-    // pub load_context: LoadContext<'b>,
+    /// The [`LoadContext`] used to load assets referenced in `chirp` files.
+    pub ctx: Option<&'l LoadContext<'ll>>,
+    /// The [`TypeRegistry`] the interpreter was initialized with.
+    pub registry: &'r TypeRegistry,
     // TODO(perf): Consider re-using cuicui_fab::Binding
+    // TODO(feat): bindings/references
 }
 
 /// A [`DslBundle`] that can be parsed.
@@ -149,19 +141,14 @@ pub mod quick {
 
     use winnow::{ascii::multispace0, combinator::preceded, BStr, Parser};
 
-    use super::{balanced_text, ArgError, FromStr};
+    use super::{balanced_text, ArgError};
 
     macro_rules! dummy {
         ($_ignore:tt, $($actual:tt)*) => { $($actual)* };
     }
     macro_rules! parse_iter {
         (@single $bad_count:ident, $iter:ident) => {
-            $iter
-                .next()
-                .ok_or_else(|| $bad_count($iter.count))?
-                .map_err(anyhow::Error::from)?
-                .parse()
-                .map_err(anyhow::Error::from)?
+            $iter.next().ok_or_else(|| $bad_count($iter.count))??
         };
         (@ret $bad_count:ident, $iter:ident, $args:tt) => {
             if $iter.next().is_some() {
@@ -171,10 +158,7 @@ pub mod quick {
             }
         };
         ($name:ident, $count:literal, $($tys:ident),*) => {
-            pub fn $name <$( $tys: FromStr, )*>(input: &str) -> Result<($( $tys ),*), ArgError>
-            where $(
-                <$tys as FromStr>::Err: std::error::Error + Send + Sync + 'static,
-            )* {
+            pub fn $name(input: &str) -> Result<($( dummy![$tys, &str] ),*), ArgError> {
                 let bad_count = |count| ArgError::CountMismatch($count, count);
                 match Args::new(input) {
                     Args::Iter(mut iter) => {
@@ -244,10 +228,7 @@ pub mod quick {
             Args::Iter(args) => Err(bad_count(args.count())),
         }
     }
-    pub fn arg1<T1: FromStr>(input: &str) -> Result<T1, ArgError>
-    where
-        T1::Err: std::error::Error + Send + Sync + 'static,
-    {
+    pub fn arg1(input: &str) -> Result<&str, ArgError> {
         let bad_count = |count| ArgError::CountMismatch(1, count);
         match Args::new(input) {
             Args::Iter(mut iter) => {
@@ -269,10 +250,7 @@ mod tests {
 
     #[test]
     fn parse_arguments() {
-        let s = |str: &str| str.to_owned();
         let count = |expected, got| ArgError::CountMismatch(expected, got);
-        let badnumber_error =
-            || ArgError::from(anyhow::Error::from("badnumber".parse::<u32>().unwrap_err()));
 
         // 0 arguments expected
         assert_eq!(quick::arg0(""), Ok(()));
@@ -280,39 +258,26 @@ mod tests {
         assert_eq!(quick::arg0("some text, text"), Err(count(0, 2)));
 
         // 1 argument expected
-        assert_eq!(quick::arg1::<String>(""), Err(count(1, 0)));
-        assert_eq!(quick::arg1::<String>("some text"), Ok(s("some text")));
-        assert_eq!(quick::arg1::<u32>("4263"), Ok(4263));
-        assert_eq!(quick::arg1::<u32>("badnumber"), Err(badnumber_error()));
-        assert_eq!(quick::arg1::<u32>("1337, text"), Err(count(1, 2)));
+        assert_eq!(quick::arg1(""), Err(count(1, 0)));
+        assert_eq!(quick::arg1("some text"), Ok("some text"));
+        assert_eq!(quick::arg1("1337, text"), Err(count(1, 2)));
 
         // 2 argument expected
-        assert_eq!(quick::arg2::<String, String>(""), Err(count(2, 0)));
-        assert_eq!(quick::arg2::<String, String>("some text"), Err(count(2, 1)));
+        assert_eq!(quick::arg2(""), Err(count(2, 0)));
+        assert_eq!(quick::arg2("some text"), Err(count(2, 1)));
+        assert_eq!(quick::arg2("some text, 1337"), Ok(("some text", "1337")));
         assert_eq!(
-            quick::arg2::<u32, String>("4263, some text"),
-            Ok((4263, s("some text")))
-        );
-        assert_eq!(
-            quick::arg2::<String, u32>("some text, 1337"),
-            Ok((s("some text"), 1337))
-        );
-        assert_eq!(
-            quick::arg2::<String, u32>("some text, badnumber"),
-            Err(badnumber_error())
-        );
-        assert_eq!(
-            quick::arg2::<u32, u32>("1337, 4263, Too many arguments"),
+            quick::arg2("1337, 4263, Too many arguments"),
             Err(count(2, 3))
         );
 
         // 3 argument expected
-        // let result = quick::arg3::<String, u32>(""); // Err
-        // let result = quick::arg3::<String, u32>("some text"); // Ok
-        // let result = quick::arg3::<String, u32>("(some text)"); // Ok
-        // let result = quick::arg3::<u32, u32>("4263"); // Ok
-        // let result = quick::arg3::<u32, u32>("(1337)"); // Ok
-        // let result = quick::arg3::<u32, u32>("(badnumber)"); // Err
-        // let result = quick::arg3::<u32, u32>("(1337, text)"); // Err
+        assert_eq!(quick::arg3(""), Err(count(3, 0)));
+        assert_eq!(quick::arg3("some text"), Err(count(3, 1)));
+        assert_eq!(quick::arg3("some text, 1337"), Err(count(3, 2)));
+        assert_eq!(
+            quick::arg3("1337,     4363, more arguments"),
+            Ok(("1337", "4363", "more arguments"))
+        );
     }
 }
