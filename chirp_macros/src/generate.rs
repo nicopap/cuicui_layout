@@ -88,7 +88,8 @@ const CONFIG_ATTR_DESCR: &str = "\
   and `ParseDsl::method` implementations when encountering a name not implemented \
   in this `impl` block. This should be the field you mark with `#[deref_mut]`
 - `set_params <D: ParseDsl>`: Instead of re-using the `impl` block's generics \
-  in the `impl<XXX> ParseDsl for Type` use the expression within parenthesis.
+  with `+ ParseDsl`, in the `impl<XXX> ParseDsl for Type` use the expression \
+  within parenthesis.
 - `type_parsers(<arg_type1> = <parser1>, <arg_type2> = <parser2>, …)`: \
   For arguments of type `arg_type1`, use `parser1` a function of the following type:
 
@@ -170,8 +171,12 @@ fn dsl_function_mut(item: &mut syn::ImplItem) -> Option<&mut syn::ImplItemFn> {
     parse_dsl_receiver(fn_item).map(|_| fn_item)
 }
 
-pub(crate) fn parse_dsl_impl(config: &ImplConfig, block: &mut syn::ItemImpl) -> TokenStream {
-    let this_generics = config.set_params.as_ref().unwrap_or(&block.generics);
+pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl) -> TokenStream {
+    let this_generics = config.set_params.get_or_insert_with(|| {
+        let mut generics = block.generics.clone();
+        bind_to_parse_dsl(&config.chirp_crate, &mut generics);
+        generics
+    });
     let this_type = block.self_ty.as_ref();
     let this_crate = &config.chirp_crate;
 
@@ -206,6 +211,24 @@ pub(crate) fn parse_dsl_impl(config: &ImplConfig, block: &mut syn::ItemImpl) -> 
         item_fn.attrs.retain(|a| !is_parse_dsl_attr(&a));
     }
     quote!(#block #parse_dsl_block)
+}
+
+/// Add `: ParseDsl` type bound to `generics`, with given `chirp_crate` as
+/// path to `ParseDsl`
+fn bind_to_parse_dsl(chirp_crate: &syn::Path, generics: &mut syn::Generics) {
+    use syn::TraitBound as Bound;
+    use syn::TypeParamBound::Trait;
+
+    for type_param in generics.type_params_mut() {
+        let arguments = syn::PathArguments::None;
+        let modifier = syn::TraitBoundModifier::None;
+        let ident = syn::Ident::new("ParseDsl", chirp_crate.span());
+
+        let mut path = chirp_crate.clone();
+        path.segments.push(syn::PathSegment { ident, arguments });
+        let bound = Trait(Bound { paren_token: None, lifetimes: None, modifier, path });
+        type_param.bounds.push(bound);
+    }
 }
 // Note: assumes cuicui_chirp::parse::quick is in scope and used correctly
 fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {

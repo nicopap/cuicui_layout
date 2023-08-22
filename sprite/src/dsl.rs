@@ -127,11 +127,7 @@ pub struct SpriteDsl<D = cuicui_layout::dsl::LayoutDsl> {
     bg_color: Option<Color>,
     bg_image: Option<Handle<Image>>,
 }
-#[cuicui_chirp::parse_dsl_impl(
-    delegate = inner,
-    set_params <D: cuicui_chirp::ParseDsl>,
-    type_parsers(Color = parse_color)
-)]
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color))]
 impl<D> SpriteDsl<D> {
     /// Set the node's background color.
     pub fn bg(&mut self, color: Color) {

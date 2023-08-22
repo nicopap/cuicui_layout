@@ -155,11 +155,7 @@ pub struct UiDsl<D = cuicui_layout::dsl::LayoutDsl> {
     border_color: Option<BorderColor>,
     border_px: Option<u16>,
 }
-#[cuicui_chirp::parse_dsl_impl(
-    delegate = inner,
-    set_params <D: cuicui_chirp::ParseDsl>,
-    type_parsers(Color = parse_color)
-)]
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color))]
 impl<D> UiDsl<D> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.

@@ -140,11 +140,7 @@ pub struct LayoutDsl<T = BaseDsl> {
     layout_bundle: Option<LayoutBundle>,
 }
 
-#[cuicui_chirp::parse_dsl_impl(
-    delegate = inner,
-    set_params <D: cuicui_chirp::ParseDsl>,
-    type_parsers(Rule = from_str),
-)]
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Rule = from_str))]
 impl<D: DslBundle> LayoutDsl<D> {
     /// Set the flow direction of a container node.
     #[parse_dsl(ignore)] // TODO(feat): When the reflect feature is disable, this doesn't compile.
