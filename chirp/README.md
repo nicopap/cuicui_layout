@@ -1,4 +1,7 @@
-# The `cuicui_dsl` file format
+# The `chirp` file format
+
+| **❗ A syntax overall is expected in 0.10.0!!! Beware ❗** |
+|------------------------------------------------------------|
 
 This is a [`cuicui_dsl`] companion crate.
 

@@ -5,6 +5,9 @@
 
 # Cuicui Layout
 
+| **❗ A syntax overall is expected in 0.10.0!!! Beware ❗** |
+|------------------------------------------------------------|
+
 A dumb layout algorithm you can rely on, built for and with bevy.
 
 <details><summary><h2>The Cyberpunk 2077 showcase</h2></summary>

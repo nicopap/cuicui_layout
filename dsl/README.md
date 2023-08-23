@@ -1,5 +1,8 @@
 # Cuicui DSL
 
+| **❗ A syntax overall is expected in 0.10.0!!! Beware ❗** |
+|------------------------------------------------------------|
+
 Making bevy entity hierarchies will never be this easy!
 
 Use the [`dsl!`] with any [`DslBundle`] type to spawn entities using a
