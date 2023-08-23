@@ -23,6 +23,7 @@ bevy-inspector-egui = "0.19"
 bevy_mod_sysfail = "3"
 bevy-scene-hook = "7.0.0"
 css-color = "0.2.5"
+# TODO make this optional, only used in debug module of cuicui_layout
 enumset = "1.1"
 # This is only for the binary examples, we shouldn't set the log level for the
 # library crates

@@ -58,7 +58,7 @@ impl<'a> Chirp<'a> {
     /// scene.
     pub fn interpret<D: ParseDsl>(
         &mut self,
-        _handles: &Handles,
+        handles: &Handles,
         load_context: Option<&LoadContext>,
         registry: &TypeRegistry,
         input: &[u8],
@@ -66,9 +66,8 @@ impl<'a> Chirp<'a> {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
         let mut input = BStr::new(input);
-        if let Err(err) =
-            Interpreter::new::<D>(&mut cmds, load_context, registry).statements(&mut input)
-        {
+        let interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
+        if let Err(err) = interpreter.statements(&mut input) {
             error!("{err}");
         };
         state.apply(self.world);

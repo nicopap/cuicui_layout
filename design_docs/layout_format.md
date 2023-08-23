@@ -105,7 +105,7 @@ some shared global state. Something like:
 ```rust
 #[derive(SystemParam)]
 struct CuicuiLoader {
-  loader: Res<'w, AssetLoader>,
+  loader: Res<'w, AssetServer>,
   loader_request: Res<'w, CuicuiLoaderRequest>,
 }
 #[derive(Resource)]
@@ -113,6 +113,12 @@ struct CuicuiLoaderRequest {
   channel: Sender<LoaderConfigRequest>,
 }
 ```
+
+So we need to associate the load request with the specific `load` invocation:
+* May have several loads per systems
+* System may run several times
+
+huuuee, this is too complex! For now I'll content my self with a global registry.
 
 ### Handle `Handle`s
 

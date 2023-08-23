@@ -3,9 +3,8 @@ use std::{fmt, num::ParseIntError, str::FromStr};
 use bevy::{
     ecs::{prelude::*, system::SystemState},
     log::Level,
-    prelude::{App, BuildChildren, Deref, DerefMut, Parent, Plugin},
+    prelude::{App, BuildChildren, ChildBuilder, Deref, DerefMut, Parent, Plugin},
     reflect::{Reflect, TypeRegistryInternal as TypeRegistry},
-    utils::HashMap,
 };
 use cuicui_chirp::{parse_dsl_impl, Chirp, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands, Name};
@@ -156,16 +155,21 @@ impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
         self.width = width;
         self.height = height;
     }
-
-    // ...
-
-    #[parse_dsl(ignore)]
-    #[allow(clippy::needless_pass_by_value)] // false positive
-    fn _spawn_ui<M>(&mut self, _ui_bundle: impl Into<M>, _cmds: &mut EntityCommands) -> Entity {
-        todo!()
+}
+fn inner_children(builder: &mut ChildBuilder) {
+    let menu_buttons = ["CONTINUE", "NEW GAME"];
+    for (i, name) in menu_buttons.iter().enumerate() {
+        let pixels = u16::try_from(i).unwrap();
+        builder.spawn((Name::new(format!("{name} inner")), Pixels(pixels)));
     }
 }
-
+fn outer_children(cmds: &mut Commands) {
+    let menu_buttons = ["CONTINUE", "NEW GAME"];
+    for (i, name) in menu_buttons.iter().enumerate() {
+        let pixels = u16::try_from(i).unwrap();
+        cmds.spawn((Name::new(format!("{name} outer")), Pixels(pixels + 70)));
+    }
+}
 fn main() {
     bevy::log::LogPlugin { level: Level::TRACE, ..Default::default() }.build(&mut App::new());
     let mut registry = TypeRegistry::new();
@@ -178,16 +182,28 @@ fn main() {
             "first row", // demonstrating
             rules(px(10), pct(11))
         ) { // that it is possible
+            code(inner_children);
             spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
+            code(inner_children);
             spawn(empty_px 31, "2"); // add comments
+            code(inner_children);
         }
+        code(outer_children);
         // To a chirp file
         column("second element", rules(px(40), pct(41))) {
             spawn(rules(pct(50), px(51)), empty_px 60, "child3");
             spawn(empty_px 61, "so called \"fourth\" child");
         }
 "#;
-    let handles: Handles = HashMap::new();
+    let mut handles: Handles = Handles::new();
+    handles.add_function("inner_children".to_owned(), |_, _, cmds, entity| {
+        cmds.entity(entity.unwrap()).with_children(inner_children);
+    });
+    handles.add_function("outer_children".to_owned(), |_, _, cmds, p| {
+        assert!(p.is_none());
+        outer_children(cmds);
+    });
+
     let mut world_chirp = Chirp::new(&mut world1);
     world_chirp.interpret::<LayoutDsl>(&handles, None, &registry, chirp.as_bytes());
 
@@ -200,8 +216,20 @@ fn main() {
             "first row", // demonstrating
             rules(px(10), pct(11))
         ) { // that it is possible
+            code(let cmds) {
+                inner_children(cmds);
+            }
             spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
+            code(let cmds) {
+                inner_children(cmds);
+            }
             spawn(empty_px 31, "2"); // add comments
+            code(let cmds) {
+                inner_children(cmds);
+            }
+        }
+        code(let cmds) {
+            outer_children(cmds);
         }
         // To a chirp file
         column("second element", rules(px(40), pct(41))) {
