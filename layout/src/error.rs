@@ -1,10 +1,8 @@
 #![allow(clippy::module_name_repetitions)]
 use std::fmt;
 
-use bevy::{
-    ecs::query::ReadOnlyWorldQuery,
-    prelude::{Entity, Name, Query},
-};
+use bevy::ecs::query::ReadOnlyWorldQuery;
+use bevy::prelude::{Entity, Name, Query};
 use bevy_mod_sysfail::FailureMode;
 use thiserror::Error;
 

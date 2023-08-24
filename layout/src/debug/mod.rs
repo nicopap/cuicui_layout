@@ -8,27 +8,24 @@
 #![doc = include_str!("../../debug.md")]
 #![allow(clippy::needless_pass_by_value)]
 
-use bevy::{
-    core_pipeline::clear_color::ClearColorConfig,
-    ecs::{prelude::*, query::Has, system::SystemParam},
-    prelude::{
-        default, info, warn, Camera, Camera2d, Camera2dBundle, Children, Color, GizmoConfig,
-        Gizmos, Input, KeyCode, Name, OrthographicProjection, Plugin as BevyPlugin, Update, Vec2,
-    },
-    render::view::RenderLayers,
-    window::{PrimaryWindow, Window},
-};
+use bevy::app::{Plugin as BevyPlugin, Update};
+use bevy::core_pipeline::clear_color::ClearColorConfig;
+use bevy::core_pipeline::core_2d::{Camera2d, Camera2dBundle};
+use bevy::ecs::{prelude::*, query::Has, system::SystemParam};
+use bevy::input::prelude::{Input, KeyCode};
+use bevy::log::{info, warn};
+use bevy::prelude::{Children, GizmoConfig, Gizmos, Name, Vec2};
+use bevy::render::{prelude::*, view::RenderLayers};
+use bevy::utils::default;
+use bevy::window::{PrimaryWindow, Window};
 
-use crate::{
-    direction::Axis, Flow, LayoutRect, LayoutRootCamera, LeafRule, Node, Root, Rule, ScreenRoot,
-    Size,
-};
-
-mod inset;
-
+use crate::direction::Axis;
+use crate::{Flow, LayoutRect, LayoutRootCamera, LeafRule, Node, Root, Rule, ScreenRoot, Size};
 use inset::InsetGizmo;
 
 pub use enumset::{EnumSet, EnumSetType};
+
+mod inset;
 
 /// The [`Camera::order`] index used by the layout debug camera.
 pub const LAYOUT_DEBUG_CAMERA_ORDER: isize = 255;

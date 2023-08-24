@@ -2,13 +2,12 @@
 
 use std::{num::ParseFloatError, str::FromStr};
 
+use bevy::ecs::{prelude::*, query::ReadOnlyWorldQuery};
+use bevy::log::trace;
+use bevy::prelude::{Children, Name, Vec2};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
-use bevy::{
-    ecs::query::ReadOnlyWorldQuery,
-    prelude::{trace, Children, Component, Entity, Name, Query, Vec2},
-    utils::FloatOrd,
-};
+use bevy::utils::FloatOrd;
 use thiserror::Error;
 
 const WIDTH: Flow = Flow::Horizontal;

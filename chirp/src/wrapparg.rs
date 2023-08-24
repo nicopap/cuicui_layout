@@ -11,10 +11,9 @@
 use std::{any, convert::Infallible, marker::PhantomData, str, str::FromStr};
 
 use bevy::asset::{Asset, AssetPath, Handle, LoadContext};
-use bevy::reflect::{
-    erased_serde::__private::serde::de::DeserializeSeed, serde::TypedReflectDeserializer,
-    FromReflect, Reflect, TypeRegistryInternal as TypeRegistry,
-};
+use bevy::reflect::erased_serde::__private::serde::de::DeserializeSeed;
+use bevy::reflect::serde::TypedReflectDeserializer;
+use bevy::reflect::{FromReflect, Reflect, TypeRegistryInternal as TypeRegistry};
 use thiserror::Error;
 
 /// Error occuring in [`to_handle`].

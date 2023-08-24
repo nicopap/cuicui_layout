@@ -20,19 +20,15 @@
 //!
 //! Also, sizes do not take into account the `Transform` size. I'm not sure how
 //! wishable as a feature this is, so please open an issue if you want it.
+use bevy::ecs::prelude::*;
+use bevy::ecs::{query::QueryItem, schedule::SystemSetConfig, system::SystemParam};
+use bevy::math::Vec3Swizzles;
+use bevy::prelude::{Assets, Handle, Image, Mesh, Vec2};
+use bevy::sprite::Mesh2dHandle;
 #[cfg(feature = "sprite_text")]
 use bevy::text::{Font, Text, Text2dBounds, TextPipeline};
-use bevy::{
-    ecs::prelude::*,
-    ecs::{query::QueryItem, schedule::SystemSetConfig, system::SystemParam},
-    math::Vec3Swizzles,
-    prelude::{Assets, Handle, Image, Mesh, Vec2},
-    sprite::Mesh2dHandle,
-};
-use cuicui_layout::{
-    require_layout_recompute, ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
-    Node, Size,
-};
+use cuicui_layout::{require_layout_recompute, Node, Size};
+use cuicui_layout::{ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem};
 
 #[derive(SystemParam)]
 pub(crate) struct SpriteContentSize<'w> {

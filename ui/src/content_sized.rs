@@ -2,16 +2,14 @@
 //! and text's size, rather that fixed at spawn time.
 //!
 //! This relies on the [`bevy::ui::Node`] component.
-use bevy::{
-    ecs::{prelude::*, schedule::SystemSetConfig, system::SystemParam},
-    prelude::{trace, Assets, Vec2},
-    text::{Font, Text, TextPipeline},
-    ui::widget::UiImageSize,
-};
-use cuicui_layout::{
-    require_layout_recompute, ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
-    Node, Size,
-};
+use bevy::asset::Assets;
+use bevy::ecs::{prelude::*, schedule::SystemSetConfig, system::SystemParam};
+use bevy::log::trace;
+use bevy::prelude::Vec2;
+use bevy::text::{Font, Text, TextPipeline};
+use bevy::ui::widget::UiImageSize;
+use cuicui_layout::{require_layout_recompute, Node, Size};
+use cuicui_layout::{ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem};
 
 #[derive(SystemParam)]
 pub(crate) struct UiContentSize<'w> {

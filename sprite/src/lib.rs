@@ -19,21 +19,18 @@
     clippy::module_name_repetitions
 )]
 
-use bevy::{
-    ecs::prelude::*,
-    prelude::{
-        default, App, Camera, Camera2dBundle, OrthographicProjection, Plugin as BevyPlugin,
-        Transform, Vec2,
-    },
-    render::view::{Layer, RenderLayers},
-};
+use bevy::app::{App, Plugin as BevyPlugin};
+use bevy::ecs::prelude::*;
+use bevy::prelude::{Camera, Camera2dBundle, OrthographicProjection, Transform, Vec2};
+use bevy::render::view::{Layer, RenderLayers};
+use bevy::utils::default;
 use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root, ScreenRoot};
 
+pub use dsl::SpriteDsl;
+
 pub mod content_sized;
 pub mod dsl;
-
-pub use dsl::SpriteDsl;
 
 /// Create a [`Root`] container as the screen root, its size will dyamically
 /// follow the size of the viewport of camera marked iwth [`LayoutRootCamera`].

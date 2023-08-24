@@ -155,6 +155,8 @@ pub fn chirp_hook(
             let id = scene_spawner.spawn(scene.clone_weak());
             // TODO(bug): situations where the parent changes requires updating
             // this value (manual change after spawning
+            // TODO(bug): only set parent the things that do not already have one,
+            // otherwise we are flattening everything.
             let parent = parent.map(Parent::get);
             let handle = chirp.clone();
             ChirpInstance { id, parent, state: State::Loading, handle }

@@ -57,19 +57,21 @@
     clippy::module_name_repetitions
 )]
 
-#[cfg(doctest)]
-#[doc = include_str!("../../README.md")]
-pub struct TestWorkspaceReadme;
-
+use bevy::app::{App, Plugin as BevyPlugin};
 use bevy::ecs::prelude::*;
-use bevy::prelude::{App, Camera, Plugin as BevyPlugin, Style};
+use bevy::render::camera::Camera;
+use bevy::ui::Style;
 use bevy_mod_sysfail::quick_sysfail;
 use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root};
+
+pub use dsl::UiDsl;
 
 pub mod content_sized;
 pub mod dsl;
 
-pub use dsl::UiDsl;
+#[cfg(doctest)]
+#[doc = include_str!("../../README.md")]
+pub struct TestWorkspaceReadme;
 
 /// System updating the [`cuicui_layout::ScreenRoot`] [`cuicui_layout::Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.

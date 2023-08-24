@@ -1,11 +1,10 @@
 use std::{fmt, num::ParseIntError, str::FromStr};
 
-use bevy::{
-    ecs::{prelude::*, system::SystemState},
-    log::Level,
-    prelude::{App, BuildChildren, ChildBuilder, Deref, DerefMut, Parent, Plugin},
-    reflect::{Reflect, TypeRegistryInternal as TypeRegistry},
-};
+use bevy::app::{App, Plugin};
+use bevy::ecs::{prelude::*, system::SystemState};
+use bevy::log::Level;
+use bevy::prelude::{BuildChildren, ChildBuilder, Deref, DerefMut, Parent};
+use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
 use cuicui_chirp::{parse_dsl_impl, ChirpReader, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands, Name};
 use pretty_assertions::assert_eq;

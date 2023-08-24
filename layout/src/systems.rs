@@ -6,10 +6,8 @@ use bevy::prelude::{debug, Children, Name, Parent};
 use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
 
-use crate::{
-    error::Computed, layout::Layout, layout::NodeQuery, ComputeLayoutError, LayoutRect, Node, Root,
-    Size,
-};
+use crate::layout::{Layout, NodeQuery};
+use crate::{error::Computed, ComputeLayoutError, LayoutRect, Node, Root, Size};
 
 /// A [`Node`] that can't have children.
 #[derive(Component, Clone, Copy, Debug, Default)]

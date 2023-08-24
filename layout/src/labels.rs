@@ -1,5 +1,4 @@
-use std::fmt;
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
 
 use bevy::prelude::SystemSet;
 

@@ -26,7 +26,7 @@ use bevy::asset::LoadContext;
 use bevy::ecs::{prelude::*, system::SystemState};
 use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 
-use interpret::Interpreter;
+use crate::interpret::Interpreter;
 
 pub use anyhow;
 #[cfg(feature = "macros")]

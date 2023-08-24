@@ -24,8 +24,8 @@
     clippy::module_name_repetitions
 )]
 
-use bevy::app::{App, Plugin as BevyPlugin};
-use bevy::prelude::{apply_deferred, resource_exists_and_equals, IntoSystemConfigs, Update};
+use bevy::app::{App, Plugin as BevyPlugin, Update};
+use bevy::ecs::prelude::*;
 
 pub use alignment::{Alignment, Distribution};
 pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};

@@ -1,14 +1,14 @@
 //! Bundles wrapping [`bevy::sprite`] bundles with additional [`cuicui_layout`]
 //! components.
+use bevy::asset::{Handle, LoadContext};
+use bevy::ecs::{prelude::*, system::EntityCommands};
+use bevy::prelude::{Deref, DerefMut};
+use bevy::reflect::TypeRegistryInternal as Registry;
+use bevy::render::prelude::*;
+use bevy::sprite;
 #[cfg(feature = "sprite_text")]
-use bevy::text::{Text, Text2dBundle, TextStyle};
-use bevy::{
-    asset::LoadContext,
-    ecs::system::EntityCommands,
-    prelude::{default, Bundle, Color, Deref, DerefMut, Entity, Handle, Image, SpatialBundle},
-    reflect::TypeRegistryInternal as Registry,
-    sprite,
-};
+use bevy::text::prelude::*;
+use bevy::utils::default;
 use css_color::Srgb;
 use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;

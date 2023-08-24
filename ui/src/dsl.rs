@@ -1,20 +1,17 @@
 //! Bundles wrapping [`bevy::ui::node_bundles`] with additional [`cuicui_layout`]
 //! components.
-use bevy::{
-    asset::LoadContext,
-    ecs::system::EntityCommands,
-    prelude::{
-        default, BuildChildren, Bundle, Color, Deref, DerefMut, Entity, Handle, Image, NodeBundle,
-        Text, TextStyle, UiImage,
-    },
-    reflect::TypeRegistryInternal as Registry,
-    text::TextLayoutInfo,
-    ui::{
-        node_bundles as bevy_ui,
-        widget::{TextFlags, UiImageSize},
-        BackgroundColor, BorderColor, ContentSize, UiRect, Val,
-    },
-};
+
+use bevy::asset::{Handle, LoadContext};
+use bevy::ecs::{prelude::*, system::EntityCommands};
+use bevy::hierarchy::BuildChildren;
+use bevy::prelude::{Deref, DerefMut};
+use bevy::reflect::TypeRegistryInternal as Registry;
+use bevy::render::{color::Color, texture::Image};
+use bevy::text::{Text, TextLayoutInfo, TextStyle};
+use bevy::ui::node_bundles as bevy_ui;
+use bevy::ui::widget::{TextFlags, UiImageSize};
+use bevy::ui::{prelude::*, ContentSize};
+use bevy::utils::default;
 use css_color::Srgb;
 use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;
