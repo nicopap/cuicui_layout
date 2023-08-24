@@ -205,7 +205,12 @@ fn main() {
     });
 
     let mut world_chirp = Chirp::new(&mut world1);
-    world_chirp.interpret_logging::<LayoutDsl>(&handles, None, &registry, chirp.as_bytes());
+    assert!(world_chirp.interpret_logging::<LayoutDsl>(
+        &handles,
+        None,
+        &registry,
+        chirp.as_bytes()
+    ));
 
     let mut world2 = World::new();
     let mut state = SystemState::<Commands>::new(&mut world2);

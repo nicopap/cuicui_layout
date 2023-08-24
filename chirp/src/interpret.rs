@@ -27,6 +27,8 @@ pub enum InterpError {
     CodeNotPresent(String),
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
+    #[error("TODO(err): Currently the parser is bad at reporting errors")]
+    ParseError,
 }
 #[derive(Debug, Error, miette::Diagnostic)]
 #[error("at {}: {error}", NiceSpan(self.span))]
@@ -256,10 +258,14 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         self.mutable.borrow_mut().current.pop();
     }
     pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
-        let parse_error = self.statements(&mut Located::new(BStr::new(input)));
-        let errors = mem::take(&mut self.mutable.borrow_mut().errors);
+        let spanned_input = Located::new(BStr::new(input));
+        let mut parser = |i: &mut _| self.statements(i);
+        let parse_error = parser.parse(spanned_input);
+        let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
         if let Err(err) = parse_error {
-            error!("TODO(err): Currently the parser is bad at reporting errors: {err}");
+            let range = err.offset()..err.offset();
+            let error = SpannedError { error: InterpError::ParseError, span: range.into() };
+            errors.push(error);
         }
         if errors.is_empty() {
             Ok(())
@@ -278,14 +284,14 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         use winnow::{
             ascii::{escaped, multispace0, multispace1},
             combinator::{
-                alt, delimited, dispatch, opt, preceded, repeat, separated0, separated_pair,
-                success, terminated,
+                alt, cut_err, delimited as delim, dispatch, opt, preceded as starts, repeat,
+                separated0, separated_pair, success, terminated,
             },
-            token::{one_of, take_till1},
+            token::{one_of, take_till1 as until},
         };
         // Note: we use `void` to reduce the size of input/output types. It's
         // a major source of performance problems in winnow.
-        let line_comment = || preceded(b"//", take_till1(b'\n').void());
+        let line_comment = || starts(b"//", until(b'\n').void());
         let repeat = repeat::<_, _, (), _, _>;
         let spc_trail = || repeat(.., (line_comment(), multispace0));
         let (spc, spc1, opt) = (
@@ -293,18 +299,18 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             || multispace1.void(),
             || opt(b' ').void(),
         );
-        let ident = || take_till1(b" \n\t;\",()\\{}");
+        let ident = || until(b" \n\t;\",()\\{}");
 
         let methods = &|| {
-            let str_literal = delimited(
+            let str_literal = delim(
                 b'"',
-                escaped(take_till1(b"\\\""), '\\', one_of(b"\\\"")).recognize(),
+                escaped(until(b"\\\""), '\\', one_of(b"\\\"")).recognize(),
                 b'"',
             );
             let args = alt((
-                preceded(spc1(), ident()),
+                starts(spc1(), ident()),
                 // TODO(perf): split this in a sane way, re-parsing might be costly
-                preceded(spc(), scoped_text),
+                starts(spc(), scoped_text),
             ));
             let empty = success::<_, &[u8], _>(b"");
             let method = alt((
@@ -316,7 +322,11 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
                     .map(|((n, arg), span)| self.method(span, n, arg)),
             ));
             let comma_list = |p| separated0::<_, _, (), _, _, _, _>(p, (b',', spc()));
-            delimited(b'(', delimited(spc(), comma_list(method), spc()), b')')
+            cut_err(delim(
+                b'(',
+                delim(spc(), comma_list(cut_err(method)), spc()),
+                b')',
+            ))
         };
         let nest = |i: &mut _| {
             self.push_children();
@@ -327,25 +337,25 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         let terminal = |_| {
             self.statement_spawn();
         };
-        let tail = || alt((b';'.map(terminal), delimited(b'{', nest, b'}')));
+        let tail = || alt((b';'.map(terminal), delim(b'{', nest, b'}')));
         let statement = dispatch! { ident();
             b"code" => {
-                let head = preceded(opt(), delimited(b'(', ident(), b')'));
+                let head = starts(opt(), delim(b'(', ident(), b')'));
                 let head = head.with_span().map(|(i, span)| self.code(span, i));
                 terminated(head, (opt(), b';'))
             },
             b"spawn" => {
-                let head = preceded(opt(), methods());
+                let head = starts(opt(), methods());
                 separated_pair(head, opt(), tail()).void()
             },
             method => {
-                let head = preceded(opt(), methods());
+                let head = starts(opt(), methods());
                 let head = head.with_span().map(|(_, span)| self.method(span, method, b""));
                 separated_pair(head, opt(), tail()).void()
             },
         };
         let space_list = |p| separated0::<_, _, (), _, _, _, _>(p, spc());
-        let mut statements = delimited(spc(), space_list(statement), spc());
+        let mut statements = cut_err(delim(spc(), space_list(statement), spc()));
         statements.parse_next(input)
     }
 }

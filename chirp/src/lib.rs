@@ -103,14 +103,19 @@ impl<'a> Chirp<'a> {
     }
     /// Same as [`Self::interpret`], but directly logs error message instead
     /// of returning the result.
+    ///
+    /// Similarly to `interpret`, the world is in an invalid state if parsing
+    /// fails. If this returns `true`, parsing succeeded, if this returns `false`,
+    /// it failed.
     #[allow(clippy::missing_panics_doc)] // panics only on `fmt::write` errors.
+    #[must_use]
     pub fn interpret_logging<D: ParseDsl>(
         &mut self,
         handles: &Handles,
         load_context: Option<&LoadContext>,
         registry: &TypeRegistry,
         input: &[u8],
-    ) {
+    ) -> bool {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
         let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
@@ -118,8 +123,10 @@ impl<'a> Chirp<'a> {
         if let Err(err) = &result {
             log_miette_error!(err);
         }
-        if result.is_ok() {
+        let ok = result.is_ok();
+        if ok {
             state.apply(self.world);
         }
+        ok
     }
 }
