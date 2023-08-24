@@ -8,20 +8,12 @@
 // use inline(always) on functions that are very small, it won't add significative
 // compile overhead in anycase, but may help the optimizer elide some code.
 
-use std::{
-    any,
-    convert::Infallible,
-    marker::PhantomData,
-    str::{self, FromStr},
-};
+use std::{any, convert::Infallible, marker::PhantomData, str, str::FromStr};
 
-use bevy::{
-    asset::{Asset, AssetPath, LoadContext},
-    prelude::Handle,
-    reflect::{
-        erased_serde::__private::serde::de::DeserializeSeed, serde::TypedReflectDeserializer,
-        FromReflect, Reflect, TypeRegistryInternal as TypeRegistry,
-    },
+use bevy::asset::{Asset, AssetPath, Handle, LoadContext};
+use bevy::reflect::{
+    erased_serde::__private::serde::de::DeserializeSeed, serde::TypedReflectDeserializer,
+    FromReflect, Reflect, TypeRegistryInternal as TypeRegistry,
 };
 use thiserror::Error;
 

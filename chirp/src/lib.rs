@@ -22,17 +22,9 @@ macro_rules! log_miette_error {
     };
 }
 
-pub mod interpret;
-pub mod loader;
-pub mod parse;
-pub mod wrapparg;
-
-use bevy::{
-    asset::LoadContext,
-    ecs::system::SystemState,
-    prelude::{Commands, World},
-    reflect::TypeRegistryInternal as TypeRegistry,
-};
+use bevy::asset::LoadContext;
+use bevy::ecs::{prelude::*, system::SystemState};
+use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 
 use interpret::Interpreter;
 
@@ -40,7 +32,13 @@ pub use anyhow;
 #[cfg(feature = "macros")]
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
+pub use loader::spawn::{Chirp, ChirpInstances};
 pub use parse::ParseDsl;
+
+pub mod interpret;
+pub mod loader;
+pub mod parse;
+pub mod wrapparg;
 
 #[doc(hidden)]
 pub mod bevy_types {
@@ -49,25 +47,25 @@ pub mod bevy_types {
 
 /// Deserialized `dsl!` object.
 ///
-/// Use [`Chirp::new`] to create a `Chirp` that will spawn stuff into the
-/// provided [`World`]. Note that you may create a bevy `Scene` and pass the
+/// Use [`ChirpReader::new`] to create a `ChirpReader` that will spawn stuff into
+/// the provided [`World`]. Note that you may create a bevy `Scene` and pass the
 /// `Scene`'s world instead of re-using the app world.
 ///
-/// Use [`Chirp::interpret`] to interpret the `Chirp` file/text and add it to the
+/// Use [`ChirpReader::interpret`] to interpret the `Chirp` file/text and add it to the
 /// world.
-pub struct Chirp<'a> {
+pub struct ChirpReader<'a> {
     /// The scene read from the provided input.
     pub world: &'a mut World,
 }
-impl<'a> Chirp<'a> {
-    /// Create a new `Chirp` that will write to the provided world.
+impl<'a> ChirpReader<'a> {
+    /// Create a new `ChirpReader` that will write to the provided world.
     ///
     /// Note that you may create a temporary world instead of using the main
     /// app world.
     pub fn new(world: &'a mut World) -> Self {
         Self { world }
     }
-    /// Create a [`Chirp`] from arbitrary byte slices.
+    /// Create a [`ChirpReader`] from arbitrary byte slices.
     ///
     /// This directly interprets the input as a chirp file and creates a bevy
     /// scene.

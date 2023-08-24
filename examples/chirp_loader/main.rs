@@ -1,9 +1,7 @@
-// CURRENTLY BROKEN: the loader doesn't add the necessary components to the
-// root entity, which makes it useless for UI definition
 use std::{fmt, time::Duration};
 
 use bevy::{asset::ChangeWatcher, prelude::*};
-use bevy_scene_hook::reload::{self, Hook};
+use cuicui_chirp::Chirp;
 use cuicui_layout::LayoutRootCamera;
 use cuicui_layout_bevy_ui::UiDsl;
 
@@ -34,8 +32,5 @@ fn main() {
 #[allow(clippy::needless_pass_by_value)] // false positive
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
-    cmds.spawn(reload::SceneBundle {
-        scene: SceneBundle { scene: assets.load("bevypunk.chirp"), ..default() },
-        reload: Hook::new(|_, _, _, _| {}, "bevypunk.chirp".to_string()),
-    });
+    cmds.spawn(assets.load::<Chirp, _>("bevypunk.chirp"));
 }

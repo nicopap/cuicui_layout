@@ -1,23 +1,30 @@
 //! Bevy [`AssetLoader`] for the chirp file format.
-use std::{
-    any::type_name,
-    marker::PhantomData,
-    sync::{Arc, RwLock, TryLockError},
-};
+//!
+//! Adds a Loader for the `.chirp` file format [`ChirpLoader`] and a global
+//! "handles" registry [`WorldHandles`], accessible as a bevy [`Resource`].
+//!
+//! Handles are used for `code` statements in `.chirp` files.
+//!
+//! The [`crate::loader::Plugin`] defined in this module adds `ChirpLoader` as
+//! an asset loader. Any [`Entity`] with a `Handle<Chirp>` **will be replaced**
+//! by several entities, the one at the root of the `.chirp` file.
+
+use std::{any::type_name, marker::PhantomData, sync::Arc, sync::RwLock, sync::TryLockError};
 
 use anyhow::Result;
-use bevy::{
-    asset::{AssetLoader, LoadContext, LoadedAsset},
-    prelude::{
-        error, AddAsset, App, AppTypeRegistry, Commands, Entity, FromWorld, Plugin as BevyPlugin,
-        Resource, World,
-    },
-    reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry},
-    scene::Scene,
-};
+use bevy::app::{App, Plugin as BevyPlugin, PostUpdate};
+use bevy::asset::{prelude::*, AssetLoader, LoadContext, LoadedAsset};
+use bevy::ecs::{prelude::*, schedule::ScheduleLabel};
+use bevy::log::error;
+use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
+use bevy::scene::{scene_spawner_system, Scene};
+use bevy::transform::TransformSystem;
 use thiserror::Error;
 
-use crate::{interpret, Chirp, Handles, ParseDsl};
+use crate::{interpret, ChirpReader, Handles, ParseDsl};
+use spawn::{chirp_hook, Chirp, ChirpInstances};
+
+pub(super) mod spawn;
 
 struct InternalLoader<'a, 'w, 'h, 'r, D> {
     ctx: &'a mut LoadContext<'w>,
@@ -72,7 +79,7 @@ impl<D> WorldHandles<D> {
     }
 }
 
-/// Loads a bevy [`Scene`] declared with a
+/// Loads a bevy [`Scene`] declared in a `chirp` file.
 pub struct ChirpLoader<D> {
     registry: TypeRegistryArc,
     handles: HandlesArc,
@@ -115,12 +122,14 @@ impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
 
     fn load(&mut self, file: &[u8]) -> Result<(), interpret::Errors> {
         let scene = self.load_scene(file)?;
-        self.ctx.set_default_asset(LoadedAsset::new(scene));
+        let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
+        self.ctx
+            .set_default_asset(LoadedAsset::new(spawn::Chirp(scene)));
         Ok(())
     }
     fn load_scene(&mut self, file: &[u8]) -> Result<Scene, interpret::Errors> {
         let mut world = World::new();
-        let mut chirp = Chirp::new(&mut world);
+        let mut chirp = ChirpReader::new(&mut world);
         let result = chirp.interpret::<D>(self.handles, Some(self.ctx), self.registry, file);
         if let Err(err) = &result {
             log_miette_error!(err);
@@ -140,6 +149,10 @@ impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
 /// [`bevy-scene-hook::reload::SceneHook`]: https://docs.rs/bevy-scene-hook/latest/bevy_scene_hook/reload/index.html
 pub struct Plugin<D>(PhantomData<fn(D)>);
 
+/// The `SpawnChirp` schedule spawns chirp scenes between `Update` and `PostUpdate`.
+#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct SpawnChirp;
+
 impl Plugin<()> {
     /// Create a [`Plugin`] that load chirp files specified by the `D` [DSL].
     ///
@@ -151,6 +164,14 @@ impl Plugin<()> {
 }
 impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
     fn build(&self, app: &mut App) {
-        app.init_asset_loader::<ChirpLoader<D>>();
+        app.add_systems(
+            PostUpdate,
+            (chirp_hook.after(scene_spawner_system), apply_deferred)
+                .chain()
+                .before(TransformSystem::TransformPropagate),
+        );
+        app.init_resource::<ChirpInstances>()
+            .add_asset::<Chirp>()
+            .init_asset_loader::<ChirpLoader<D>>();
     }
 }

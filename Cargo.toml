@@ -21,7 +21,6 @@ repository = "https://github.com/nicopap/cuicui_layout"
 anyhow = "1.0.72"
 bevy-inspector-egui = "0.19"
 bevy_mod_sysfail = "3"
-bevy-scene-hook = "7.0.0"
 css-color = "0.2.5"
 # TODO make this optional, only used in debug module of cuicui_layout
 enumset = "1.1"

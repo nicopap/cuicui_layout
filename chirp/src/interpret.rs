@@ -2,21 +2,18 @@
 
 use std::{borrow::Cow, cell::RefCell, fmt, mem, ops::Range};
 
-use bevy::{
-    asset::LoadContext,
-    prelude::{error, trace, BuildChildren, Commands, Entity},
-    reflect::{Reflect, TypeRegistryInternal as TypeRegistry},
-    utils::HashMap,
-};
-use miette::SourceSpan;
+use bevy::asset::LoadContext;
+use bevy::ecs::prelude::{Commands, Entity};
+use bevy::hierarchy::BuildChildren;
+use bevy::log::{error, trace};
+use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
+use bevy::utils::HashMap;
+use miette::{Diagnostic, NamedSource, SourceSpan};
 use smallvec::SmallVec;
 use thiserror::Error;
 use winnow::{BStr, Located, PResult, Parser};
 
-use crate::{
-    parse::{scoped_text, MethodCtx},
-    ParseDsl,
-};
+use crate::parse::{scoped_text, MethodCtx, ParseDsl};
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
@@ -27,23 +24,46 @@ pub enum InterpError {
     CodeNotPresent(String),
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
-    #[error("TODO(err): Currently the parser is bad at reporting errors")]
+    // TODO(err): better error messages
+    #[error("Bad syntax")]
     ParseError,
 }
-#[derive(Debug, Error, miette::Diagnostic)]
-#[error("at {}: {error}", NiceSpan(self.span))]
+const PARSE_ERROR: &str = "\
+More actionable error messages are coming, until then, check the grammar at:
+
+https://github.com/nicopap/cuicui_layout/blob/712f19d58eea48d50dde6ed4ed4c1b42ac6f2544/design_docs/layout_format.md#grammar";
+impl InterpError {
+    const fn help_message(&self) -> Option<&'static str> {
+        match self {
+            InterpError::CodeNotPresent(_) => None,
+            InterpError::DslError(_) => Some("The error comes from the ParseDsl implementation"),
+            InterpError::ParseError => Some(PARSE_ERROR),
+        }
+    }
+}
+#[derive(Debug, Error, Diagnostic)]
+#[error("{error} {}", NiceSpan(self.span))]
 struct SpannedError {
     #[label]
     span: SourceSpan,
     error: InterpError,
+    #[help]
+    help: Option<&'static str>,
+}
+impl SpannedError {
+    fn new(error: impl Into<InterpError>, span: impl Into<SourceSpan>) -> Self {
+        let (error, span) = (error.into(), span.into());
+        let help = error.help_message();
+        Self { span, error, help }
+    }
 }
 /// Describe errors encountered while parsing and interpreting a chirp file.
-#[derive(Debug, Error, miette::Diagnostic)]
+#[derive(Debug, Error, Diagnostic)]
 #[diagnostic()]
 #[error("Invalid chirp file: {}", NiceErrors(&self.errors))]
 pub struct Errors {
     #[source_code] // TODO(perf): Probably can get away without allocation
-    source_code: String,
+    source_code: NamedSource,
     #[related]
     errors: Vec<SpannedError>,
 }
@@ -52,7 +72,7 @@ impl fmt::Display for NiceSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "offset {}..{}",
+            "[{}, {}]",
             self.0.offset(),
             self.0.offset() + self.0.len()
         )
@@ -173,8 +193,7 @@ struct InnerInterpreter<'w, 's, 'a, D> {
 impl<'w, 's, 'a, D> InnerInterpreter<'w, 's, 'a, D> {
     #[cold]
     fn push_error(&mut self, span: Range<usize>, error: impl Into<InterpError>) {
-        let error = SpannedError { span: span.into(), error: error.into() };
-        self.errors.push(error);
+        self.errors.push(SpannedError::new(error, span));
     }
 }
 #[derive(Debug)]
@@ -263,14 +282,16 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         let parse_error = parser.parse(spanned_input);
         let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
         if let Err(err) = parse_error {
-            let range = err.offset()..err.offset();
-            let error = SpannedError { error: InterpError::ParseError, span: range.into() };
+            let error = SpannedError::new(InterpError::ParseError, err.offset()..err.offset());
             errors.push(error);
         }
         if errors.is_empty() {
             Ok(())
         } else {
+            let str = Cow::Borrowed("Static str");
+            let file_name = self.ctx.load.map_or(str, |l| l.path().to_string_lossy());
             let source_code = String::from_utf8_lossy(input).to_string();
+            let source_code = NamedSource::new(file_name, source_code);
             Err(Errors { source_code, errors })
         }
     }

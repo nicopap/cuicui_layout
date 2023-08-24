@@ -24,27 +24,8 @@
     clippy::module_name_repetitions
 )]
 
-use bevy::prelude::{
-    apply_deferred, resource_exists_and_equals, App, IntoSystemConfigs, Plugin as BevyPlugin,
-    Update,
-};
-
-mod alignment;
-pub mod bundles;
-mod content_sized;
-#[cfg(feature = "debug")]
-pub mod debug;
-mod direction;
-pub mod dsl;
-mod error;
-mod labels;
-mod layout;
-mod systems;
-
-/// Functions to simplify using [`dsl::LayoutDsl`].
-pub mod dsl_functions {
-    pub use crate::dsl::{child, pct, px};
-}
+use bevy::app::{App, Plugin as BevyPlugin};
+use bevy::prelude::{apply_deferred, resource_exists_and_equals, IntoSystemConfigs, Update};
 
 pub use alignment::{Alignment, Distribution};
 pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};
@@ -60,6 +41,24 @@ pub use systems::{
     compute_layout, require_layout_recompute, update_leaf_nodes, LastLayoutChange,
     LayoutRootCamera, LeafNode, LeafNodeInsertWitness, ScreenRoot,
 };
+
+mod alignment;
+mod content_sized;
+mod direction;
+mod error;
+mod labels;
+mod layout;
+mod systems;
+
+pub mod bundles;
+#[cfg(feature = "debug")]
+pub mod debug;
+pub mod dsl;
+
+/// Functions to simplify using [`dsl::LayoutDsl`].
+pub mod dsl_functions {
+    pub use crate::dsl::{child, pct, px};
+}
 
 /// Add layout-related sets and systems to the `Update` schedule.
 ///

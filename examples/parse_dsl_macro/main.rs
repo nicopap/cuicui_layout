@@ -6,7 +6,7 @@ use bevy::{
     prelude::{App, BuildChildren, ChildBuilder, Deref, DerefMut, Parent, Plugin},
     reflect::{Reflect, TypeRegistryInternal as TypeRegistry},
 };
-use cuicui_chirp::{parse_dsl_impl, Chirp, Handles, ParseDsl};
+use cuicui_chirp::{parse_dsl_impl, ChirpReader, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands, Name};
 use pretty_assertions::assert_eq;
 
@@ -204,7 +204,7 @@ fn main() {
         outer_children(cmds);
     });
 
-    let mut world_chirp = Chirp::new(&mut world1);
+    let mut world_chirp = ChirpReader::new(&mut world1);
     assert!(world_chirp.interpret_logging::<LayoutDsl>(
         &handles,
         None,

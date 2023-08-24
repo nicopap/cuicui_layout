@@ -6,11 +6,11 @@
     clippy::redundant_pub_crate
 )]
 
-mod generate;
-
 use generate::ImplConfig;
 use proc_macro::TokenStream as TokenStream1;
 use syn::{parse_macro_input, ItemImpl};
+
+mod generate;
 
 #[doc = include_str!("../README.md")]
 #[proc_macro_attribute]

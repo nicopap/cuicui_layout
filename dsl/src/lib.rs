@@ -6,14 +6,15 @@
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(clippy::use_self, clippy::module_name_repetitions)]
 
+use std::borrow::Cow;
+
+use bevy::prelude::{BuildChildren, ChildBuilder, Commands, Entity};
+
+pub use bevy::{core::Name, ecs::system::EntityCommands};
+
 /// This exports the dummy impls we make to test the documentation on the macro.
 #[doc(hidden)]
 pub mod macros;
-
-use bevy::prelude::{BuildChildren, ChildBuilder, Commands, Entity};
-use std::borrow::Cow;
-
-pub use bevy::{core::Name, ecs::system::EntityCommands};
 
 /// Convert this into an [`EntityCommands`].
 ///

@@ -57,7 +57,7 @@ impl<S> fmt::Debug for ContentSizedComputeSystem<S> {
 impl<S> Eq for ContentSizedComputeSystem<S> {}
 impl<S> Clone for ContentSizedComputeSystem<S> {
     fn clone(&self) -> Self {
-        Self::default()
+        *self
     }
 }
 impl<S> Copy for ContentSizedComputeSystem<S> {}

@@ -12,7 +12,6 @@ path = "main.rs"
 
 [dependencies]
 bevy-inspector-egui.workspace = true
-bevy-scene-hook.workspace = true
 log.workspace = true
 cuicui_chirp.workspace = true
 cuicui_dsl.workspace = true

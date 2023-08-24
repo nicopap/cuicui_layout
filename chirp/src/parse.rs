@@ -2,10 +2,10 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use bevy::{asset::LoadContext, reflect::TypeRegistryInternal as TypeRegistry};
+use bevy::asset::LoadContext;
+use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
-
 use winnow::{ascii, BStr, Located, PResult, Parser};
 
 /// Error returned by one of the `argN` functions.
