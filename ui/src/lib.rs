@@ -80,7 +80,7 @@ pub fn update_ui_camera_root(
 ) {
     for cam in &ui_cameras {
         let size = cam.logical_viewport_size()?;
-        for mut root in roots.iter_mut() {
+        for mut root in &mut roots {
             let bounds = root.size_mut();
             *bounds.width = size.x;
             *bounds.height = size.y;
