@@ -119,8 +119,12 @@ fn update_debug_camera(
         return;
     }
     if options.flags.is_empty() {
-        let Some(cam) = options.layout_gizmos_camera  else {return;};
-        let Ok(mut cam) = debug_cams.get_mut(cam) else {return;};
+        let Some(cam) = options.layout_gizmos_camera else {
+            return;
+        };
+        let Ok(mut cam) = debug_cams.get_mut(cam) else {
+            return;
+        };
         cam.is_active = false;
         gizmo_config.render_layers = RenderLayers::all();
     } else {
@@ -148,7 +152,9 @@ fn update_debug_camera(
         gizmo_config.enabled = true;
         gizmo_config.render_layers = LAYOUT_DEBUG_LAYERS;
         let cam = *options.layout_gizmos_camera.get_or_insert_with(spawn_cam);
-        let Ok(mut cam) = debug_cams.get_mut(cam) else {return;};
+        let Ok(mut cam) = debug_cams.get_mut(cam) else {
+            return;
+        };
         cam.is_active = true;
     }
 }
@@ -199,7 +205,9 @@ fn outline_nodes(
     this_entity: Entity,
     this: LayoutRect,
 ) {
-    let Ok(to_iter) = outline.children.get(this_entity) else { return; };
+    let Ok(to_iter) = outline.children.get(this_entity) else {
+        return;
+    };
     for (entity, node, child) in outline.nodes.iter_many(to_iter) {
         let rules = node_rules(flow, node);
         let margin = node_margin(node);

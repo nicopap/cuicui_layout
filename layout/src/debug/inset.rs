@@ -95,7 +95,9 @@ impl<'w, 's> InsetGizmo<'w, 's> {
     }
     fn relative(&self, mut position: Vec2) -> Vec2 {
         let zero = GlobalTransform::IDENTITY;
-        let Ok((cam, debug)) = self.cam.get_single() else { return Vec2::ZERO;};
+        let Ok((cam, debug)) = self.cam.get_single() else {
+            return Vec2::ZERO;
+        };
         if debug.screen_space {
             if let Some(new_position) = cam.world_to_viewport(&zero, position.extend(0.)) {
                 position = new_position;
@@ -119,8 +121,12 @@ impl<'w, 's> InsetGizmo<'w, 's> {
         let e = Vec2::select(select, extents, Vec2::ZERO);
         let trim_e = (e * 0.25).min(Vec2::splat(100.));
 
-        let Some((start1, end1, _)) = rule.arrange(c - e + trim_e, c - e) else { return; };
-        let Some((start2, end2, _)) = rule.arrange(c + e - trim_e, c + e) else { return; };
+        let Some((start1, end1, _)) = rule.arrange(c - e + trim_e, c - e) else {
+            return;
+        };
+        let Some((start2, end2, _)) = rule.arrange(c + e - trim_e, c + e) else {
+            return;
+        };
         self.arrow(start1, end1, color, start1.distance(end1) * CHEVRON_RATIO);
         self.arrow(start2, end2, color, start2.distance(end2) * CHEVRON_RATIO);
     }
@@ -154,21 +160,20 @@ impl<'w, 's> InsetGizmo<'w, 's> {
         let inset_y = |v, incr| self.known_y.inset(v, incr);
         let (left, right) = (inset_x(left, 1), inset_x(right, -1));
         let (top, bottom) = (inset_y(top, 1), inset_y(bottom, -1));
-        self.draw.linestrip_2d(
-            [
-                Vec2::new(left, top),
-                Vec2::new(left, bottom),
-                Vec2::new(right, bottom),
-                Vec2::new(right, top),
-                Vec2::new(left, top),
-            ]
-            .map(|v| self.relative(v)),
-            color,
-        );
+        let strip = [
+            Vec2::new(left, top),
+            Vec2::new(left, bottom),
+            Vec2::new(right, bottom),
+            Vec2::new(right, top),
+            Vec2::new(left, top),
+        ];
+        self.draw
+            .linestrip_2d(strip.map(|v| self.relative(v)), color);
     }
     fn arrow(&mut self, start: Vec2, end: Vec2, color: Color, chevron_size: f32) {
-        let Some(angle) = (end - start).try_normalize() else { return; };
-
+        let Some(angle) = (end - start).try_normalize() else {
+            return;
+        };
         let top = Vec2::new(-1., 1.);
         let bottom = Vec2::new(-1., -1.);
         let len = chevron_size;

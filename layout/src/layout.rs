@@ -657,7 +657,9 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         let width_too_large = child_size.width > size.width;
         let axis = if width_too_large { WIDTH } else { HEIGHT };
         let largest_child = children.iter().max_by_key(|e| {
-            let Ok(LayoutRect { size, .. }) = self.to_update.get(**e) else { return FloatOrd(0.); };
+            let Ok(LayoutRect { size, .. }) = self.to_update.get(**e) else {
+                return FloatOrd(0.);
+            };
             FloatOrd(if width_too_large { size.width } else { size.height })
         });
         let relative_size = children.iter().filter_map(|e| {

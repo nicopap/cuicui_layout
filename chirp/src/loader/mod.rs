@@ -19,6 +19,7 @@ use bevy::log::error;
 use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
 use bevy::scene::{scene_spawner_system, Scene};
 use bevy::transform::TransformSystem;
+use bevy::utils::get_short_name;
 use thiserror::Error;
 
 use crate::{interpret, ChirpReader, Handles, ParseDsl};
@@ -103,7 +104,8 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
         Box::pin(async move {
             let registry = self.registry.internal.read();
             let Ok(handles) = self.handles.as_ref().read() else {
-                return Err(anyhow::anyhow!("Can't read handles in ChirpLoader<{}>", type_name::<D>()));
+                let name = get_short_name(type_name::<D>());
+                return Err(anyhow::anyhow!("Can't read handles in ChirpLoader<{name}>"));
             };
             InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes)?;
             drop(registry);
