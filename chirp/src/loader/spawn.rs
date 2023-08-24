@@ -113,6 +113,7 @@ pub fn chirp_hook(
         Has<ChirpSeedLogged>,
     )>,
     chirps: Res<Assets<Chirp>>,
+    no_parents: Query<Without<Parent>>,
     mut chirp_instances: ResMut<ChirpInstances>,
     mut scene_spawner: ResMut<SceneSpawner>,
     mut cmds: Commands,
@@ -155,8 +156,6 @@ pub fn chirp_hook(
             let id = scene_spawner.spawn(scene.clone_weak());
             // TODO(bug): situations where the parent changes requires updating
             // this value (manual change after spawning
-            // TODO(bug): only set parent the things that do not already have one,
-            // otherwise we are flattening everything.
             let parent = parent.map(Parent::get);
             let handle = chirp.clone();
             ChirpInstance { id, parent, state: State::Loading, handle }
@@ -171,7 +170,8 @@ pub fn chirp_hook(
                 let entities = scene_spawner.iter_instance_entities(instance.id);
                 let add_from_chirp = entities
                     .map(|entity| {
-                        if let Some(parent) = parent {
+                        let scene_root = |_: &_| no_parents.contains(entity);
+                        if let Some(parent) = parent.filter(scene_root) {
                             cmds.entity(entity).set_parent(parent.get());
                         };
                         (entity, from_chirp)
