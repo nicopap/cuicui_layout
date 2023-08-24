@@ -6,7 +6,7 @@ use bevy::{asset::LoadContext, reflect::TypeRegistryInternal as TypeRegistry};
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
-use winnow::{ascii, BStr, PResult, Parser};
+use winnow::{ascii, BStr, Located, PResult, Parser};
 
 /// Error returned by one of the `argN` functions.
 #[allow(missing_docs)] // Already documented by error message.
@@ -92,7 +92,7 @@ const SCOPE_TERMINATE: [u8; 7] = *b"()[]{}\\";
 const SCOPE_ESCAPE: [u8; 8] = *b"()[]{},\\";
 const EXPOSED_TERMINATE: [u8; 6] = *b"([{},\\";
 #[inline]
-pub(crate) fn scoped_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8], ()> {
+pub(crate) fn scoped_text<'i>(input: &mut Located<&'i BStr>) -> PResult<&'i [u8], ()> {
     use winnow::{
         combinator::{dispatch, fail, repeat, terminated},
         token::{any, one_of, take_till1},
@@ -109,7 +109,7 @@ pub(crate) fn scoped_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8], ()> {
     dispatch.recognize().parse_next(input)
 }
 #[inline]
-pub(crate) fn balanced_text<'i>(input: &mut &'i BStr) -> PResult<&'i [u8], ()> {
+pub(crate) fn balanced_text<'i>(input: &mut Located<&'i BStr>) -> PResult<&'i [u8], ()> {
     use winnow::{combinator::repeat, token::one_of, token::take_till1};
 
     let exposed = || ascii::escaped(take_till1(EXPOSED_TERMINATE), '\\', one_of(SCOPE_ESCAPE));
@@ -135,7 +135,7 @@ pub mod quick {
 
     use std::str::from_utf8_unchecked;
 
-    use winnow::{ascii::multispace0, combinator::preceded, BStr, Parser};
+    use winnow::{ascii::multispace0, combinator::preceded, BStr, Located, Parser};
 
     use super::{balanced_text, ArgError};
 
@@ -169,13 +169,13 @@ pub mod quick {
     }
 
     struct ArgIter<'a> {
-        input: &'a BStr,
+        input: Located<&'a BStr>,
         count: usize,
     }
 
     impl<'a> ArgIter<'a> {
         fn new(input: &'a str) -> Self {
-            Self { input: BStr::new(input), count: 0 }
+            Self { input: Located::new(BStr::new(input)), count: 0 }
         }
     }
     impl<'a> Iterator for ArgIter<'a> {

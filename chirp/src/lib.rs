@@ -6,7 +6,23 @@
     clippy::redundant_pub_crate
 )]
 
-mod interpret;
+macro_rules! log_miette_error {
+    ($err: expr) => {
+        #[cfg(feature = "fancy_errors")]
+        let message = {
+            let mut s = String::new();
+            miette::GraphicalReportHandler::new()
+                .render_report(&mut s, $err)
+                .unwrap();
+            s
+        };
+        #[cfg(not(feature = "fancy_errors"))]
+        let message = $err;
+        bevy::log::error!("{message}");
+    };
+}
+
+pub mod interpret;
 pub mod loader;
 pub mod parse;
 pub mod wrapparg;
@@ -14,7 +30,7 @@ pub mod wrapparg;
 use bevy::{
     asset::LoadContext,
     ecs::system::SystemState,
-    prelude::{error, Commands, World},
+    prelude::{Commands, World},
     reflect::TypeRegistryInternal as TypeRegistry,
 };
 
@@ -25,7 +41,6 @@ pub use anyhow;
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use parse::ParseDsl;
-use winnow::BStr;
 
 #[doc(hidden)]
 pub mod bevy_types {
@@ -56,7 +71,40 @@ impl<'a> Chirp<'a> {
     ///
     /// This directly interprets the input as a chirp file and creates a bevy
     /// scene.
+    ///
+    /// # Errors
+    /// If the input is an invalid `chirp` file. If this returns `Err`, then
+    /// [`Self::world`] will be in an invalid partially-applied state.
+    ///
+    /// Possible errors include:
+    /// - Invalid syntax
+    /// - Calls a `code(handle)` where `handle` is not present in [`Handles`].
+    /// - Errors returned by [`ParseDsl::method`] (usually parsing or invalid
+    ///   method errors)
+    ///
+    /// The [`interpret::Errors`] implement [`miette::Diagnostic`] and lists
+    /// **all interpretation errors** (either it stops at the first syntax
+    // error or it tries to read and interpret the whole file)
     pub fn interpret<D: ParseDsl>(
+        &mut self,
+        handles: &Handles,
+        load_context: Option<&LoadContext>,
+        registry: &TypeRegistry,
+        input: &[u8],
+    ) -> Result<(), interpret::Errors> {
+        let mut state = SystemState::<Commands>::new(self.world);
+        let mut cmds = state.get_mut(self.world);
+        let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
+        let result = interpreter.interpret(input);
+        if result.is_ok() {
+            state.apply(self.world);
+        }
+        result
+    }
+    /// Same as [`Self::interpret`], but directly logs error message instead
+    /// of returning the result.
+    #[allow(clippy::missing_panics_doc)] // panics only on `fmt::write` errors.
+    pub fn interpret_logging<D: ParseDsl>(
         &mut self,
         handles: &Handles,
         load_context: Option<&LoadContext>,
@@ -65,11 +113,13 @@ impl<'a> Chirp<'a> {
     ) {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
-        let mut input = BStr::new(input);
-        let interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
-        if let Err(err) = interpreter.statements(&mut input) {
-            error!("{err}");
-        };
-        state.apply(self.world);
+        let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
+        let result = interpreter.interpret(input);
+        if let Err(err) = &result {
+            log_miette_error!(err);
+        }
+        if result.is_ok() {
+            state.apply(self.world);
+        }
     }
 }

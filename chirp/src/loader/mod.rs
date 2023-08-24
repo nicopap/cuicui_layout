@@ -9,7 +9,7 @@ use anyhow::Result;
 use bevy::{
     asset::{AssetLoader, LoadContext, LoadedAsset},
     prelude::{
-        AddAsset, App, AppTypeRegistry, Commands, Entity, FromWorld, Plugin as BevyPlugin,
+        error, AddAsset, App, AppTypeRegistry, Commands, Entity, FromWorld, Plugin as BevyPlugin,
         Resource, World,
     },
     reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry},
@@ -17,7 +17,7 @@ use bevy::{
 };
 use thiserror::Error;
 
-use crate::{Chirp, Handles, ParseDsl};
+use crate::{interpret, Chirp, Handles, ParseDsl};
 
 struct InternalLoader<'a, 'w, 'h, 'r, D> {
     ctx: &'a mut LoadContext<'w>,
@@ -98,7 +98,7 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
             let Ok(handles) = self.handles.as_ref().read() else {
                 return Err(anyhow::anyhow!("Can't read handles in ChirpLoader<{}>", type_name::<D>()));
             };
-            InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes);
+            InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes)?;
             drop(registry);
             Ok(())
         })
@@ -113,15 +113,19 @@ impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
         Self { ctx, registry, _parse_dsl: PhantomData, handles }
     }
 
-    fn load(&mut self, file: &[u8]) {
-        let scene = self.load_scene(file);
+    fn load(&mut self, file: &[u8]) -> Result<(), interpret::Errors> {
+        let scene = self.load_scene(file)?;
         self.ctx.set_default_asset(LoadedAsset::new(scene));
+        Ok(())
     }
-    fn load_scene(&mut self, file: &[u8]) -> Scene {
+    fn load_scene(&mut self, file: &[u8]) -> Result<Scene, interpret::Errors> {
         let mut world = World::new();
         let mut chirp = Chirp::new(&mut world);
-        chirp.interpret::<D>(self.handles, Some(self.ctx), self.registry, file);
-        Scene::new(world)
+        let result = chirp.interpret::<D>(self.handles, Some(self.ctx), self.registry, file);
+        if let Err(err) = &result {
+            log_miette_error!(err);
+        }
+        result.map(|_| Scene::new(world))
     }
 }
 

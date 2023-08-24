@@ -193,6 +193,11 @@ This repository contains several crates:
 - `cuicui_chirp/macros` (on by default): Define and export the `parse_dsl_impl`
   attribute macro. This allows deriving `ParseDsl` automatically from an `impl`
   block.
+- `cuicui_chirp/fancy_errors` (on by default): Display error message with source
+  code context and actionable messages when failing to load a `.chirp` file.
+  Note that this is only used in the `ChirpLoader` bevy asset loader, and the
+  `Chirp::interpret_logging`. If disabled, a more rudimentary message is shown
+  instead.
 - `cuicui_layout/debug` (**off** by default): An overlay showing layout outlines & the rule type used
   by nodes. See [debug.md] for a detailed feature list.
 - `cuicui_layout/reflect` (on by default): Derive `bevy_reflect` traits for cuicui_layout

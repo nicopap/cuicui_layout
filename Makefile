@@ -23,3 +23,4 @@ pre-hook:
 	cargo clippy --no-default-features --package cuicui_layout_bevy_sprite $(CLIPPY_ARGS)
 	cargo clippy --no-default-features --package cuicui_layout $(CLIPPY_ARGS)
 	cargo clippy --no-default-features --package cuicui_layout --features debug $(CLIPPY_ARGS)
+	cargo clippy --no-default-features --package cuicui_chirp $(CLIPPY_ARGS)

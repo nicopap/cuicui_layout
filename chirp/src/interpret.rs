@@ -1,14 +1,17 @@
-use std::{borrow::Cow, cell::RefCell, fmt, mem};
+//! Interpret `.chirp` files, spawning entities with a provided [`Commands`].
+
+use std::{borrow::Cow, cell::RefCell, fmt, mem, ops::Range};
 
 use bevy::{
     asset::LoadContext,
-    prelude::{trace, BuildChildren, Commands, Entity},
+    prelude::{error, trace, BuildChildren, Commands, Entity},
     reflect::{Reflect, TypeRegistryInternal as TypeRegistry},
     utils::HashMap,
 };
+use miette::SourceSpan;
 use smallvec::SmallVec;
 use thiserror::Error;
-use winnow::{BStr, PResult, Parser};
+use winnow::{BStr, Located, PResult, Parser};
 
 use crate::{
     parse::{scoped_text, MethodCtx},
@@ -19,11 +22,49 @@ use crate::{
 #[allow(missing_docs)] // Already documented by error message.
 #[derive(Debug, Error)]
 pub enum InterpError {
-    // TODO(err): Integrate parse spans for nice error reporting.
+    // TODO(err): show available handles suggest close ones.
     #[error("Didn't find the code handle '{0}' in provided code handles")]
     CodeNotPresent(String),
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
+}
+#[derive(Debug, Error, miette::Diagnostic)]
+#[error("at {}: {error}", NiceSpan(self.span))]
+struct SpannedError {
+    #[label]
+    span: SourceSpan,
+    error: InterpError,
+}
+/// Describe errors encountered while parsing and interpreting a chirp file.
+#[derive(Debug, Error, miette::Diagnostic)]
+#[diagnostic()]
+#[error("Invalid chirp file: {}", NiceErrors(&self.errors))]
+pub struct Errors {
+    #[source_code] // TODO(perf): Probably can get away without allocation
+    source_code: String,
+    #[related]
+    errors: Vec<SpannedError>,
+}
+struct NiceSpan(SourceSpan);
+impl fmt::Display for NiceSpan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "offset {}..{}",
+            self.0.offset(),
+            self.0.offset() + self.0.len()
+        )
+    }
+}
+
+struct NiceErrors<'e>(&'e [SpannedError]);
+impl fmt::Display for NiceErrors<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (i, error) in self.0.iter().enumerate() {
+            write!(f, "({i}) {error}, ")?;
+        }
+        Ok(())
+    }
 }
 
 // TODO(feat): Consider replacing this with a trait that takes
@@ -123,14 +164,15 @@ impl fmt::Debug for LoadCtx<'_, '_, '_, '_> {
 struct InnerInterpreter<'w, 's, 'a, D> {
     cmds: BevyCmds<'w, 's, 'a>,
     current: SmallVec<[Entity; 3]>,
-    errors: Vec<InterpError>,
+    errors: Vec<SpannedError>,
     dsl: D,
 }
 
 impl<'w, 's, 'a, D> InnerInterpreter<'w, 's, 'a, D> {
     #[cold]
-    fn push_error(&mut self, error: impl Into<InterpError>) {
-        self.errors.push(error.into());
+    fn push_error(&mut self, span: Range<usize>, error: impl Into<InterpError>) {
+        let error = SpannedError { span: span.into(), error: error.into() };
+        self.errors.push(error);
     }
 }
 #[derive(Debug)]
@@ -160,7 +202,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
     }
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-    fn method(&self, method: &[u8], args: impl AsRef<[u8]>) {
+    fn method(&self, span: Range<usize>, method: &[u8], args: impl AsRef<[u8]>) {
         let mut args = args.as_ref();
         if args.first() == Some(&b'(') {
             args = &args[1..args.len() - 1];
@@ -176,16 +218,16 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         };
         let interp = &mut self.mutable.borrow_mut();
         if let Err(err) = interp.dsl.method(ctx) {
-            interp.push_error(err);
+            interp.push_error(span, err);
         }
     }
-    fn code(&self, name: &[u8]) {
+    fn code(&self, span: Range<usize>, name: &[u8]) {
         let b_name = BStr::new(name);
         trace!("Calling registered function {b_name}");
         let Some(code) = self.ctx.handles.get_function_u8(name) else {
             let name = String::from_utf8_lossy(name).to_string();
             let interp = &mut self.mutable.borrow_mut();
-            interp.push_error(InterpError::CodeNotPresent(name));
+            interp.push_error(span, InterpError::CodeNotPresent(name));
             return;
         };
         let interp = &mut self.mutable.borrow_mut();
@@ -213,7 +255,26 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         trace!("<<< Ended spawning entities within statements block, continuing");
         self.mutable.borrow_mut().current.pop();
     }
-    pub fn statements(&self, input: &mut &BStr) -> PResult<(), ()> {
+    pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
+        let parse_error = self.statements(&mut Located::new(BStr::new(input)));
+        let errors = mem::take(&mut self.mutable.borrow_mut().errors);
+        if let Err(err) = parse_error {
+            error!("TODO(err): Currently the parser is bad at reporting errors: {err}");
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            let source_code = String::from_utf8_lossy(input).to_string();
+            Err(Errors { source_code, errors })
+        }
+    }
+    // TODO(perf): Can get away with a custom stream type that stores span
+    // in a (u32, u32) so that it only occupies
+    // 16 bytes (1 pointer: usize + start: u32 + end: u32) instead of
+    // 32 bytes (2 times (pointer: usize + len: usize))
+    // concievably, we could store the pointer in this struct and only hold
+    // spans in the parser state.
+    fn statements(&self, input: &mut Located<&BStr>) -> PResult<(), ()> {
         use winnow::{
             ascii::{escaped, multispace0, multispace1},
             combinator::{
@@ -245,12 +306,16 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
                 // TODO(perf): split this in a sane way, re-parsing might be costly
                 preceded(spc(), scoped_text),
             ));
-            let empty = success::<&BStr, &[u8], _>(b"");
+            let empty = success::<_, &[u8], _>(b"");
             let method = alt((
-                str_literal.map(|i| self.method(b"named", escape_literal(i))),
-                (ident(), alt((args, empty))).map(|(n, arg)| self.method(n, arg)),
+                str_literal
+                    .with_span()
+                    .map(|(i, span)| self.method(span, b"named", escape_literal(i))),
+                (ident(), alt((args, empty)))
+                    .with_span()
+                    .map(|((n, arg), span)| self.method(span, n, arg)),
             ));
-            let comma_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, (b',', spc()));
+            let comma_list = |p| separated0::<_, _, (), _, _, _, _>(p, (b',', spc()));
             delimited(b'(', delimited(spc(), comma_list(method), spc()), b')')
         };
         let nest = |i: &mut _| {
@@ -266,7 +331,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         let statement = dispatch! { ident();
             b"code" => {
                 let head = preceded(opt(), delimited(b'(', ident(), b')'));
-                let head = head.map(|i| self.code(i));
+                let head = head.with_span().map(|(i, span)| self.code(span, i));
                 terminated(head, (opt(), b';'))
             },
             b"spawn" => {
@@ -275,11 +340,11 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             },
             method => {
                 let head = preceded(opt(), methods());
-                let head = head.map(|_| self.method(method, b""));
+                let head = head.with_span().map(|(_, span)| self.method(span, method, b""));
                 separated_pair(head, opt(), tail()).void()
             },
         };
-        let space_list = |p| separated0::<&BStr, _, (), _, _, _, _>(p, spc());
+        let space_list = |p| separated0::<_, _, (), _, _, _, _>(p, spc());
         let mut statements = delimited(spc(), space_list(statement), spc());
         statements.parse_next(input)
     }

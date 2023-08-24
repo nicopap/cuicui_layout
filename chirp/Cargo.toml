@@ -11,7 +11,9 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["macros"]
+default = ["macros", "fancy_errors"]
+# Display nicely formatted error messages
+fancy_errors = ["miette/fancy"]
 macros = ["cuicui_chirp_macros"]
 test_and_doc = ["cuicui_dsl/test_and_doc"]
 # For debugging the parser EXTREMELY SLOW COMPILE TIMES
@@ -19,6 +21,7 @@ trace_parser = ["winnow/debug"]
 
 [dependencies]
 anyhow.workspace = true
+miette.workspace = true
 ron.workspace = true
 smallvec.workspace = true
 thiserror.workspace = true

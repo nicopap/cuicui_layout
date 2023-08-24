@@ -28,6 +28,7 @@ enumset = "1.1"
 # This is only for the binary examples, we shouldn't set the log level for the
 # library crates
 log = { version = "0.4.20", features = ["release_max_level_warn"] }
+miette = "5.10.0"
 pretty_assertions = "1.4.0"
 proc-macro2 = "1.0.66"
 quote = "1.0.32"
