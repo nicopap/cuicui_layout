@@ -1,5 +1,4 @@
-use std::any::type_name;
-use std::marker::PhantomData;
+use std::{any::type_name, convert::Infallible, marker::PhantomData};
 
 use bevy::app::{App, Update};
 use bevy::ecs::prelude::*;
@@ -27,8 +26,8 @@ enum Why<T> {
     Orphan(Handle),
     #[error("Not shown, crate::error::Why::CyclicRule should do this job")]
     CyclicRule,
-    #[error("Not shown, never constructed")]
-    _PlzIgnore(PhantomData<T>),
+    #[error("This error never occurs")]
+    _Ignore(PhantomData<fn(T)>, Infallible),
 }
 
 impl<T> FailureMode for Why<T> {
@@ -37,7 +36,7 @@ impl<T> FailureMode for Why<T> {
     fn log_level(&self) -> LogLevel {
         match self {
             Why::Nan(_, _) | Why::Orphan(_) => LogLevel::Error,
-            Why::CyclicRule | Why::_PlzIgnore(_) => LogLevel::Silent,
+            Why::CyclicRule | Why::_Ignore(..) => LogLevel::Silent,
         }
     }
     fn display(&self) -> Option<String> {

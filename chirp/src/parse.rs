@@ -1,7 +1,8 @@
 //! Parse a DSL.
 
-use std::{borrow::Cow, marker::PhantomData};
+use std::marker::PhantomData;
 
+use anyhow::Result;
 use bevy::asset::LoadContext;
 use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 use cuicui_dsl::{BaseDsl, DslBundle};
@@ -42,12 +43,12 @@ impl<D> DslParseError<D> {
 /// Argument to [`ParseDsl::method`].
 pub struct MethodCtx<'a, 'l, 'll, 'r> {
     /// The method name.
-    pub name: Cow<'a, str>,
+    pub name: &'a str,
     /// The method arguments (notice **plural**).
     ///
     /// Use the [`quick`] module to split the argument in as many relevant
     /// sections as necessary.
-    pub args: Cow<'a, str>,
+    pub args: &'a str,
     /// The [`LoadContext`] used to load assets referenced in `chirp` files.
     pub ctx: Option<&'l LoadContext<'ll>>,
     /// The [`TypeRegistry`] the interpreter was initialized with.
@@ -71,23 +72,20 @@ pub trait ParseDsl: DslBundle {
     /// innexisting method with `ctx.name`.
     ///
     /// [parent node]: cuicui_dsl::dsl#parent-node
-    fn method(&mut self, ctx: MethodCtx) -> Result<(), anyhow::Error>;
+    fn method(&mut self, ctx: MethodCtx) -> Result<()>;
 }
 impl ParseDsl for BaseDsl {
-    fn method(&mut self, data: MethodCtx) -> Result<(), anyhow::Error> {
+    fn method(&mut self, data: MethodCtx) -> Result<()> {
         let MethodCtx { name, args, .. } = data;
-        match name.as_ref() {
-            "named" => {
-                self.named(match args {
-                    Cow::Borrowed(b) => b.to_owned(),
-                    Cow::Owned(o) => o,
-                });
-                Ok(())
-            }
-            method => Err(DslParseError::<Self>::new(method).into()),
+        if name == "named" {
+            self.named(args.to_string());
+            Ok(())
+        } else {
+            Err(DslParseError::<Self>::new(name).into())
         }
     }
 }
+
 const SCOPE_TERMINATE: [u8; 7] = *b"()[]{}\\";
 const SCOPE_ESCAPE: [u8; 8] = *b"()[]{},\\";
 const EXPOSED_TERMINATE: [u8; 6] = *b"([{},\\";
@@ -154,6 +152,7 @@ pub mod quick {
             }
         };
         ($name:ident, $count:literal, $($tys:ident),*) => {
+            #[inline(always)]
             pub fn $name(input: &str) -> Result<($( dummy![$tys, &str] ),*), ArgError> {
                 let bad_count = |count| ArgError::CountMismatch($count, count);
                 match Args::new(input) {
@@ -221,6 +220,7 @@ pub mod quick {
             }
         }
     }
+    #[inline]
     pub fn arg0(input: &str) -> Result<(), ArgError> {
         let bad_count = |count| ArgError::CountMismatch(0, count);
         match Args::new(input) {
@@ -228,6 +228,7 @@ pub mod quick {
             Args::Iter(args) => Err(bad_count(args.count())),
         }
     }
+    #[inline]
     pub fn arg1(input: &str) -> Result<&str, ArgError> {
         let bad_count = |count| ArgError::CountMismatch(1, count);
         match Args::new(input) {

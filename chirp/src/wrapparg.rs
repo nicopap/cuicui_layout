@@ -28,7 +28,7 @@ pub enum HandleDslDeserError<T> {
     NoLoadContext,
     #[doc(hidden)]
     #[error("This error never occurs")]
-    _Ignore(PhantomData<fn(T)>),
+    _Ignore(PhantomData<fn(T)>, Infallible),
 }
 
 /// Error occuring in [`from_reflect`].
@@ -60,7 +60,7 @@ pub enum ReflectDslDeserError<T> {
     BadReflect,
     #[doc(hidden)]
     #[error("This error never occurs")]
-    _Ignore(PhantomData<fn(T)>),
+    _Ignore(PhantomData<fn(T)>, Infallible),
 }
 
 /// Deserialize a method argument using the [`ron`] file format.

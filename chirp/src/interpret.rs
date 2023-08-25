@@ -1,6 +1,6 @@
 //! Interpret `.chirp` files, spawning entities with a provided [`Commands`].
 
-use std::{borrow::Cow, cell::RefCell, fmt, mem, ops::Range};
+use std::{borrow::Cow, cell::RefCell, fmt, mem, ops::Range, str};
 
 use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
@@ -27,17 +27,25 @@ pub enum InterpError {
     // TODO(err): better error messages
     #[error("Bad syntax")]
     ParseError,
+    #[error("The method name is invalid UTF8")]
+    BadUtf8MethodName,
+    #[error("The method arguments is invalid UTF8")]
+    BadUtf8Argument,
 }
+const UTF8_ERROR: &str =
+    "Chirp requires UTF8, your file is either corrupted or saved with the wrong encoding.";
 const PARSE_ERROR: &str = "\
 More actionable error messages are coming, until then, check the grammar at:
 
 https://github.com/nicopap/cuicui_layout/blob/712f19d58eea48d50dde6ed4ed4c1b42ac6f2544/design_docs/layout_format.md#grammar";
 impl InterpError {
     const fn help_message(&self) -> Option<&'static str> {
+        use InterpError::{BadUtf8Argument, BadUtf8MethodName};
         match self {
             InterpError::CodeNotPresent(_) => None,
             InterpError::DslError(_) => Some("The error comes from the ParseDsl implementation"),
             InterpError::ParseError => Some(PARSE_ERROR),
+            BadUtf8MethodName | BadUtf8Argument => Some(UTF8_ERROR),
         }
     }
 }
@@ -228,8 +236,16 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         if args.first() == Some(&b'(') {
             args = &args[1..args.len() - 1];
         }
-        let name = String::from_utf8_lossy(method);
-        let args = String::from_utf8_lossy(args);
+        let Ok(name) = str::from_utf8(method) else {
+            let error = InterpError::BadUtf8MethodName;
+            self.mutable.borrow_mut().push_error(span, error);
+            return;
+        };
+        let Ok(args) = str::from_utf8(args) else {
+            let error = InterpError::BadUtf8Argument;
+            self.mutable.borrow_mut().push_error(span, error);
+            return;
+        };
         trace!("Method: {name} '{args}'");
         let ctx = MethodCtx {
             name,
@@ -381,21 +397,33 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
     }
 }
 
-fn fast_contains(check: &[u8], contains: u8) -> bool {
-    // SAFETY: [u8;4] is a valid u32
-    let (head, body, tail) = unsafe { check.align_to::<u32>() };
-    let out_of_body = head.iter().chain(tail).any(|c| *c == contains);
-    let mask0 = u32::from_le_bytes([0, 0, 0, contains]);
-    let mask1 = u32::from_le_bytes([0, 0, contains, 0]);
-    let mask2 = u32::from_le_bytes([0, contains, 0, 0]);
-    let mask3 = u32::from_le_bytes([contains, 0, 0, 0]);
-    out_of_body
-        || body.iter().any(|&value| {
-            (value & mask0 == mask0)
-                | (value & mask1 == mask1)
-                | (value & mask2 == mask2)
-                | (value & mask3 == mask3)
-        })
+type Swar = u32;
+const LANES: usize = 8;
+const SWAR_BYTES: usize = (Swar::BITS / 8) as usize;
+fn contains_swar(mut xored: Swar) -> bool {
+    // For a position, nothing easier: pos = 0; pos += ret; ret &= xored & 0xff != 0;
+    let mut ret = false;
+    for _ in 0..SWAR_BYTES {
+        ret |= xored & 0xff == 0;
+        xored >>= 8;
+    }
+    ret
+}
+
+fn fast_contains<const WHAT: u8>(check: &[u8]) -> bool {
+    let mask = Swar::from_le_bytes([WHAT; SWAR_BYTES]);
+
+    // SAFETY: [u8; SWAR_BYTES] is a valid Swar
+    let (head, body, tail) = unsafe { check.align_to::<[Swar; LANES]>() };
+
+    head.iter().chain(tail).any(|c| *c == WHAT)
+        || body
+            .iter()
+            .map(|vs| {
+                vs.iter()
+                    .fold(false, |acc, &v| acc | contains_swar(v ^ mask))
+            })
+            .any(Into::into)
 }
 fn escape_literal(to_escape: &[u8]) -> Cow<[u8]> {
     #[cold]
@@ -410,7 +438,7 @@ fn escape_literal(to_escape: &[u8]) -> Cow<[u8]> {
         });
         Cow::Owned(ret)
     }
-    if fast_contains(to_escape, b'\\') {
+    if fast_contains::<b'\\'>(to_escape) {
         owned(to_escape)
     } else {
         Cow::Borrowed(to_escape)

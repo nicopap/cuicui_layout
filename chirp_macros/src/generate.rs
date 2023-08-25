@@ -258,7 +258,7 @@ fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {
     let ident = &fun.sig.ident;
     quote_spanned! { fun.sig.inputs.span() =>
         stringify!(#ident) => {
-            let args = quick::#arg_n(args.as_ref())?;
+            let args = quick::#arg_n(args)?;
             self.#ident(#(#arg_parsers(registry, ctx, #fun_args)?),*);
             Ok(())
         }
