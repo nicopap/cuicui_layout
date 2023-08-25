@@ -41,6 +41,7 @@ impl<D> DslParseError<D> {
 }
 
 /// Argument to [`ParseDsl::method`].
+#[derive(Clone, Copy)]
 pub struct MethodCtx<'a, 'l, 'll, 'r> {
     /// The method name.
     pub name: &'a str,

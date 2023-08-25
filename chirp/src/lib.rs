@@ -34,11 +34,12 @@ pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use loader::spawn::{Chirp, ChirpInstances};
 pub use parse::ParseDsl;
+pub use reflect::ReflectDsl;
 
 pub mod interpret;
 pub mod loader;
 pub mod parse;
-// pub mod reflect;
+pub mod reflect;
 pub mod wrapparg;
 
 #[doc(hidden)]

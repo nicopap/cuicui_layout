@@ -400,6 +400,8 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
 type Swar = u32;
 const LANES: usize = 8;
 const SWAR_BYTES: usize = (Swar::BITS / 8) as usize;
+
+#[allow(clippy::verbose_bit_mask)] // what a weird lint
 fn contains_swar(mut xored: Swar) -> bool {
     // For a position, nothing easier: pos = 0; pos += ret; ret &= xored & 0xff != 0;
     let mut ret = false;

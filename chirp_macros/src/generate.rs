@@ -202,7 +202,7 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
                 use #this_crate::wrapparg::{from_str, from_reflect, to_handle, identity};
 
                 let MethodCtx { name, args, ctx, registry } = data;
-                match name.as_ref() {
+                match name {
                     #(#funs)*
                     _name => { #catchall }
                 }
