@@ -1,8 +1,8 @@
-row("10", rules(10px, 11%)) {
+row("20", rules(40px, 41%)) {
+    spawn("23", rules(50%, 51px), empty_px 60);
+    spawn("22", empty_px 61);
+}
+row("10 wow", rules(10px, 11%)) {
     spawn("11", rules(20%, 21px), empty_px 30);
     spawn("12", empty_px 31);
-}
-column("20", rules(40px, 41%)) {
-    spawn("21", rules(50%, 51px), empty_px 60);
-    spawn("22", empty_px 61);
 }

@@ -15,7 +15,7 @@ use anyhow::Result;
 use bevy::app::{App, Plugin as BevyPlugin, PostUpdate};
 use bevy::asset::{prelude::*, AssetLoader, LoadContext, LoadedAsset};
 use bevy::ecs::{prelude::*, schedule::ScheduleLabel};
-use bevy::log::error;
+use bevy::log::{error, info};
 use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
 use bevy::scene::{scene_spawner_system, Scene};
 use bevy::transform::TransformSystem;
@@ -23,7 +23,7 @@ use bevy::utils::get_short_name;
 use thiserror::Error;
 
 use crate::{interpret, ChirpReader, Handles, ParseDsl};
-use spawn::{chirp_hook, Chirp, ChirpInstances};
+use spawn::{Chirp, ChirpInstances};
 
 pub(super) mod spawn;
 
@@ -109,6 +109,8 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
             };
             InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes)?;
             drop(registry);
+            let path = load_context.path().to_string_lossy();
+            info!("Loaded with success {path}");
             Ok(())
         })
     }
@@ -124,9 +126,10 @@ impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
 
     fn load(&mut self, file: &[u8]) -> Result<(), interpret::Errors> {
         let scene = self.load_scene(file)?;
+        let entity_count = scene.world.entities().len() as usize;
         let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
         self.ctx
-            .set_default_asset(LoadedAsset::new(spawn::Chirp(scene)));
+            .set_default_asset(LoadedAsset::new(spawn::Chirp { scene, entity_count }));
         Ok(())
     }
     fn load_scene(&mut self, file: &[u8]) -> Result<Scene, interpret::Errors> {
@@ -166,14 +169,21 @@ impl Plugin<()> {
 }
 impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
     fn build(&self, app: &mut App) {
+        use spawn::{update_asset_changed, update_marked, update_spawned};
+
+        let chirp_asset_systems = (update_asset_changed, update_marked, update_spawned)
+            .chain()
+            .after(scene_spawner_system);
+
         app.add_systems(
             PostUpdate,
-            (chirp_hook.after(scene_spawner_system), apply_deferred)
+            (chirp_asset_systems, apply_deferred)
                 .chain()
                 .before(TransformSystem::TransformPropagate),
         );
         app.init_resource::<ChirpInstances>()
             .add_asset::<Chirp>()
+            .register_type::<spawn::FromChirp>()
             .init_asset_loader::<ChirpLoader<D>>();
     }
 }

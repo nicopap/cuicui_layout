@@ -1,7 +1,8 @@
 use bevy::asset::{Assets, Handle, HandleId};
 use bevy::ecs::{prelude::*, query::Has, reflect::ReflectComponent};
 use bevy::hierarchy::{BuildChildren, Parent};
-use bevy::log::{error, warn};
+use bevy::log::{error, trace, warn};
+use bevy::prelude::AssetEvent;
 use bevy::reflect::{Reflect, TypePath, TypeUuid};
 use bevy::scene::{InstanceId, Scene, SceneSpawner};
 use bevy::utils::HashMap;
@@ -62,6 +63,7 @@ impl ChirpInstances {
     /// a new scene will be spawned with the same parent as the scene
     /// when it was spawned.
     pub fn set_reload(&mut self, chirp: &Handle<Chirp>) {
+        trace!("Reloading: {chirp:?}");
         let id = chirp.id();
         let Some(chirp) = self.instances.get_mut(&id) else {
             error!("TODO(err): set_reload failed because instance does not exist");
@@ -74,6 +76,7 @@ impl ChirpInstances {
     ///
     /// The entities in the scene as when it was spawned will be removed.
     pub fn set_delete(&mut self, chirp: &Handle<Chirp>) {
+        trace!("Deleting: {chirp:?}");
         let id = chirp.id();
         let Some(chirp) = self.instances.get_mut(&id) else {
             error!("TODO(err): set_delete failed because instance does not exist");
@@ -89,7 +92,11 @@ impl ChirpInstances {
 /// Spawn a `Handle<Chirp>` to embed into the hierarchy a chirp scene.
 #[derive(Debug, TypeUuid, TypePath)]
 #[uuid = "b954f251-c38a-4ede-a7dd-cbf9856c84c1"]
-pub struct Chirp(pub Handle<Scene>);
+pub struct Chirp {
+    /// The scene handle
+    pub scene: Handle<Scene>,
+    pub(crate) entity_count: usize,
+}
 
 #[derive(Debug, Reflect, Component, Clone, Copy)]
 #[reflect(Component)]
@@ -100,58 +107,44 @@ impl Default for FromChirp {
     }
 }
 
-// TODO(bug)TODO(feat): React to `AssetEvent::Changed<Chirp>` it should
-// indicate users trying to modify `Handle<Chirp>`, which means we need to update
-// the actual scene, or the hot reloading system having updated the chirp
-// based on file change.
 #[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
-pub fn chirp_hook(
+pub(super) fn update_asset_changed(
+    mut asset_events: EventReader<AssetEvent<Chirp>>,
+    mut chirp_instances: ResMut<ChirpInstances>,
+) {
+    for event in asset_events.iter() {
+        match event {
+            AssetEvent::Created { .. } => {}
+            AssetEvent::Modified { handle } => chirp_instances.set_reload(handle),
+            AssetEvent::Removed { handle } => chirp_instances.set_delete(handle),
+        }
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
+pub(super) fn update_spawned(
+    chirp_instances: ResMut<ChirpInstances>,
+    mut scene_spawner: ResMut<SceneSpawner>,
+    mut cmds: Commands,
+    chirps: Res<Assets<Chirp>>,
     to_spawn: Query<(
         Entity,
         &Handle<Chirp>,
         Option<&Parent>,
         Has<ChirpSeedLogged>,
     )>,
-    chirps: Res<Assets<Chirp>>,
     no_parents: Query<Without<Parent>>,
-    mut chirp_instances: ResMut<ChirpInstances>,
-    mut scene_spawner: ResMut<SceneSpawner>,
-    mut cmds: Commands,
 ) {
-    let ChirpInstances { instances, to_update } = &mut *chirp_instances;
-    for chirp_id in to_update.drain(..) {
-        let Some(instance) = instances.get_mut(&chirp_id) else {
-            todo!("TODO(err): Not sure what can trigger this");
-        };
-        match instance.state {
-            State::MustReload => {
-                instance.state = State::Loading;
-
-                for entity in scene_spawner.iter_instance_entities(instance.id) {
-                    cmds.entity(entity).despawn();
-                }
-                let seed = cmds.spawn(instance.handle.clone()).id();
-                if let Some(parent) = instance.parent {
-                    cmds.entity(parent).add_child(seed);
-                }
-            }
-            State::MustDelete => {
-                for entity in scene_spawner.iter_instance_entities(instance.id) {
-                    cmds.entity(entity).despawn();
-                }
-                instances.remove(&chirp_id);
-            }
-            State::Loading | State::Hooked => unreachable!(),
-        }
-    }
+    let mut instances = chirp_instances.map_unchanged(|i| &mut i.instances);
     for (entity, chirp, parent, already_logged) in &to_spawn {
-        let Some(Chirp(scene)) = chirps.get(chirp) else {
+        let Some(Chirp { scene, entity_count }) = chirps.get(chirp) else {
             if !already_logged {
                 cmds.entity(entity).insert(ChirpSeedLogged);
                 warn!("TODO(err): chirp {entity:?} not yet loaded, skipping");
             }
             continue;
         };
+        trace!("Found chirp seed for chirp with {entity_count} entities");
         let instance = instances.entry(chirp.id()).or_insert_with(|| {
             let id = scene_spawner.spawn(scene.clone_weak());
             // TODO(bug): situations where the parent changes requires updating
@@ -163,6 +156,10 @@ pub fn chirp_hook(
         let is_ready = scene_spawner.instance_is_ready(instance.id);
         match instance.state {
             State::Loading if is_ready => {
+                trace!(
+                    "Instace {:?} is ready, hooking stuff up",
+                    instance.handle.id()
+                );
                 instance.state = State::Hooked;
                 let from_chirp = FromChirp(chirp.id());
                 cmds.entity(entity).despawn();
@@ -181,6 +178,49 @@ pub fn chirp_hook(
             }
             State::Loading => continue,
             State::Hooked | State::MustReload | State::MustDelete => unreachable!(),
+        }
+    }
+}
+
+#[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
+pub(super) fn update_marked(
+    mut chirp_instances: ResMut<ChirpInstances>,
+    mut cmds: Commands,
+    scene_spawner: Res<SceneSpawner>,
+) {
+    let ChirpInstances { instances, to_update } = &mut *chirp_instances;
+    for chirp_id in to_update.drain(..) {
+        let Some(instance) = instances.get_mut(&chirp_id) else {
+            todo!("TODO(err): Not sure what can trigger this");
+        };
+        match instance.state {
+            State::MustReload => {
+                trace!(
+                    "Reloading instance {:?} marked as MustReload",
+                    instance.handle.id()
+                );
+                instance.state = State::Loading;
+
+                for entity in scene_spawner.iter_instance_entities(instance.id) {
+                    cmds.entity(entity).despawn();
+                }
+                let mut seed = cmds.spawn(instance.handle.clone());
+                if let Some(parent) = instance.parent {
+                    seed.set_parent(parent);
+                }
+                instances.remove(&chirp_id);
+            }
+            State::MustDelete => {
+                trace!(
+                    "Deleting instance {:?} marked as MustDelete",
+                    instance.handle.id()
+                );
+                for entity in scene_spawner.iter_instance_entities(instance.id) {
+                    cmds.entity(entity).despawn();
+                }
+                instances.remove(&chirp_id);
+            }
+            State::Loading | State::Hooked => unreachable!(),
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ## All DSL implementations (`LayoutDsl`, `UiDsl`, `SpriteDsl`)
 
-**MAJOR**: The order of application of nested DSLs is now `Parent<Child>`
+**CHANGED**: The order of application of nested DSLs is now `Parent<Child>`
 where `<Parent as DslBundle>::insert` runs before `<Child as DslBundle>::insert`.
 
 The order matters when two different DSLs try to insert the same component.
@@ -16,9 +16,11 @@ DSL insertion order happens left to right.
 
 ## `cuicui_layout`
 
-* The `LayoutDsl::spawn_ui` method is now `LayoutDsl::ui`.
+* **CHANGED**: The `LayoutDsl::spawn_ui` method is now `LayoutDsl::ui`.
 
 ## `cuicui_chirp`
+
+**ADDED**
 
 New crate! Define a custom file format, `.chirp`, to load from file `dsl!`s.
 The syntax is very similar to that of `dsl!` with the exception of `code`.
@@ -26,16 +28,25 @@ The syntax is very similar to that of `dsl!` with the exception of `code`.
 * Define `ParseDsl` for deserialization of `.chirp` files.
 * Using the `parse_dsl_impl` macro, you can convert a `DslBundle` impl block
   into a `ParseDsl` specification.
+  * Use the various `parse_dsl_impl` attributes to control how arguments are
+    parsed from the text file.
 * `IntoUiBundle` now requires `Reflect`! This let us use it with the chirp
   file format.
 * `ParseDsl` is implemented for all DSLs exported by cuicui crates.
+* `ReflectDsl<B>` implements `ParseDsl` and `DslBundle` for any `B: Reflect + Bundle`
+  * Note that unlike other DSLs this only works for `.chirp` files.
+* To spawn a `.chirp` scene, you do: `commands.spawn(asset_server.load::<Chirp,_>("scene.chirp"))`
+  * All scene "root" entities are added as sibling of the `Entity` with a `Handle<Chirp>`
+  * The spawning mechanisms are thought out to be as invisible as possible.
+  * Hot reloading works as expected
+* The parser & interpreter reports errors in a user-friendly way.
 
 ## `cuicui_dsl`
 
-* Removed the `IntoEntityCommands` impl on `EntityCommands`
-* `DslBundle::node` accepts now a `&mut EntityCommands`.
-* `dsl!`: deprecated the field access syntax.
-* **MAJOR**: Changed the meaing of leaf nodes!!!
+* **CHANGED** Removed the `IntoEntityCommands` impl on `EntityCommands`
+* **CHANGED** `DslBundle::node` accepts now a `&mut EntityCommands`.
+* **CHANGED** `dsl!`: deprecated the field access syntax.
+* **CHANGED MAJOR**: Changed the meaing of leaf nodes!!!
 
 Leaf nodes used to expand to:
 
