@@ -5,7 +5,7 @@ use std::{borrow::Cow, cell::RefCell, fmt, mem, ops::Range, str};
 use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
 use bevy::hierarchy::BuildChildren;
-use bevy::log::{error, trace};
+use bevy::log::{error, trace, warn};
 use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
 use bevy::utils::HashMap;
 use miette::{Diagnostic, NamedSource, SourceSpan};
@@ -376,12 +376,34 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         };
         let tail = || alt((b';'.map(terminal), delim(b'{', nest, b'}')));
         let statement = dispatch! { ident();
+            reserved_keyword @ (
+                b"abstract" | b"as" | b"async" | b"await" | b"become"
+                | b"box" | b"break" | b"const" | b"continue" | b"crate"
+                | b"do" | b"dyn" | b"else" | b"enum" | b"extern"
+                | b"false" | b"final" | b"fn" | b"for" | b"if"
+                | b"impl" | b"in" | b"let" | b"loop" | b"macro"
+                | b"match" | b"mod" | b"move" | b"mut" | b"override"
+                | b"priv" | b"pub" | b"ref" | b"return" | b"self"
+                | b"static" | b"struct" | b"super" | b"trait" | b"true"
+                | b"try" | b"type" | b"typeof" | b"unsafe" | b"unsized"
+                | b"use" | b"virtual" | b"where" | b"while" | b"yeet"
+            ) => {
+                let show_keyword = BStr::new(reserved_keyword);
+                warn!(
+                    "Encountered a '{show_keyword}' statement! \
+                    All rust keywords are reserved in statement position. \
+                    Currently this is equivalent to 'spawn', but may change \
+                    without notice in the future."
+                );
+                let head = starts(opt(), methods());
+                separated_pair(head, opt(), tail()).void()
+            },
             b"code" => {
                 let head = starts(opt(), delim(b'(', ident(), b')'));
                 let head = head.with_span().map(|(i, span)| self.code(span, i));
                 terminated(head, (opt(), b';'))
             },
-            b"spawn" => {
+            b"spawn" | b"entity" => {
                 let head = starts(opt(), methods());
                 separated_pair(head, opt(), tail()).void()
             },
