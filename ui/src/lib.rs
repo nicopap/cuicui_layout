@@ -66,6 +66,8 @@ use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root};
 
 pub use dsl::UiDsl;
 
+mod text_fixup;
+
 pub mod content_sized;
 pub mod dsl;
 
@@ -126,13 +128,14 @@ pub fn set_layout_style(mut query: Query<(&mut Style, &LayoutRect), Changed<Layo
 pub struct Plugin;
 impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
-        use bevy::prelude::{PostUpdate, Update};
+        use bevy::prelude::{Last, PostUpdate, Update};
         use bevy::ui::UiSystem;
         use cuicui_layout::ComputeLayoutSet;
 
         app.add_plugins(cuicui_layout::Plugin)
             .add_content_sized::<content_sized::UiContentSize>()
             .add_systems(Update, update_ui_camera_root.before(ComputeLayoutSet))
-            .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout));
+            .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout))
+            .add_systems(Last, text_fixup::add_text_components);
     }
 }

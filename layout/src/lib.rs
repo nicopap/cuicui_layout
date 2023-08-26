@@ -111,6 +111,7 @@ impl BevyPlugin for Plugin {
             .register_type::<LayoutRect>()
             .register_type::<Root>()
             .register_type::<Rule>()
+            .register_type::<ScreenRoot>()
             .register_type::<Size<f32>>()
             .register_type::<Size<LeafRule>>()
             .register_type::<Size<Rule>>();

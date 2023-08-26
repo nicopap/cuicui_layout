@@ -102,7 +102,7 @@ const CONFIG_ATTR_DESCR: &str = "\
 To parse the argument. The default are as follow:
 
 - For `Handle<T>` and `&Handle<T>` arguments, `to_handle` is used.
-- For `&str` arguments, `identity` is used.
+- For `&str` arguments, `maybe_quoted` is used.
 - For any other type, `from_reflect` is used. It requires however that the \
   argument type be `Reflect` and `FromReflect`.
 
@@ -199,7 +199,7 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
                 data: #this_crate::parse::MethodCtx,
             ) -> Result<(), #this_crate::anyhow::Error> {
                 use #this_crate::parse::{quick, MethodCtx, DslParseError};
-                use #this_crate::wraparg::{from_str, from_reflect, to_handle, identity};
+                use #this_crate::wraparg::{from_str, from_reflect, to_handle, maybe_quoted};
 
                 let MethodCtx { name, args, mut ctx, registry } = data;
                 match name {
@@ -278,7 +278,7 @@ fn argument_parser(argument: &syn::FnArg, parsers: &[TypeParser]) -> TokenStream
             }
             Path(ty) if ty.path.is_ident("Handle") => quote!(to_handle),
             Ref(TRef { elem, .. }) if is_type(elem, "Handle") => quote!(&to_handle),
-            Ref(TRef { elem, .. }) if is_type(elem, "str") => quote!(identity),
+            Ref(TRef { elem, .. }) if is_type(elem, "str") => quote!(maybe_quoted),
             _ => quote!(from_reflect),
         },
     }

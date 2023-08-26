@@ -158,10 +158,13 @@ pub fn to_handle<T: Asset + LoadAsset>(
 /// This is always `Ok`. It is safe to unwrap. Rust guarentees that `Infallible`
 /// can't be constructed.
 #[inline(always)]
-pub fn identity<'a>(
+pub fn maybe_quoted<'a>(
     _: &TypeRegistry,
     _: Option<&mut LoadContext>,
-    input: &'a str,
+    mut input: &'a str,
 ) -> Result<&'a str, Infallible> {
+    if input.starts_with('"') && input.ends_with('"') && input.len() > 2 {
+        input = &input[1..input.len() - 1];
+    }
     Ok(input)
 }

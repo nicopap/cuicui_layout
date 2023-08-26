@@ -1,15 +1,17 @@
 //! Bundles wrapping [`bevy::ui::node_bundles`] with additional [`cuicui_layout`]
 //! components.
 
+use std::num::NonZeroU16;
+
 use bevy::asset::{Handle, LoadContext};
 use bevy::ecs::{prelude::*, system::EntityCommands};
 use bevy::hierarchy::BuildChildren;
 use bevy::prelude::{Deref, DerefMut};
 use bevy::reflect::TypeRegistryInternal as Registry;
 use bevy::render::{color::Color, texture::Image};
-use bevy::text::{Text, TextLayoutInfo, TextStyle};
+use bevy::text::{BreakLineOn, Font, Text, TextAlignment, TextSection, TextStyle};
 use bevy::ui::node_bundles as bevy_ui;
-use bevy::ui::widget::{TextFlags, UiImageSize};
+use bevy::ui::widget::UiImageSize;
 use bevy::ui::{prelude::*, ContentSize};
 use bevy::utils::default;
 use css_color::Srgb;
@@ -17,6 +19,7 @@ use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;
 #[cfg(doc)]
 use cuicui_layout::{LeafRule, Rule};
+use enumset::{EnumSet, EnumSetType};
 use thiserror::Error;
 
 /// An image leaf node wrapping a [`bevy_ui::ImageBundle`].
@@ -46,8 +49,6 @@ pub struct ImageBundle {
 #[allow(missing_docs)]
 pub struct TextBundle {
     pub text: Text,
-    pub text_layout_info: TextLayoutInfo,
-    pub text_flags: TextFlags,
     pub calculated_size: ContentSize,
 }
 impl From<Text> for TextBundle {
@@ -76,8 +77,6 @@ impl From<bevy_ui::TextBundle> for TextBundle {
         Self {
             calculated_size: value.calculated_size,
             text: value.text,
-            text_layout_info: value.text_layout_info,
-            text_flags: value.text_flags,
         }
     }
 }
@@ -142,15 +141,46 @@ fn parse_color(
     Ok(Color::rgba(red, green, blue, alpha))
 }
 
+#[derive(Debug, EnumSetType)]
+enum UiDslFlags {
+    AlignLeft,
+    AlignRight,
+    BreakOnWord,
+    BreakOnChar,
+    BgFlipX,
+    BgFlipY,
+}
+
 /// The [`DslBundle`] for `bevy_ui`.
-#[derive(Default, Deref, DerefMut)]
+#[derive(Deref, DerefMut)]
 pub struct UiDsl<D = cuicui_layout::dsl::LayoutDsl> {
     #[deref]
     inner: D,
     bg_color: Option<BackgroundColor>,
-    bg_image: Option<UiImage>,
+    bg_image: Option<Handle<Image>>,
     border_color: Option<BorderColor>,
-    border_px: Option<u16>,
+    border_px: Option<NonZeroU16>,
+    text: Option<Box<str>>,
+    text_color: Color,
+    font_size: u16,
+    font: Option<Handle<Font>>,
+    flags: EnumSet<UiDslFlags>,
+}
+impl<D: Default> Default for UiDsl<D> {
+    fn default() -> Self {
+        Self {
+            inner: D::default(),
+            bg_color: None,
+            bg_image: None,
+            border_color: None,
+            border_px: None,
+            text: None,
+            flags: UiDslFlags::BreakOnWord | UiDslFlags::AlignLeft,
+            text_color: Color::WHITE,
+            font_size: 12,
+            font: None,
+        }
+    }
 }
 #[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color))]
 impl<D> UiDsl<D> {
@@ -163,7 +193,7 @@ impl<D> UiDsl<D> {
     /// This is because it would be otherwise impossible to arrange children
     /// independently of parent properties.
     pub fn border_px(&mut self, pixels: u16) {
-        self.border_px = Some(pixels);
+        self.border_px = NonZeroU16::new(pixels);
     }
     /// Set the node's border [color](Self::border_color) and [width](Self::border_px).
     pub fn border(&mut self, pixels: u16, color: Color) {
@@ -186,7 +216,68 @@ impl<D> UiDsl<D> {
     }
     /// Set the node's background image.
     pub fn image(&mut self, image: &Handle<Image>) {
-        self.bg_image = Some(image.clone().into());
+        self.bg_image = Some(image.clone());
+    }
+    /// If this node has a background image, flip it on its X axis.
+    pub fn flip_x(&mut self) {
+        self.flags |= UiDslFlags::BgFlipX;
+    }
+    /// If this node has a background image, flip it on its Y axis.
+    pub fn flip_y(&mut self) {
+        self.flags |= UiDslFlags::BgFlipY;
+    }
+    /// Set the node's text.
+    pub fn text(&mut self, text: &str) {
+        self.text = Some(text.into());
+    }
+    /// If this node contains text, set its break behavior to breaking on
+    /// individual characters.
+    ///
+    /// By default, text breaks on word.
+    pub fn break_on_char(&mut self) {
+        self.flags |= UiDslFlags::BreakOnChar;
+    }
+    /// If this node contains text, only go to next line on '\n' in text.
+    ///
+    /// By default, text breaks on word.
+    pub fn no_wrap(&mut self) {
+        use UiDslFlags::{BreakOnChar, BreakOnWord};
+        self.flags.remove_all(BreakOnChar | BreakOnWord);
+    }
+    /// If this node contains text, align it to the left.
+    ///
+    /// By default, text is aligned left
+    pub fn text_right_align(&mut self) {
+        self.flags |= UiDslFlags::AlignRight;
+    }
+    /// If this node contains text, align it to the center.
+    ///
+    /// By default, text is aligned left.
+    pub fn text_center_align(&mut self) {
+        use UiDslFlags::{AlignLeft, AlignRight};
+        self.flags.remove_all(AlignLeft | AlignRight);
+    }
+    /// Set the text size for this node.
+    pub fn font_size(&mut self, size: u16) {
+        self.font_size = size;
+    }
+}
+impl<D> UiDsl<D> {
+    fn text_alignment(&self) -> TextAlignment {
+        use UiDslFlags::{AlignLeft, AlignRight};
+        match () {
+            () if self.flags.contains(AlignRight) => TextAlignment::Right,
+            () if self.flags.contains(AlignLeft) => TextAlignment::Left,
+            () => TextAlignment::Center,
+        }
+    }
+    fn break_line_on(&self) -> BreakLineOn {
+        use UiDslFlags::{BreakOnChar, BreakOnWord};
+        match () {
+            () if self.flags.contains(BreakOnChar) => BreakLineOn::AnyCharacter,
+            () if self.flags.contains(BreakOnWord) => BreakLineOn::WordBoundary,
+            () => BreakLineOn::NoWrap,
+        }
     }
 }
 
@@ -206,7 +297,7 @@ impl<D: DslBundle> DslBundle for UiDsl<D> {
                     position_type: bevy::ui::PositionType::Absolute,
                     width: Val::Percent(100.),
                     height: Val::Percent(100.),
-                    border: UiRect::all(Val::Px(f32::from(pixels))),
+                    border: UiRect::all(Val::Px(f32::from(pixels.get()))),
                     ..default()
                 },
                 ..default()
@@ -215,8 +306,31 @@ impl<D: DslBundle> DslBundle for UiDsl<D> {
                 c.spawn(child_bundle);
             });
         }
+        if let Some(text) = self.text.take() {
+            let mut text_style = TextStyle {
+                font_size: f32::from(self.font_size),
+                color: self.text_color,
+                ..default()
+            };
+            if let Some(font) = self.font.take() {
+                text_style.font = font;
+            }
+            let text = Text {
+                sections: vec![TextSection::new(text, text_style)],
+                alignment: self.text_alignment(),
+                linebreak_behavior: self.break_line_on(),
+            };
+            cmds.insert(TextBundle { text, ..default() });
+        }
         match self.bg_image.take() {
-            Some(image) => cmds.insert(ImageBundle::from(image)).insert(node_bundle),
+            Some(image) => {
+                let ui_image = UiImage {
+                    texture: image,
+                    flip_x: self.flags.contains(UiDslFlags::BgFlipX),
+                    flip_y: self.flags.contains(UiDslFlags::BgFlipY),
+                };
+                cmds.insert(ImageBundle::from(ui_image)).insert(node_bundle)
+            }
             None => cmds.insert(node_bundle),
         };
         self.inner.insert(cmds)

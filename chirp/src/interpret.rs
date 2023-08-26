@@ -337,7 +337,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             ascii::{escaped, multispace0, multispace1},
             combinator::{
                 alt, cut_err, delimited as delim, dispatch, opt, preceded as starts, repeat,
-                separated0, separated_pair, success, terminated,
+                separated0, separated_pair, terminated,
             },
             token::{one_of, take_till1 as until},
         };
@@ -346,7 +346,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         let line_comment = || starts(b"//", until(b'\n').void());
         let repeat = repeat::<_, _, (), _, _>;
         let spc_trail = || repeat(.., (line_comment(), multispace0));
-        let (spc, spc1, opt) = (
+        let (spc, spc1, opt_spc) = (
             || (multispace0, spc_trail()).void(),
             || multispace1.void(),
             || opt(b' ').void(),
@@ -354,24 +354,26 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         let ident = || until(b" \n\t;\",()\\{}");
 
         let methods = &|| {
-            let str_literal = delim(
-                b'"',
-                escaped(until(b"\\\""), '\\', one_of(b"\\\"")).recognize(),
-                b'"',
-            );
+            let str_literal = || {
+                delim(
+                    b'"',
+                    escaped(until(b"\\\""), '\\', one_of(b"\\\"")).recognize(),
+                    b'"',
+                )
+            };
             let args = alt((
                 starts(spc1(), ident()),
                 // TODO(perf): split this in a sane way, re-parsing might be costly
                 starts(spc(), scoped_text),
+                starts(spc1(), str_literal()),
             ));
-            let empty = success::<_, &[u8], _>(b"");
             let method = alt((
-                str_literal
+                str_literal()
                     .with_span()
                     .map(|(i, span)| self.method(span, b"named", escape_literal(i))),
-                (ident(), alt((args, empty)))
+                (ident(), opt(args))
                     .with_span()
-                    .map(|((n, arg), span)| self.method(span, n, arg)),
+                    .map(|((n, arg), span)| self.method(span, n, arg.unwrap_or(b""))),
             ));
             let comma_list = |p| separated0::<_, _, (), _, _, _, _>(p, (b',', spc()));
             cut_err(delim(
@@ -410,22 +412,22 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
                     Currently this is equivalent to 'spawn', but may change \
                     without notice in the future."
                 );
-                let head = starts(opt(), methods());
-                separated_pair(head, opt(), tail()).void()
+                let head = starts(opt_spc(), methods());
+                separated_pair(head, opt_spc(), tail()).void()
             },
             b"code" => {
-                let head = starts(opt(), delim(b'(', ident(), b')'));
+                let head = starts(opt_spc(), delim(b'(', ident(), b')'));
                 let head = head.with_span().map(|(i, span)| self.code(span, i));
-                terminated(head, (opt(), b';'))
+                terminated(head, (opt_spc(), b';'))
             },
             b"spawn" | b"entity" => {
-                let head = starts(opt(), methods());
-                separated_pair(head, opt(), tail()).void()
+                let head = starts(opt_spc(), methods());
+                separated_pair(head, opt_spc(), tail()).void()
             },
             method => {
-                let head = starts(opt(), methods());
+                let head = starts(opt_spc(), methods());
                 let head = head.with_span().map(|(_, span)| self.method(span, method, b""));
-                separated_pair(head, opt(), tail()).void()
+                separated_pair(head, opt_spc(), tail()).void()
             },
         };
         let space_list = |p| separated0::<_, _, (), _, _, _, _>(p, spc());
