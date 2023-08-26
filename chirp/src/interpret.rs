@@ -175,30 +175,40 @@ impl fmt::Debug for BevyCmds<'_, '_, '_> {
         write!(f, "BevyCmds(Commands)")
     }
 }
-struct LoadCtx<'h, 'l, 'll, 'r> {
-    load: Option<&'l LoadContext<'ll>>,
+struct LoadCtx<'h, 'r> {
     reg: &'r TypeRegistry,
     handles: &'h Handles,
 }
-impl fmt::Debug for LoadCtx<'_, '_, '_, '_> {
+impl fmt::Debug for LoadCtx<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_load = self.load.is_some();
         f.debug_struct("LoadCtx")
-            .field("load", &if is_load { "Some(&LoadContext)" } else { "None" })
             .field("reg", &"&TypeRegistry")
             .field("handles", &"&Handles")
             .finish()
     }
 }
-#[derive(Debug)]
-struct InnerInterpreter<'w, 's, 'a, D> {
+struct InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     cmds: BevyCmds<'w, 's, 'a>,
     current: SmallVec<[Entity; 3]>,
     errors: Vec<SpannedError>,
+    load_ctx: Option<&'l mut LoadContext<'ll>>,
     dsl: D,
 }
+impl<D: fmt::Debug> fmt::Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let is_load_ctx = self.load_ctx.is_some();
+        let load_ctx = if is_load_ctx { "Some(&mut LoadContext)" } else { "None" };
+        f.debug_struct("InnerInterpreter")
+            .field("cmds", &self.cmds)
+            .field("current", &self.current)
+            .field("errors", &self.errors)
+            .field("load_ctx", &load_ctx)
+            .field("dsl", &self.dsl)
+            .finish()
+    }
+}
 
-impl<'w, 's, 'a, D> InnerInterpreter<'w, 's, 'a, D> {
+impl<'w, 's, 'a, 'l, 'll, D> InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     #[cold]
     fn push_error(&mut self, span: Range<usize>, error: impl Into<InterpError>) {
         self.errors.push(SpannedError::new(error, span));
@@ -208,14 +218,14 @@ impl<'w, 's, 'a, D> InnerInterpreter<'w, 's, 'a, D> {
 pub(crate) struct Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
     // TODO(perf): Can use an UnsafeCell instead, since we'll never access this
     // concurrently, as the parsing is linear.
-    mutable: RefCell<InnerInterpreter<'w, 's, 'a, D>>,
-    ctx: LoadCtx<'h, 'l, 'll, 'r>,
+    mutable: RefCell<InnerInterpreter<'w, 's, 'a, 'l, 'll, D>>,
+    ctx: LoadCtx<'h, 'r>,
 }
 
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
     pub fn new<D: ParseDsl>(
         builder: &'a mut Commands<'w, 's>,
-        load: Option<&'l LoadContext<'ll>>,
+        load_ctx: Option<&'l mut LoadContext<'ll>>,
         reg: &'r TypeRegistry,
         handles: &'h Handles,
     ) -> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
@@ -225,8 +235,9 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
                 current: SmallVec::new(),
                 errors: Vec::new(),
                 dsl: D::default(),
+                load_ctx,
             }),
-            ctx: LoadCtx { load, reg, handles },
+            ctx: LoadCtx { reg, handles },
         }
     }
 }
@@ -247,14 +258,15 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             return;
         };
         trace!("Method: {name} '{args}'");
+        let interp = &mut *self.mutable.borrow_mut();
+        let InnerInterpreter { load_ctx, dsl, .. } = interp;
         let ctx = MethodCtx {
             name,
             args,
-            ctx: self.ctx.load,
+            ctx: load_ctx.as_deref_mut(),
             registry: self.ctx.reg,
         };
-        let interp = &mut self.mutable.borrow_mut();
-        if let Err(err) = interp.dsl.method(ctx) {
+        if let Err(err) = dsl.method(ctx) {
             interp.push_error(span, err);
         }
     }
@@ -267,9 +279,10 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             interp.push_error(span, InterpError::CodeNotPresent(name));
             return;
         };
-        let interp = &mut self.mutable.borrow_mut();
+        let interp = &mut *self.mutable.borrow_mut();
         let parent = interp.current.last().copied();
-        code(self.ctx.reg, self.ctx.load, interp.cmds.0, parent);
+        let load_ctx = interp.load_ctx.as_deref();
+        code(self.ctx.reg, load_ctx, interp.cmds.0, parent);
     }
     fn statement_spawn(&self) -> Entity {
         trace!("Spawning an entity with provided methods!");
@@ -305,7 +318,9 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             Ok(())
         } else {
             let str = Cow::Borrowed("Static str");
-            let file_name = self.ctx.load.map_or(str, |l| l.path().to_string_lossy());
+            let interp = self.mutable.borrow();
+            let load_ctx = interp.load_ctx.as_ref();
+            let file_name = load_ctx.map_or(str, |l| l.path().to_string_lossy());
             let source_code = String::from_utf8_lossy(input).to_string();
             let source_code = NamedSource::new(file_name, source_code);
             Err(Errors { source_code, errors })

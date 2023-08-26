@@ -32,15 +32,18 @@ pub use anyhow;
 #[cfg(feature = "macros")]
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
+pub use load_asset::LoadAsset;
 pub use loader::spawn::{Chirp, ChirpInstances};
 pub use parse::ParseDsl;
 pub use reflect::ReflectDsl;
+
+mod load_asset;
 
 pub mod interpret;
 pub mod loader;
 pub mod parse;
 pub mod reflect;
-pub mod wrapparg;
+pub mod wraparg;
 
 #[doc(hidden)]
 pub mod bevy_types {
@@ -88,7 +91,7 @@ impl<'a> ChirpReader<'a> {
     pub fn interpret<D: ParseDsl>(
         &mut self,
         handles: &Handles,
-        load_context: Option<&LoadContext>,
+        load_context: Option<&mut LoadContext>,
         registry: &TypeRegistry,
         input: &[u8],
     ) -> Result<(), interpret::Errors> {
@@ -112,7 +115,7 @@ impl<'a> ChirpReader<'a> {
     pub fn interpret_logging<D: ParseDsl>(
         &mut self,
         handles: &Handles,
-        load_context: Option<&LoadContext>,
+        load_context: Option<&mut LoadContext>,
         registry: &TypeRegistry,
         input: &[u8],
     ) -> bool {

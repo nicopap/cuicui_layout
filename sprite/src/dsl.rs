@@ -111,7 +111,7 @@ pub struct ParseColorError(String);
 
 fn parse_color(
     _: &Registry,
-    _: Option<&LoadContext>,
+    _: Option<&mut LoadContext>,
     input: &str,
 ) -> Result<Color, ParseColorError> {
     let err = |_| ParseColorError(input.to_string());

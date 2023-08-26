@@ -199,9 +199,9 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
                 data: #this_crate::parse::MethodCtx,
             ) -> Result<(), #this_crate::anyhow::Error> {
                 use #this_crate::parse::{quick, MethodCtx, DslParseError};
-                use #this_crate::wrapparg::{from_str, from_reflect, to_handle, identity};
+                use #this_crate::wraparg::{from_str, from_reflect, to_handle, identity};
 
-                let MethodCtx { name, args, ctx, registry } = data;
+                let MethodCtx { name, args, mut ctx, registry } = data;
                 match name {
                     #(#funs)*
                     _name => { #catchall }
@@ -259,7 +259,7 @@ fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {
     quote_spanned! { fun.sig.inputs.span() =>
         stringify!(#ident) => {
             let args = quick::#arg_n(args)?;
-            self.#ident(#(#arg_parsers(registry, ctx, #fun_args)?),*);
+            self.#ident(#(#arg_parsers(registry, ctx.as_deref_mut(), #fun_args)?),*);
             Ok(())
         }
     }

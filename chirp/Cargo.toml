@@ -11,13 +11,15 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["macros", "fancy_errors"]
+default = ["macros", "fancy_errors", "load_font", "load_image"]
 # Display nicely formatted error messages
 fancy_errors = ["miette/fancy"]
 macros = ["cuicui_chirp_macros"]
 test_and_doc = ["cuicui_dsl/test_and_doc"]
 # For debugging the parser EXTREMELY SLOW COMPILE TIMES
 trace_parser = ["winnow/debug"]
+load_font = ["bevy/bevy_text"]
+load_image = ["bevy/bevy_render"]
 
 [dependencies]
 anyhow.workspace = true

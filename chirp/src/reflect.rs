@@ -170,7 +170,7 @@ where
     F: Format,
 {
     /// This is just so the error type is easier to convert in the `ParseDsl::method` impl.
-    fn typed_method(&mut self, ctx: MethodCtx) -> Result<(), ReflectDslError<T>> {
+    fn typed_method(&mut self, ctx: &MethodCtx) -> Result<(), ReflectDslError<T>> {
         use ReflectDslError::{BadDeser, BadField};
         // unwrap: Same logic as in `DslBundle::insert`
         let inner = self.inner.as_mut().unwrap();
@@ -197,6 +197,6 @@ where
     F: Format,
 {
     fn method(&mut self, ctx: MethodCtx) -> Result<()> {
-        Ok(self.typed_method(ctx)?)
+        Ok(self.typed_method(&ctx)?)
     }
 }

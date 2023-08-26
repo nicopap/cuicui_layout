@@ -8,13 +8,15 @@
 // use inline(always) on functions that are very small, it won't add significative
 // compile overhead in anycase, but may help the optimizer elide some code.
 
-use std::{any, convert::Infallible, marker::PhantomData, str, str::FromStr};
+use std::{any, convert::Infallible, fs, io, marker::PhantomData, str, str::FromStr};
 
-use bevy::asset::{Asset, AssetPath, Handle, LoadContext};
+use bevy::asset::{Asset, FileAssetIo, Handle, LoadContext, LoadedAsset};
 use bevy::reflect::erased_serde::__private::serde::de::DeserializeSeed;
 use bevy::reflect::serde::TypedReflectDeserializer;
 use bevy::reflect::{FromReflect, Reflect, TypeRegistryInternal as TypeRegistry};
 use thiserror::Error;
+
+use crate::load_asset::LoadAsset;
 
 /// Error occuring in [`to_handle`].
 #[allow(missing_docs)] // Already documented by error message
@@ -26,6 +28,12 @@ pub enum HandleDslDeserError<T> {
         any::type_name::<T>(),
     )]
     NoLoadContext,
+    #[error("Failed to load 'Handle<{}>' from file system: {0}", any::type_name::<T>())]
+    FileIo(#[from] io::Error),
+    #[error("Loading handles is not supported with non-FileSystem IO. It will be available starting bevy 0.12")]
+    UnsupportedIo,
+    #[error("Couldn't load 'Handle<{}>': {0}", any::type_name::<T>())]
+    BadLoad(anyhow::Error),
     #[doc(hidden)]
     #[error("This error never occurs")]
     _Ignore(PhantomData<fn(T)>, Infallible),
@@ -76,7 +84,7 @@ pub enum ReflectDslDeserError<T> {
 /// See [`ReflectDslDeserError`] for possible errors.
 pub fn from_reflect<T: Reflect + FromReflect>(
     registry: &TypeRegistry,
-    _: Option<&LoadContext>,
+    _: Option<&mut LoadContext>,
     input: &str,
 ) -> Result<T, ReflectDslDeserError<T>> {
     use ron::de::Deserializer as Ronzer;
@@ -106,7 +114,7 @@ pub fn from_reflect<T: Reflect + FromReflect>(
 #[inline(always)]
 pub fn from_str<T: FromStr>(
     _: &TypeRegistry,
-    _: Option<&LoadContext>,
+    _: Option<&mut LoadContext>,
     input: &str,
 ) -> Result<T, T::Err>
 where
@@ -126,15 +134,22 @@ where
 /// # Errors
 /// See [`HandleDslDeserError`] for possible errors.
 #[inline(always)]
-pub fn to_handle<T: Asset>(
+pub fn to_handle<T: Asset + LoadAsset>(
     _: &TypeRegistry,
-    load_context: Option<&LoadContext>,
+    load_context: Option<&mut LoadContext>,
     input: &str,
 ) -> Result<Handle<T>, HandleDslDeserError<T>> {
+    use HandleDslDeserError::{BadLoad, UnsupportedIo};
+
     let Some(ctx) = load_context else {
         return Err(HandleDslDeserError::<T>::NoLoadContext);
     };
-    Ok(ctx.get_handle(AssetPath::from(input)))
+    let file_io: &FileAssetIo = ctx.asset_io().downcast_ref().ok_or(UnsupportedIo)?;
+    let mut file_path = file_io.root_path().clone();
+    file_path.push(input);
+    let bytes = fs::read(&file_path)?;
+    let asset = T::load(&file_path, &bytes, ctx).map_err(BadLoad)?;
+    Ok(ctx.set_labeled_asset(input, LoadedAsset::new(asset)))
 }
 
 /// Returns the input as a `&str` without further changes.
@@ -143,9 +158,9 @@ pub fn to_handle<T: Asset>(
 /// This is always `Ok`. It is safe to unwrap. Rust guarentees that `Infallible`
 /// can't be constructed.
 #[inline(always)]
-pub const fn identity<'a>(
+pub fn identity<'a>(
     _: &TypeRegistry,
-    _: Option<&LoadContext>,
+    _: Option<&mut LoadContext>,
     input: &'a str,
 ) -> Result<&'a str, Infallible> {
     Ok(input)

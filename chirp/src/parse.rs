@@ -41,7 +41,6 @@ impl<D> DslParseError<D> {
 }
 
 /// Argument to [`ParseDsl::method`].
-#[derive(Clone, Copy)]
 pub struct MethodCtx<'a, 'l, 'll, 'r> {
     /// The method name.
     pub name: &'a str,
@@ -51,7 +50,7 @@ pub struct MethodCtx<'a, 'l, 'll, 'r> {
     /// sections as necessary.
     pub args: &'a str,
     /// The [`LoadContext`] used to load assets referenced in `chirp` files.
-    pub ctx: Option<&'l LoadContext<'ll>>,
+    pub ctx: Option<&'l mut LoadContext<'ll>>,
     /// The [`TypeRegistry`] the interpreter was initialized with.
     pub registry: &'r TypeRegistry,
     // TODO(perf): Consider re-using cuicui_fab::Binding
