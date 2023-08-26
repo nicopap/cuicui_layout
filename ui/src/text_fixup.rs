@@ -5,6 +5,7 @@ use bevy::text::{Text, TextLayoutInfo};
 use bevy::ui::{widget::TextFlags, ContentSize};
 use bevy::utils::default;
 
+#[allow(clippy::needless_pass_by_value)]
 pub fn add_text_components(
     to_add: Query<
         Entity,
