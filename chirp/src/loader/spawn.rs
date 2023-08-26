@@ -1,12 +1,23 @@
-use bevy::asset::{Assets, Handle, HandleId};
+use bevy::asset::{AssetEvent, Assets, Handle, HandleId};
 use bevy::ecs::{prelude::*, query::Has, reflect::ReflectComponent};
 use bevy::hierarchy::{BuildChildren, Parent};
-use bevy::log::{error, trace, warn};
-use bevy::prelude::AssetEvent;
+use bevy::log::{debug, error, trace, warn};
+use bevy::prelude::Name;
 use bevy::reflect::{Reflect, TypePath, TypeUuid};
 use bevy::scene::{InstanceId, Scene, SceneSpawner};
 use bevy::utils::HashMap;
 use smallvec::SmallVec;
+use thiserror::Error;
+
+use crate::interpret;
+
+#[derive(Debug, Error)]
+pub enum ReloadError {
+    #[error("This isn't a valid chirp seed, no chirp file were spawned for this entity: {0:?}")]
+    NotAvailable(Entity),
+    #[error("Cannot reload a not-yet-loaded chirp")]
+    NotYetLoaded,
+}
 
 /// Controls loading and reloading of scenes with a hook.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -71,19 +82,26 @@ impl ChirpInstances {
     /// A new scene will be spawned with the same parent as the scene
     /// when it was spawned.
     ///
+    /// # Errors
+    /// - When `seed` isn't a valid chirp seed
+    /// - When the instance is still loading (typically if there is an error in the chirp file).
+    ///
     /// # Bugs
     /// Currently, the seed `Entity` becomes invalid after a hot-reload.
-    pub fn set_reload(&mut self, seed: Entity) {
+    pub fn set_reload(&mut self, seed: Entity) -> Result<(), ReloadError> {
         trace!("Reloading: chirp scene {seed:?}");
         let Some(instance) = self.instances.get_mut(&seed) else {
-            error!("TODO(err): set_reload failed because instance does not exist");
-            return;
+            return Err(ReloadError::NotAvailable(seed));
         };
+        if instance.state == State::Loading {
+            return Err(ReloadError::NotYetLoaded);
+        }
         instance.state = State::MustReload;
         // Avoid updating twice the same instance in `update_marked`, otherwise we would panic
         if !self.to_update.contains(&seed) {
             self.to_update.push(seed);
         }
+        Ok(())
     }
     /// Schedule deletion of `seed` instance.
     ///
@@ -114,6 +132,9 @@ impl ChirpInstances {
     fn set_reload_scene(&mut self, chirp: &Handle<Chirp>) {
         let instances = self.instances.iter_mut();
         for (seed, instance) in instances.filter(|(_, inst)| &inst.handle == chirp) {
+            if instance.state == State::Loading {
+                continue;
+            }
             instance.state = State::MustReload;
 
             // Avoid updating twice the same instance in `update_marked`, otherwise we would panic
@@ -135,10 +156,14 @@ impl ChirpInstances {
 /// individual scene instances.
 #[derive(Debug, TypeUuid, TypePath)]
 #[uuid = "b954f251-c38a-4ede-a7dd-cbf9856c84c1"]
-pub struct Chirp {
-    /// The scene handle
-    pub scene: Handle<Scene>,
-    pub(crate) entity_count: u16,
+pub enum Chirp {
+    /// The chirp file loaded successfully and holds the given [`Scene`].
+    Loaded(Handle<Scene>),
+    /// The chirp file failed to load with the given [`anyhow::Error`].
+    ///
+    /// Note: this exists because this enables us to use hot reloading even
+    /// when loading the file failed.
+    Error(interpret::Errors),
 }
 
 #[derive(Debug, Reflect, Component, Clone, Copy)]
@@ -180,14 +205,15 @@ pub(super) fn consume_seeds(
 ) {
     let mut instances = chirp_instances.map_unchanged(|i| &mut i.instances);
     for (seed, chirp, parent, already_logged) in &to_spawn {
-        let Some(Chirp { scene, entity_count }) = chirps.get(chirp) else {
+        let Some(Chirp::Loaded(scene)) = chirps.get(chirp) else {
             if !already_logged {
-                cmds.entity(seed).insert(ChirpSeedLogged);
+                cmds.entity(seed)
+                    .insert((ChirpSeedLogged, Name::new("Loading Chirp Seed")));
                 warn!("Chirp {seed:?} not yet loaded, skipping");
             }
             continue;
         };
-        trace!("Found chirp seed for chirp with {entity_count} entities");
+        trace!("Chirp scene loaded, spawning instance…");
         let instance = instances.entry(seed).or_insert_with(|| {
             let id = scene_spawner.spawn(scene.clone_weak());
             // TODO(bug): situations where the parent changes requires updating
@@ -199,7 +225,7 @@ pub(super) fn consume_seeds(
         let is_ready = scene_spawner.instance_is_ready(instance.id);
         match instance.state {
             State::Loading if is_ready => {
-                trace!("Instace {seed:?} is ready, hooking stuff up",);
+                trace!("Instace {seed:?} is ready, hooking stuff up");
                 instance.state = State::Hooked;
                 let from_chirp = FromChirp(chirp.id());
                 // FIXME: Upstream bevy bug (actually my fault lol)
@@ -221,7 +247,10 @@ pub(super) fn consume_seeds(
                     .collect::<Vec<_>>();
                 cmds.insert_or_spawn_batch(add_from_chirp);
             }
-            State::Loading => continue,
+            State::Loading => {
+                debug!("Instance {seed:?} not yet ready, maybe next frame!");
+                continue;
+            }
             State::Hooked | State::MustReload | State::MustDelete => unreachable!(),
         }
     }

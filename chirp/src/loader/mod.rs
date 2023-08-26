@@ -132,10 +132,10 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
                 let name = get_short_name(type_name::<D>());
                 return Err(anyhow::anyhow!("Can't read handles in ChirpLoader<{name}>"));
             };
-            InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes)?;
+            InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes);
             drop(registry);
             let path = load_context.path().to_string_lossy();
-            info!("Loaded with success {path}");
+            info!("Complete loading of chirp: {path}");
             Ok(())
         })
     }
@@ -149,21 +149,23 @@ impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
         Self { ctx, registry, _parse_dsl: PhantomData, handles }
     }
 
-    fn load(&mut self, file: &[u8]) -> Result<(), interpret::Errors> {
-        let scene = self.load_scene(file)?;
-        let entity_count = scene.world.entities().len().try_into().unwrap_or(u16::MAX);
-        let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
-        self.ctx
-            .set_default_asset(LoadedAsset::new(spawn::Chirp { scene, entity_count }));
-        Ok(())
+    fn load(&mut self, file: &[u8]) {
+        let chirp = match self.load_scene(file) {
+            Ok(scene) => {
+                let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
+                spawn::Chirp::Loaded(scene)
+            }
+            Err(errors) => {
+                log_miette_error!(&errors);
+                spawn::Chirp::Error(errors)
+            }
+        };
+        self.ctx.set_default_asset(LoadedAsset::new(chirp));
     }
     fn load_scene(&mut self, file: &[u8]) -> Result<Scene, interpret::Errors> {
         let mut world = World::new();
         let mut chirp = ChirpReader::new(&mut world);
         let result = chirp.interpret::<D>(self.handles, Some(self.ctx), self.registry, file);
-        if let Err(err) = &result {
-            log_miette_error!(err);
-        }
         result.map(|_| Scene::new(world))
     }
 }
