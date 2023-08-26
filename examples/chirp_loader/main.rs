@@ -25,8 +25,8 @@ fn main() {
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::TRACE,
                     filter: "\
-                      cuicui_layout=info,\
-                      cuicui_layout_bevy_ui=info,\
+                      cuicui_layout=trace,\
+                      cuicui_layout_bevy_ui=trace,\
                       gilrs_core=info,\
                       gilrs=info,\
                       naga=info,\

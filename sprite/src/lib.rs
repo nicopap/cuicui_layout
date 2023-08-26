@@ -98,6 +98,29 @@ pub fn update_layout_camera_root(
         }
     }
 }
+// Note: if root is spawned but there isn't yet a camera associated with it,
+// `update_layout_camera_root will take care of it when camera is added.
+/// System setting the size of newly added [`ScreenRoot`] nodes.
+///
+/// This differs from [`update_layout_camera_root`] in that:
+/// - `update_layout_camera_root` sets size for  **pre-existing roots** when **cameras change**
+/// - `set_added_layout_camera_root` sets size for **newly added roots** on **pre-existing cameras**
+#[quick_sysfail]
+pub fn set_added_layout_camera_root(
+    ui_cameras: Query<(&Camera, &RenderLayers), With<LayoutRootCamera>>,
+    mut roots: Query<(&mut Root, &RenderLayers), Added<ScreenRoot>>,
+) {
+    for (mut root, layers) in &mut roots {
+        let is_layer = |(c, l)| (l == layers).then_some(c);
+        let Some(camera) = ui_cameras.iter().find_map(is_layer) else {
+            continue;
+        };
+        let size = camera.logical_viewport_size()?;
+        let bounds = root.size_mut();
+        *bounds.width = size.x;
+        *bounds.height = size.y;
+    }
+}
 /// Set the [`Transform`]s according to [`LayoutRect`]'s computed from [`cuicui_layout`].
 pub fn update_layout_transform(
     mut query: Query<(&mut Transform, &LayoutRect), Changed<LayoutRect>>,
@@ -133,7 +156,8 @@ impl BevyPlugin for Plugin {
             .add_systems(
                 Update,
                 (
-                    update_layout_camera_root.before(ComputeLayoutSet),
+                    (update_layout_camera_root, set_added_layout_camera_root)
+                        .before(ComputeLayoutSet),
                     update_layout_transform.after(ComputeLayoutSet),
                 ),
             );

@@ -62,7 +62,7 @@ use bevy::ecs::prelude::*;
 use bevy::render::camera::Camera;
 use bevy::ui::Style;
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root};
+use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root, ScreenRoot};
 
 pub use dsl::UiDsl;
 
@@ -75,12 +75,12 @@ pub mod dsl;
 #[doc = include_str!("../../README.md")]
 pub struct TestWorkspaceReadme;
 
-/// System updating the [`cuicui_layout::ScreenRoot`] [`cuicui_layout::Node`] with the
+/// System updating the [`ScreenRoot`] [`cuicui_layout::Node`] with the
 /// [`LayoutRootCamera`]'s viewport size, whenever it changes.
 #[quick_sysfail]
 pub fn update_ui_camera_root(
     ui_cameras: Query<&Camera, (With<LayoutRootCamera>, Changed<Camera>)>,
-    mut roots: Query<&mut Root>,
+    mut roots: Query<&mut Root, With<ScreenRoot>>,
 ) {
     for cam in &ui_cameras {
         let size = cam.logical_viewport_size()?;
@@ -89,6 +89,28 @@ pub fn update_ui_camera_root(
             *bounds.width = size.x;
             *bounds.height = size.y;
         }
+    }
+}
+// Note: if root is spawned but there isn't yet a camera associated with it,
+// `update_layout_camera_root will take care of it when camera is added.
+/// System setting the size of newly added [`ScreenRoot`] nodes.
+///
+/// This differs from [`update_ui_camera_root`] in that:
+/// - `update_ui_camera_root` sets size for  **pre-existing roots** when **cameras change**
+/// - `set_added_camera_root` sets size for **newly added roots** on **pre-existing cameras**
+#[quick_sysfail]
+pub fn set_added_camera_root(
+    ui_cameras: Query<&Camera, With<LayoutRootCamera>>,
+    mut roots: Query<&mut Root, Added<ScreenRoot>>,
+) {
+    for mut root in &mut roots {
+        let Some(camera) = ui_cameras.iter().next() else {
+            continue;
+        };
+        let size = camera.logical_viewport_size()?;
+        let bounds = root.size_mut();
+        *bounds.width = size.x;
+        *bounds.height = size.y;
     }
 }
 
@@ -134,7 +156,10 @@ impl BevyPlugin for Plugin {
 
         app.add_plugins(cuicui_layout::Plugin)
             .add_content_sized::<content_sized::UiContentSize>()
-            .add_systems(Update, update_ui_camera_root.before(ComputeLayoutSet))
+            .add_systems(
+                Update,
+                (update_ui_camera_root, set_added_camera_root).before(ComputeLayoutSet),
+            )
             .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout))
             .add_systems(Last, text_fixup::add_text_components);
     }
