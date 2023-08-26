@@ -9,6 +9,31 @@
 //! an asset loader. Any [`Entity`] with a `Handle<Chirp>` **will be replaced**
 //! by several entities, the one at the root of the `.chirp` file.
 
+// ## Jargon
+//
+// A "chirp seed" is an entity with a `Handle<Chirp>` component.
+// We call it a seed, because it is immediately removed by cuicui_chirp, and
+// stored in `ChirpInstances`.
+//
+// The role of cuicui_chirp is to consume the seed, digest it, poop it out
+// and grow a forest (a scene) in the place where the seed was dropped.
+//
+// ## Architecture
+//
+// Due to how poorly bevy handle scene hot reloading, we need to work around it.
+//
+// the `spawn` module defines 3 systems, all dedicated to managing `Handle<Chirp>`s
+//
+// 1. `update_asset_changed`: Reacts to asset event and orders reloading of spawned
+//    chirp scenes. Note that it is more powerful than the `Scene` system, as it actually
+//    works with hot reloading.
+// 2. `update_marked`: Reacts to chirp instances changed through the [`ChirpInstances`]
+//    resource. It may create a seed if reloooading is needed.
+// 3. `consume_seeds`: Reacts to `Entity` spawned with a `Handle<Chirp>`, request
+//    to `SceneSpawner` that the chirp's scene be loaded into the world, add
+//    the instance's metadata to [`ChirpInstances`], and when loading is completed,
+//    re-parent & add chirp metadata to spawned scene entities.
+
 use std::{any::type_name, marker::PhantomData, sync::Arc, sync::RwLock, sync::TryLockError};
 
 use anyhow::Result;
@@ -126,7 +151,7 @@ impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
 
     fn load(&mut self, file: &[u8]) -> Result<(), interpret::Errors> {
         let scene = self.load_scene(file)?;
-        let entity_count = scene.world.entities().len() as usize;
+        let entity_count = scene.world.entities().len().try_into().unwrap_or(u16::MAX);
         let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
         self.ctx
             .set_default_asset(LoadedAsset::new(spawn::Chirp { scene, entity_count }));
@@ -169,17 +194,20 @@ impl Plugin<()> {
 }
 impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
     fn build(&self, app: &mut App) {
-        use spawn::{update_asset_changed, update_marked, update_spawned};
-
-        let chirp_asset_systems = (update_asset_changed, update_marked, update_spawned)
+        // TODO(perf): Run-condition to avoid useless apply_deferred
+        let chirp_asset_systems = (
+            spawn::update_asset_changed,
+            spawn::update_marked,
+            apply_deferred,
+            spawn::consume_seeds,
+            apply_deferred,
+        )
             .chain()
             .after(scene_spawner_system);
 
         app.add_systems(
             PostUpdate,
-            (chirp_asset_systems, apply_deferred)
-                .chain()
-                .before(TransformSystem::TransformPropagate),
+            chirp_asset_systems.before(TransformSystem::TransformPropagate),
         );
         app.init_resource::<ChirpInstances>()
             .add_asset::<Chirp>()

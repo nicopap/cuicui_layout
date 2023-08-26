@@ -46,5 +46,8 @@ fn main() {
 #[allow(clippy::needless_pass_by_value)] // false positive
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
+    cmds.spawn(SpatialBundle::default()).with_children(|cmds| {
+        cmds.spawn(assets.load::<Chirp, _>("trivial.chirp"));
+    });
     cmds.spawn(assets.load::<Chirp, _>("trivial.chirp"));
 }

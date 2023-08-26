@@ -75,3 +75,31 @@ Open questions:
 - Ideally we control scene reloads through a component. We don't have a single
   entity to associate this component with. So we need some ad-hoc registry
   in a `Res`.
+
+# Current architecture
+
+Description of flow is available in `chirp/src/loader/mod.rs`. But our approach
+is currently broken:
+
+`ChirpInstances` holding `HashMap<HandleId, ChirpInstance>` doesn't work for when
+we have multiple instances of the same scene. Ideally we want to store instance
+info per-instance (duh…). To do so we will:
+
+Use a `HashMap<Seed, ChirpInstance>`: where `type Seed = Entity;` The `Entity`
+used to spawn a specific instance.
+
+User always has acccess to the seed since they have control over the.
+
+This might become more complicated as scenes themselves may contain other
+scenes. But that's for future considerations.
+
+User-controlled stuff:
+
+- Add an `Entity` with `Handle<Chirp>`
+- Manually remove/re-queue loading of a specific instance through `ChirpInstances`
+
+We want:
+
+- When getting `AssetEvent`s, to reload/delete entity from **all scenes** which `Handle<Chirp>` changed.
+- When finding a `Handle<Chirp>`, to load the chirp's scene and add it to `ChirpInstances`.
+- When `Scene`'s instance is ready, to do our hooking stuff

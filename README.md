@@ -7,6 +7,9 @@
 
 | **❗ A syntax overall is expected in 0.10.0!!! Beware ❗** |
 |------------------------------------------------------------|
+| **[Want to have an impact on how it will look like? VOTE FOR YOUR FAVORITE HERE][vote]** |
+
+[vote]: https://github.com/nicopap/cuicui_layout/discussions/72
 
 A dumb layout algorithm you can rely on, built for and with bevy.
 
