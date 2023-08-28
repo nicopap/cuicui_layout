@@ -1,14 +1,33 @@
 CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery \
 	--warn clippy::needless-pass-by-value \
 	--allow clippy::use-self
-.PHONY: check run pre-hook
+.PHONY: check checkout-cyberpunk run pre-hook
+
+examples/chirpunk/lunex-cyberpunk-assets:
+	git clone --no-checkout --depth=1 --filter=tree:0 \
+		https://github.com/IDEDARY/bevy-lunex-cyberpunk.git \
+		examples/chirpunk/lunex-cyberpunk-assets
+	pushd examples/chirpunk/lunex-cyberpunk-assets \
+	&& git sparse-checkout set --no-cone assets \
+	&& git checkout \
+	&& popd
+examples/chirpunk/assets: examples/chirpunk/lunex-cyberpunk-assets
+	pushd examples/chirpunk \
+	&& ../../scripts/x_platform_ln.sh lunex-cyberpunk-assets/assets assets \
+	&& popd
+examples/chirpunk/assets/menus: examples/chirpunk/assets examples/chirpunk/menus
+	pushd examples/chirpunk/lunex-cyberpunk-assets/assets \
+	&& ../../../../scripts/x_platform_ln.sh ../../menus menus \
+	&& popd
+
+checkout-cyberpunk: examples/chirpunk/assets examples/chirpunk/assets/menus
 
 check:
 	cargo clippy  $(CLIPPY_ARGS)
 
 run:
 	# cargo test -p parse_dsl_macro # --features cuicui_chirp/trace_parser
-	RUST_BACKTRACE=0 cargo run -p chirp_loader --features cuicui_layout/debug
+	RUST_BACKTRACE=0 cargo run -p chirpunk --features cuicui_layout/debug
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded
 	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc -p bevypunk -- -Z macro-backtrace
 

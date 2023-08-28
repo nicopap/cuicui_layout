@@ -1,0 +1,63 @@
+// The settings menu
+spawn(menu "SETTINGS", wrap, scope, hidden) {
+	// The header consists of (1) the "RETURN" button (2) each individual tab
+	row("header") {
+		button("RETURN", cancel);
+		row("tab bar") {
+			tab_button("DISPLAY");
+			tab_button("SOUND");
+			tab_button("TAB 3");
+			tab_button("TAB 4");
+		}
+	}
+	// all tabs are actually loaded, but only one is shown at the same time
+	row("All tabs", inline_alt_menu) {
+		column(menu "DISPLAY", shown) {
+			settings_header("Display");
+			column("Display items") {
+				settings_row("Window mode", options Choice(["Windowed", "Borderless"]));
+				settings_row("Mouse lock", options Toggle);
+				settings_row("Resizable window", options Toggle);
+				settings_row("Resolution", options Choice(["1920x1080", "1280x720", "720x720"]));
+				settings_row("Profiler Overlay", options Toggle);
+			}
+		}
+		column(menu "SOUND") {
+			settings_header("Audio settings");
+			column("Sound items") {
+				settings_row("Master volume", options Increments(9));
+				settings_row("Effects volume", options Increments(9));
+				settings_row("Music volume", options Increments(9));
+			}
+		}
+		column(menu "TAB 3") {
+			settings_header("Tab 3");
+			column("Random items") {
+				settings_row("Sound effect 1", options Click);
+				settings_row("Sound effect 2", options Click);
+			}
+		}
+		column(menu "TAB 4") {
+			settings_header("Tab 4");
+			column("More random stuff") {
+				settings_row("Fine grained clicking", options Increments(55));
+				settings_row("UI highlight color", options Choice([
+					"aliceblue" , "antiquewhite", "aqua"          , "aquamarine"    , "azure",
+					"beige"     , "bisque"      , "black"         , "blanchedalmond", "blue",
+					"blueviolet", "brown"       , "burlywood"     , "cadetblue"     , "chartreuse",
+					"chocolate" , "coral"       , "cornflowerblue", "cornsilk"      , "crimson",
+					"cyan"      , "darkblue"    , "darkcyan"      , "darkgoldenrod" , "darkgray",
+					"darkgreen"    , "darkkhaki"    , "darkmagenta" , "darkolivegreen", "darkorange",
+					"darkorchid"   , "darkred"      , "darksalmon"  , "darkseagreen"  , "darkslateblue",
+					"darkslategray", "darkturquoise", "darkviolet"  , "deeppink"      , "deepskyblue",
+					"dimgray"      , "dodgerblue"   , "firebrick"   , "floralwhite"   , "forestgreen",
+					"fuchsia"      , "gainsboro"    , "ghostwhite"  , "gold"          , "goldenrod",
+					"gray"         , "green"        , "greenyellow" , "honeydew"      , "hotpink",
+					"indianred"    , "indigo"       , "ivory"       , "khaki"         , "lavender",
+					"lavenderblush", "lawngreen"    , "lemonchiffon", "lightblue"     , "lightcoral",
+					"lightcyan",
+				]));
+			}
+		}
+	}
+}

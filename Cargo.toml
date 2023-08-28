@@ -19,7 +19,6 @@ repository = "https://github.com/nicopap/cuicui_layout"
 
 [workspace.dependencies]
 anyhow = "1.0.72"
-bevy-inspector-egui = "0.19"
 bevy_mod_sysfail = "3"
 # TODO make this optional as well
 css-color = "0.2.5"
@@ -45,10 +44,19 @@ cuicui_layout_bevy_sprite = { version = "0.8.1", path = "./sprite", default-feat
 cuicui_layout_bevy_ui = { version = "0.8.1", path = "./ui" }
 cuicui = { version = "0.8.0", path = "./cuicui" }
 
+# For examples only
+bevy-inspector-egui = "0.19"
+bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
+  "backend_bevy_ui",
+  "backend_egui",
+] }
+bevy-ui-navigation = "0.28.0"
+rust-hsluv = "0.1.4"
+
 [workspace.metadata.release]
 dependent-version = "upgrade"
 
-# This is only to profile & analyse ASM output of the binary examples
+# This is only to profile & analyze ASM output of the binary examples
 [profile.release]
 codegen-units = 1
 opt-level = 3

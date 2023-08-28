@@ -1,0 +1,13 @@
+// The main menu screen with the hangar background
+spawn(layout ">dSaS", screen_root, "root", main_margin 100., image "background.jpg") {
+    column("menu", rules(310px, 100%), main_margin 40., image "board.png") {
+        main_menu_logo();
+        main_menu_item("CONTINUE");
+        main_menu_item("NEW GAME");
+        main_menu_item("LOAD GAME");
+        main_menu_item("SETTINGS");
+        main_menu_item("ADDITIONAL CONTENT");
+        main_menu_item("CREDITS");
+        main_menu_item("QUIT GAME");
+    }
+}

@@ -2,3 +2,5 @@
 /fat_assets
 /.cargo/config.toml
 /target
+/examples/chirpunk/assets
+/examples/chirpunk/lunex-cyberpunk-assets

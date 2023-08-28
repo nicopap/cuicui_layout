@@ -1,0 +1,6 @@
+edition = "2021"
+max_width = 100
+chain_width = 92
+single_line_if_else_max_width = 66
+struct_lit_width = 50
+use_field_init_shorthand = true

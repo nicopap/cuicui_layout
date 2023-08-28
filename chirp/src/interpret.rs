@@ -394,16 +394,16 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         let tail = || alt((b';'.map(terminal), delim(b'{', nest, b'}')));
         let statement = dispatch! { ident();
             reserved_keyword @ (
-                b"abstract" | b"as" | b"async" | b"await" | b"become"
-                | b"box" | b"break" | b"const" | b"continue" | b"crate"
-                | b"do" | b"dyn" | b"else" | b"enum" | b"extern"
-                | b"false" | b"final" | b"fn" | b"for" | b"if"
-                | b"impl" | b"in" | b"let" | b"loop" | b"macro"
-                | b"match" | b"mod" | b"move" | b"mut" | b"override"
-                | b"priv" | b"pub" | b"ref" | b"return" | b"self"
-                | b"static" | b"struct" | b"super" | b"trait" | b"true"
-                | b"try" | b"type" | b"typeof" | b"unsafe" | b"unsized"
-                | b"use" | b"virtual" | b"where" | b"while" | b"yeet"
+                b"abstract" | b"as"      | b"async"  | b"await"    | b"become"
+                | b"box"    | b"break"   | b"const"  | b"continue" | b"crate"
+                | b"do"     | b"dyn"     | b"else"   | b"enum"     | b"extern"
+                | b"false"  | b"final"   | b"fn"     | b"for"      | b"if"
+                | b"impl"   | b"in"      | b"let"    | b"loop"     | b"macro"
+                | b"match"  | b"mod"     | b"move"   | b"mut"      | b"override"
+                | b"priv"   | b"pub"     | b"ref"    | b"return"   | b"self"
+                | b"static" | b"struct"  | b"super"  | b"trait"    | b"true"
+                | b"try"    | b"type"    | b"typeof" | b"unsafe"   | b"unsized"
+                | b"use"    | b"virtual" | b"where"  | b"while"    | b"yeet"
             ) => {
                 let show_keyword = BStr::new(reserved_keyword);
                 warn!(
