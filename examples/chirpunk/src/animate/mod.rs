@@ -17,6 +17,7 @@ impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
         app.register_type::<button_shift::State>()
             .register_type::<button_shift::Animation>()
-            .add_systems(Update, button_shift::animate);
+            .register_type::<main_menu_bg::Animation>()
+            .add_systems(Update, (button_shift::animate, main_menu_bg::animate));
     }
 }

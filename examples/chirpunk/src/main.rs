@@ -57,7 +57,6 @@ use std::time::Duration;
 use bevy::{asset::ChangeWatcher, prelude::*};
 use cuicui_chirp::Chirp;
 use cuicui_layout::LayoutRootCamera;
-use cuicui_layout_bevy_ui::UiDsl;
 
 use animate::button_shift;
 use ui_offset::UiOffset;
@@ -83,12 +82,6 @@ mod ui_offset;
 mod colormix;
 
 type BgColor = BackgroundColor;
-type StyleComponents = AnyOf<(
-    &'static mut Style,
-    &'static mut Text,
-    &'static mut BgColor,
-    &'static mut button_shift::Animation,
-)>;
 
 #[derive(Reflect, Component, Default)]
 #[reflect(Component)]
@@ -107,15 +100,17 @@ fn main() {
                     filter: "\
                       cuicui_layout=trace,cuicui_layout_bevy_ui=trace,\
                       gilrs_core=info,gilrs=info,\
-                      naga=info,wgpu=error,wgpu_hal=error"
+                      naga=info,wgpu=error,wgpu_hal=error,\
+                      bevy_app=info,bevy_render::render_resource::pipeline_cache=info,bevy_render::view::window=info"
                         .to_string(),
                 }),
-            style::Plugin,
-            animate::Plugin,
-            ui_offset::Plugin,
+            (style::Plugin, animate::Plugin, ui_offset::Plugin),
+            dsl::Plugin,
             cuicui_layout_bevy_ui::Plugin,
-            cuicui_chirp::loader::Plugin::new::<UiDsl>(),
+            cuicui_chirp::loader::Plugin::new::<dsl::BevypunkDsl>(),
+            bevy_ui_navigation::DefaultNavigationPlugins,
             bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
+            bevy_framepace::FramepacePlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)

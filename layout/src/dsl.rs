@@ -1,7 +1,8 @@
 //! The [`LayoutDsl`] type used to bring layout bundles to the [`cuicui_dsl::dsl`] macro.
 
-use std::mem;
+use std::{fmt, mem};
 
+use bevy::log::error;
 use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
@@ -107,7 +108,7 @@ impl Layout {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 enum RootKind {
     ScreenRoot,
     Root,
@@ -138,6 +139,20 @@ pub struct LayoutDsl<T = BaseDsl> {
     set_flow: bool,
     ui_bundle: Option<Box<dyn FnOnce(&mut EntityCommands)>>,
     layout_bundle: Option<LayoutBundle>,
+}
+impl<D: fmt::Debug> fmt::Debug for LayoutDsl<D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let has_bundle = self.ui_bundle.is_some();
+        let ui_bundle = if has_bundle { "Some([FnOnce(EntityCommands)])" } else { "None" };
+        f.debug_struct("LayoutDsl")
+            .field("inner", &self.inner)
+            .field("root", &self.root)
+            .field("layout", &self.layout)
+            .field("set_flow", &self.set_flow)
+            .field("ui_bundle", &ui_bundle)
+            .field("layout_bundle", &self.layout_bundle)
+            .finish()
+    }
 }
 
 #[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Rule = from_str))]
@@ -183,14 +198,26 @@ impl<D: DslBundle> LayoutDsl<D> {
     /// `spec` specifies the [flow][Self::flow], (d)istribution
     /// and (a)lignment of the container in the form: `[v>]d[SEC]a[SEC]`.
     ///
+    /// legal values are: `S`tart, `E`nd or `C`enter.
+    ///
     /// # Panics
     /// If the `spec` format is invalid.
     pub fn layout(&mut self, spec: &str) {
-        assert_eq!(spec.len(), 5, "accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
+        let correct_len = spec.len() == 5;
+        if !correct_len {
+            error!("'layout' method accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
+            return;
+        };
+        let (Ok(flow), Ok(distrib), Ok(align)) =
+            (spec[0..1].parse(), spec[1..3].parse(), spec[3..5].parse())
+        else {
+            error!("'layout' method accpets '[v>]d[SEC]a[SEC]', got '{spec}'");
+            return;
+        };
         self.set_flow = true;
-        self.layout.flow = spec[0..1].parse().unwrap();
-        self.layout.distrib = spec[1..3].parse().unwrap();
-        self.layout.align = spec[3..5].parse().unwrap();
+        self.layout.flow = flow;
+        self.layout.distrib = distrib;
+        self.layout.align = align;
     }
     /// Set both the [cross][Self::cross_margin] and [main][Self::main_margin]
     /// margins.

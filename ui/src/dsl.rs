@@ -152,7 +152,7 @@ enum UiDslFlags {
 }
 
 /// The [`DslBundle`] for `bevy_ui`.
-#[derive(Deref, DerefMut)]
+#[derive(Deref, DerefMut, Debug)]
 pub struct UiDsl<D = cuicui_layout::dsl::LayoutDsl> {
     #[deref]
     inner: D,
@@ -260,6 +260,10 @@ impl<D> UiDsl<D> {
     /// Set the text size for this node.
     pub fn font_size(&mut self, size: u16) {
         self.font_size = size;
+    }
+    /// Set the text font.
+    pub fn font(&mut self, font: &Handle<Font>) {
+        self.font = Some(font.clone());
     }
 }
 impl<D> UiDsl<D> {

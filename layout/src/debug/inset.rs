@@ -46,7 +46,8 @@ impl DrawnLines {
             if !self.lines.contains(&on_grid) {
                 return ((on_grid as f32) + fract) * self.width;
             }
-            on_grid += increment;
+            // TODO(bug): Panics sometimes
+            on_grid = on_grid.saturating_add(increment);
         }
     }
     /// Remove a line from the collection of drawn lines.

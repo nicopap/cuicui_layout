@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 anyhow.workspace = true
+bevy_framepace.workspace = true
 bevy-inspector-egui.workspace = true
 bevy-ui-navigation.workspace = true
 rust-hsluv.workspace = true

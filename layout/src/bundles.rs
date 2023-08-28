@@ -30,7 +30,7 @@ impl RootBundle {
 }
 
 /// A layout node, may be terminal or contain other nodes.
-#[derive(Bundle, Default)]
+#[derive(Bundle, Default, Debug)]
 pub struct LayoutBundle {
     /// The positional component.
     pub pos_rect: LayoutRect,

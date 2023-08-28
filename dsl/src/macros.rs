@@ -425,15 +425,23 @@ macro_rules! dsl {
         field_setting_method();
         $x $(.$f)+ = $set $(; dsl!(@arg $x, $($t)*))?
     };
-    (@arg $x:ident,) => {  };
+    (@arg $x:ident, ) => {  };
     (@arg $x:ident, $nm:literal          $(,$($t:tt)*)?)=>{$x.named($nm) $(; dsl!(@arg $x, $($t)*))?};
     (@arg $x:ident, $m:ident $m_arg:expr $(,$($t:tt)*)?)=>{$x.$m($m_arg) $(; dsl!(@arg $x, $($t)*))?};
     (@arg $x:ident, $m:ident             $(,$($t:tt)*)?)=>{$x.$m()       $(; dsl!(@arg $x, $($t)*))?};
+    (@arg $x:ident, ,) => {  };
+    (@arg $x:ident, , $($t:tt)*)=> {
+        compile_error!(
+            "Found trailing comma in method list, before end of parenthesis. \
+            Currently dsl! DOES NOT ALLOW TRAILING COMMAS in method list."
+        );
+    };
     (@arg $x:ident, $($t:tt)*)=> {
         compile_error!(concat!(
             "`", dsl!(@before_coma [] $($t)*), "` is an invalid DSL method",
             "\n\nPossible methods syntax is described at:",
             "\nhttps://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-methods\n",
+            "\nCurrently dsl! DOES NOT ALLOW TRAILING COMMAS in method list.\n",
             "\nYou may see this message because you previously used a leaf_node method. ",
             "Leaf node methods has been removed directly without deprecation. ",
             "I'm sorry for the inconvinience, but there were no other ways to handle it. ",
@@ -468,6 +476,16 @@ macro_rules! dsl {
     };
     (@statement [$d_ty:ty, $cmds:expr] $node_name:ident ($($($args:tt)+)?) $($t:tt)*) => {
         dsl!(@statement [$d_ty, $cmds] spawn ($($($args)+,)? $node_name) $($t)*)
+    };
+    (@entity <$builder:ty> $cmds:expr, spawn ($($args:tt)*) {$($inner:tt)*}) => {
+        use $crate::{IntoEntityCommands, DslBundle};
+        fn is_dsl_bundle<D: DslBundle>() {} is_dsl_bundle::<$builder>();
+        let mut arg = <$builder>::default();
+        dsl!(@arg arg, $($args)*);
+        arg.node($cmds, |mut cmds| {
+            // Generate code for statements inside curly braces
+            dsl!(@statement [$builder, cmds] $($inner)*);
+        })
     };
     (<$builder:ty> $cmds:expr, $($t:tt)*) => {{
         use $crate::{IntoEntityCommands, DslBundle};

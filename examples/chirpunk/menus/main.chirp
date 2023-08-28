@@ -1,13 +1,41 @@
 // The main menu screen with the hangar background
-spawn(layout ">dSaS", screen_root, "root", main_margin 100., image "background.jpg") {
-    column("menu", rules(310px, 100%), main_margin 40., image "board.png") {
-        main_menu_logo();
-        main_menu_item("CONTINUE");
-        main_menu_item("NEW GAME");
-        main_menu_item("LOAD GAME");
-        main_menu_item("SETTINGS");
-        main_menu_item("ADDITIONAL CONTENT");
-        main_menu_item("CREDITS");
-        main_menu_item("QUIT GAME");
-    }
+
+// -------- Consideration for future usage --------------
+// We may support in the future `let` and `fn` keywords, as to define re-usable elements.
+// We may also require in the future that there is exactly a single root item
+// which would simplify somewhat the AssetLoader implementation, but also to
+// add a `use [str_literal | ident [( ident[, ident ,]* )]?]` syntax to import
+// and inline directly a single chirp.
+// fn main_menu_item(name) {
+//     row(main_margin 10., focusable, style MainMenuItem, image "images/main_menu/button.png") {
+//         spawn(text name, style MainMenuItemText);
+//     }
+// }
+// ------------------------------------------------------
+
+root_menu(layout ">dSaS", screen_root, "root", image "images/main_menu/screen_10.png") {
+ spawn("blink1", full_screen, image "images/main_menu/screen_10_blink1.png") {
+ spawn("blink2", full_screen, image "images/main_menu/screen_10_blink2.png") {
+ spawn("blue", full_screen, image "images/main_menu/screen_10_blue.png") {
+ row("red", full_screen, main_margin 200., image "images/main_menu/screen_10_red.png") {
+     column("menu", rules(420px, 100%), main_margin 40., image "images/main_menu/board.png") {
+         // TODO(feat): randomly flip x/y axis
+         row("logo shadow",  image "images/main_menu/logo_shadow.png", rules(100%, 1*)) {
+             spawn("logo", image "images/main_menu/logo.png", width 100%);
+         }
+         main_menu_item("CONTINUE");
+         main_menu_item("NEW GAME");
+         main_menu_item("LOAD GAME");
+         main_menu_item("SETTINGS");
+         main_menu_item("ADDITIONAL CONTENT");
+         main_menu_item("CREDITS");
+         main_menu_item("QUIT GAME");
+         // Empty  bottom
+         spawn(rules(95%, 10%));
+     }
+ }
+ }
+ }
+ }
 }
+// vim: set syntax=ron

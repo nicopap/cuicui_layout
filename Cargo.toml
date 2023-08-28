@@ -45,12 +45,13 @@ cuicui_layout_bevy_ui = { version = "0.8.1", path = "./ui" }
 cuicui = { version = "0.8.0", path = "./cuicui" }
 
 # For examples only
+bevy_framepace = "0.13.3"
 bevy-inspector-egui = "0.19"
 bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
   "backend_bevy_ui",
   "backend_egui",
 ] }
-bevy-ui-navigation = "0.28.0"
+bevy-ui-navigation = "0.29.0"
 rust-hsluv = "0.1.4"
 
 [workspace.metadata.release]
@@ -63,3 +64,10 @@ opt-level = 3
 lto = "fat"
 split-debuginfo = "packed"
 debug = 1
+
+[profile.dev.package.bevy_render]
+opt-level = 2
+[profile.dev.package.image]
+opt-level = 2
+[profile.dev.package.png]
+opt-level = 2

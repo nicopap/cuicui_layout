@@ -27,7 +27,7 @@ check:
 
 run:
 	# cargo test -p parse_dsl_macro # --features cuicui_chirp/trace_parser
-	RUST_BACKTRACE=0 cargo run -p chirpunk --features cuicui_layout/debug
+	RUST_BACKTRACE=1 cargo run -p chirpunk --features cuicui_layout/debug
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded
 	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc -p bevypunk -- -Z macro-backtrace
 
