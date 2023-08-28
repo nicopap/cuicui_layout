@@ -23,7 +23,7 @@ examples/chirpunk/assets/menus: examples/chirpunk/assets examples/chirpunk/menus
 checkout-cyberpunk: examples/chirpunk/assets examples/chirpunk/assets/menus
 
 check:
-	cargo clippy  $(CLIPPY_ARGS)
+	cargo clippy -p chirpunk $(CLIPPY_ARGS)
 
 run:
 	# cargo test -p parse_dsl_macro # --features cuicui_chirp/trace_parser

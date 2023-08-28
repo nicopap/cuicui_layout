@@ -65,7 +65,6 @@ pub(super) fn animate(
             () if lerp == 0. && changed => from_color,
             () => continue,
         };
-        debug!("####### button_shift {color:?}");
         if let Some(mut ui_offset) = components.0 {
             let at_rest = matches!(*state, State::AtRest(_));
             let lerp = if at_rest { 1. - lerp } else { lerp };
@@ -78,10 +77,6 @@ pub(super) fn animate(
             }
         }
         if let Some(mut text) = components.1 {
-            debug!(
-                "####### button_shift text: '{}': {color:?}",
-                &text.sections[0].value
-            );
             text.sections[0].style.color = color;
         }
     }

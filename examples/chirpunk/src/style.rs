@@ -3,6 +3,7 @@ use bevy::prelude::{Plugin as BevyPlugin, *};
 use bevy::reflect::ReflectRef;
 use cuicui_dsl::EntityCommands;
 
+use crate::ui_offset::UiOffset;
 use crate::{button_shift, BgColor};
 
 type StyleComponents = AnyOf<(
@@ -123,10 +124,10 @@ pub struct Bevypunk {
 impl Default for ButtonAnimation {
     fn default() -> Self {
         ButtonAnimation {
-            item_offset: 50,
+            item_offset: 20,
             text_inner_offset: 0,
             enable_speed: Fract::new(0.1),
-            disable_speed: Fract::new(1.0),
+            disable_speed: Fract::new(0.3),
         }
     }
 }
@@ -158,7 +159,7 @@ impl FromWorld for Fonts {
             tabline: assets.load("fonts/blender/BlenderPro-Medium.ttf"),
             main_menu: assets.load("fonts/rajdhani/Rajdhani-Medium.ttf"),
             size: 16,
-            main_item_size: 22,
+            main_item_size: 29,
         }
     }
 }
@@ -265,9 +266,10 @@ impl Element {
     }
 
     pub(crate) fn insert(self, cmds: &mut EntityCommands) {
+        let ui_offset = UiOffset::default;
         let animation = button_shift::Animation::default;
         let state = button_shift::State::default;
-        let shift = || (animation(), state());
+        let shift = || (ui_offset(), animation(), state());
         let ui_image = UiImage::default;
         let text = || Text::from_section("", default());
         let bg = BgColor::default;

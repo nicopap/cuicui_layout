@@ -1,6 +1,7 @@
 use bevy::prelude::{Plugin as BevyPlugin, *};
 
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq)]
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Reflect)]
+#[reflect(Component)]
 pub struct UiOffset(pub Transform);
 
 fn offset(mut query: Query<(&mut Transform, &UiOffset)>) {
@@ -15,7 +16,7 @@ impl BevyPlugin for Plugin {
         use bevy::transform::TransformSystem;
         use bevy::ui::UiSystem;
 
-        app.add_systems(
+        app.register_type::<UiOffset>().add_systems(
             PostUpdate,
             offset.after(UiSystem::Layout).before(TransformSystem::TransformPropagate),
         );

@@ -7,6 +7,7 @@ use cuicui_dsl::{DslBundle, EntityCommands};
 use cuicui_layout::dsl_functions::{child, pct};
 use cuicui_layout_bevy_ui::UiDsl;
 
+use crate::animate::{bloom, main_menu_bg::Animation as BgAnimation};
 use crate::style;
 use element::Element as DslElement;
 
@@ -72,7 +73,7 @@ impl Navigation {
                 cmds.insert((data.setting, builder));
             }
             Navigation::Focusable(focus) => {
-                cmds.insert(focus);
+                cmds.insert((focus, Interaction::default()));
             }
             Navigation::None => {}
         }
@@ -88,21 +89,27 @@ pub struct BevypunkDsl {
     style: Option<style::Element>,
     settings_option: Option<Box<SettingsOption>>,
     nav: Navigation,
+    animation: Option<BgAnimation>,
+    bloom: Option<bloom::Animation>,
 }
 #[parse_dsl_impl(delegate = inner)]
 impl BevypunkDsl {
     fn named(&mut self, name: &str) {
         self.inner.named(name.to_string());
     }
+    fn bloom(&mut self, intensity: f32) {
+        self.bloom = Some(bloom::Animation { intensity });
+    }
     fn main_menu_item(&mut self) {
         self.element = DslElement::MainMenuItem;
         // Note: instead of repeating (focusable, row, main_margin 10., rules(70%, 1.5*), distrib_start)
         // for each button, we do this here.
         // This is a limitation of cuicui_chirp that may be lifted in the future.
+        self.bloom(2.3);
         self.focusable();
         self.row();
         self.main_margin(10.);
-        self.rules(pct(70), child(1.5));
+        self.rules(pct(60), child(1.5));
         self.distrib_start();
     }
     fn tab_button(&mut self) {
@@ -120,6 +127,10 @@ impl BevypunkDsl {
     // for `SettingsOption`, based on `Reflect`.
     fn options(&mut self, options: SettingsOption) {
         self.settings_option = Some(Box::new(options));
+    }
+    // Similarly, we piggyback on reflect deserialization here.
+    fn gyro(&mut self, animation: BgAnimation) {
+        self.animation = Some(animation);
     }
 
     fn style(&mut self, style: style::Element) {
@@ -166,6 +177,12 @@ impl BevypunkDsl {
 impl DslBundle for BevypunkDsl {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         let name = self.inner.name.clone().unwrap_or(Cow::Owned(String::new()));
+        if let Some(bloom) = self.bloom.take() {
+            cmds.insert(bloom);
+        }
+        if let Some(animation) = self.animation.take() {
+            cmds.insert(animation);
+        }
         if let Some(style) = self.style.take() {
             style.insert(cmds);
         }

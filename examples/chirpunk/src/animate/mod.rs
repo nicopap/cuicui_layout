@@ -5,6 +5,8 @@ use crate::{BgColor, UiOffset};
 
 pub mod button_shift;
 pub mod main_menu_bg;
+// TODO(bug): broken because we are using bevy_ui
+pub mod bloom;
 
 type AnimatedComponents = AnyOf<(
     &'static mut UiOffset,
@@ -18,6 +20,10 @@ impl BevyPlugin for Plugin {
         app.register_type::<button_shift::State>()
             .register_type::<button_shift::Animation>()
             .register_type::<main_menu_bg::Animation>()
-            .add_systems(Update, (button_shift::animate, main_menu_bg::animate));
+            .register_type::<bloom::Animation>()
+            .add_systems(
+                Update,
+                (button_shift::animate, bloom::animate, main_menu_bg::animate),
+            );
     }
 }

@@ -67,6 +67,8 @@ use ui_offset::UiOffset;
 /// - Main menu bg "camera shift" effect
 /// - Highlight of selected entry
 mod animate;
+/// Methods for mixing bevy colors using hsluv 💞
+mod colormix;
 /// Extensions to the DSL required for the menu.
 mod dsl;
 /// Runtime style controls.
@@ -75,17 +77,12 @@ mod dsl;
 /// they are defined as a resource, it's perfectly imaginable to load them and
 /// update them at runtime.
 mod style;
+/// React to UI events such as hover, click or ui-nav focus changes.
+mod ui_event;
 /// Move `bevy_ui` nodes AFTER layouting, for "offset effects".
 mod ui_offset;
 
-/// Methods for mixing bevy colors using hsluv 💞
-mod colormix;
-
 type BgColor = BackgroundColor;
-
-#[derive(Reflect, Component, Default)]
-#[reflect(Component)]
-struct MainMenuItem;
 
 fn main() {
     App::new()
@@ -105,14 +102,13 @@ fn main() {
                         .to_string(),
                 }),
             (style::Plugin, animate::Plugin, ui_offset::Plugin),
-            dsl::Plugin,
-            cuicui_layout_bevy_ui::Plugin,
-            cuicui_chirp::loader::Plugin::new::<dsl::BevypunkDsl>(),
-            bevy_ui_navigation::DefaultNavigationPlugins,
+            (dsl::Plugin, ui_event::Plugin),
+                cuicui_layout_bevy_ui::Plugin,
+                cuicui_chirp::loader::Plugin::new::<dsl::BevypunkDsl>(),
+                bevy_ui_navigation::DefaultNavigationPlugins,
             bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
             bevy_framepace::FramepacePlugin,
         ))
-        .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .run();
 }

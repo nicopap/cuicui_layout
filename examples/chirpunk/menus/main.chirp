@@ -14,10 +14,24 @@
 // ------------------------------------------------------
 
 root_menu(layout ">dSaS", screen_root, "root", image "images/main_menu/screen_10.png") {
- spawn("blink1", full_screen, image "images/main_menu/screen_10_blink1.png") {
- spawn("blink2", full_screen, image "images/main_menu/screen_10_blink2.png") {
- spawn("blue", full_screen, image "images/main_menu/screen_10_blue.png") {
- row("red", full_screen, main_margin 200., image "images/main_menu/screen_10_red.png") {
+// This 'gyro' nonsense is how the police car's strob light and the "crime scene"
+// strip works.
+ spawn(
+     "blink1", full_screen, image "images/main_menu/screen_10_blink1.png",
+     gyro ((offset: 5, period: 10, active_period: 10))
+ ) {
+ spawn(
+     "blink2", full_screen, image "images/main_menu/screen_10_blink2.png",
+     gyro ((offset: 0, period: 10, active_period: 10))
+ ) {
+ spawn(
+     "blue", full_screen, image "images/main_menu/screen_10_blue.png",
+     gyro ((offset: 0.75, period: 1.5, active_period: 1))
+ ) {
+ row(
+     "red", full_screen, main_margin 100., image "images/main_menu/screen_10_red.png",
+     gyro ((offset: 0, period: 1.5, active_period: 1))
+ ) {
      column("menu", rules(420px, 100%), main_margin 40., image "images/main_menu/board.png") {
          // TODO(feat): randomly flip x/y axis
          row("logo shadow",  image "images/main_menu/logo_shadow.png", rules(100%, 1*)) {

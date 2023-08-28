@@ -71,6 +71,12 @@ orient yourself and find the landmarks that is most relevant to you.
 
 We have five modules:
 
+- `dsl`: **The most important module**. A wrapper around `UiDsl` to add to the
+  DSL a vocabulary specific to our own UI, such as "main_menu_item" or "tab_button".
+  The "method names" you see used in the `.chirp` files and `dsl!` macros are
+  methods on `BevypunkDsl`, and `UiDsl`, and `LayoutDsl` and `BaseDsl`.
+  \
+  Those are methods you can call using regular rust method syntax!
 - `animate`: Animation components, used for the shift-on-hover & background
   police car strobe lights in the title screen
 - `colormix`: defines `color_lerp` to blend bevy `Color`s in HSLuv space, used
@@ -80,8 +86,6 @@ We have five modules:
 - `style`: A styling module. It's a way to change styling variable at runtime
   throuhg the `style::Bevypunk` resource. This could also be loaded as a resource
   or modified through `bevy-inspector-egui`.
-- `dsl`: A wrapper around `UiDsl` to add to the DSL a vocabulary specific to our
-  own UI, such as "main_menu_item" or "tab_button".
 
 The `.chirp` files defining the menus are in the `menus` directory.
 
