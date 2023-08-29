@@ -20,6 +20,14 @@ is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 
 https://github.com/nicopap/cuicui_layout/assets/26321040/8a51f9a9-ffa7-4b60-a2ad-3947ff718e27.mp4
 
+| **❗ Hot reloading disclaimer ❗** |
+|------------------------------------|
+
+Chirp hot reloading with `bevy_ui` components (ie: using `cuicui_layout_bevy_ui`)
+is broken due to <https://github.com/bevyengine/bevy/pull/9621>.
+You may want to work on a local patched version of bevy.
+A workaround will probably be provided in cuicui 0.10.
+
 ### Code
 
 ```rust

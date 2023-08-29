@@ -8,9 +8,17 @@ use cuicui_layout::dsl_functions::{child, pct};
 use cuicui_layout_bevy_ui::UiDsl;
 
 use crate::animate::{bloom, main_menu_bg::Animation as BgAnimation};
+use crate::show_menus::SwatchBuilder;
 use crate::style;
+use crate::ui_event::{QuitGame, SwatchMarker, SwatchTarget};
+use cycle_button::SettingsOption;
 use element::Element as DslElement;
 
+/// A button that can cycle through multiple options.
+///
+/// Currently, the only way to achieve re-usability in through rust code, but
+/// the aim is to completely replace this with the `fn` statement.
+mod cycle_button;
 /// Elements (hierarchy of entities) used in [`BevypunkDsl`].
 ///
 /// This allows dsl methods such as [`BevypunkDsl::settings_header`] and
@@ -19,14 +27,6 @@ use element::Element as DslElement;
 /// Currently, the only way to achieve re-usability in through rust code, but
 /// the aim is to completely replace this with the `use` statement.
 mod element;
-
-#[derive(Reflect, Debug)]
-enum SettingsOption {
-    Choice(Vec<String>),
-    Toggle,
-    Click,
-    Increments(usize),
-}
 
 #[derive(Default, Debug)]
 struct MenuData {
@@ -91,6 +91,9 @@ pub struct BevypunkDsl {
     nav: Navigation,
     animation: Option<BgAnimation>,
     bloom: Option<bloom::Animation>,
+    swatch_target: Option<SwatchTarget>,
+    swatch_name: Option<SwatchMarker>,
+    cancel: bool,
 }
 #[parse_dsl_impl(delegate = inner)]
 impl BevypunkDsl {
@@ -145,6 +148,26 @@ impl BevypunkDsl {
     }
 
     //
+    // crate::show_menu methods
+    //
+
+    fn swatch_target(&mut self, swatch: SwatchTarget) {
+        self.swatch_target = Some(swatch);
+    }
+
+    fn swatch_name(&mut self, swatch: SwatchMarker) {
+        self.swatch_name = Some(swatch);
+    }
+
+    //
+    // self::cycle_button methods
+    //
+
+    // fn box_mark(&mut self) {
+    //     error!("TODO(feat)");
+    // }
+
+    //
     // bevy-ui-navigation methods
     //
 
@@ -165,6 +188,7 @@ impl BevypunkDsl {
     }
     fn cancel(&mut self) {
         self.nav.set_cancel();
+        self.cancel = true;
     }
     fn root_menu(&mut self) {
         let menu = self.nav.get_or_init_menu();
@@ -177,6 +201,12 @@ impl BevypunkDsl {
 impl DslBundle for BevypunkDsl {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         let name = self.inner.name.clone().unwrap_or(Cow::Owned(String::new()));
+        if let Some(swatch_target) = self.swatch_target {
+            cmds.insert(swatch_target);
+        }
+        if let Some(swatch_name) = self.swatch_name {
+            cmds.insert((swatch_name, SwatchBuilder::new()));
+        }
         if let Some(bloom) = self.bloom.take() {
             cmds.insert(bloom);
         }
@@ -185,6 +215,9 @@ impl DslBundle for BevypunkDsl {
         }
         if let Some(style) = self.style.take() {
             style.insert(cmds);
+        }
+        if self.cancel {
+            cmds.insert(QuitGame);
         }
         self.element.spawn(&name, cmds);
         self.nav.spawn(cmds);

@@ -111,6 +111,8 @@ pub struct Fonts {
 #[derive(Reflect, Debug)]
 pub struct Images {
     item_button: Handle<Image>,
+    // left and right arrows have sprite flipped duh.
+    option_arrow: Handle<Image>,
 }
 #[derive(Resource, Reflect, Debug)]
 #[reflect(Resource)]
@@ -168,6 +170,7 @@ impl FromWorld for Images {
         let assets = world.resource::<AssetServer>();
         Images {
             item_button: assets.load("images/main_menu/button.png"),
+            option_arrow: assets.load("images/settings/arrow_left_empty.png"),
         }
     }
 }
@@ -193,9 +196,13 @@ pub enum Element {
     OptionEntry,
     SettingsHeader,
     SettingsHeaderText,
+    OptionBoxLArrow,
+    OptionBoxRArrow,
+    OptionBoxChoice,
 }
 impl Element {
     fn shift_animation(&self, style: &Bevypunk) -> Option<button_shift::Animation> {
+        use Element::{OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow};
         use Element::{OptionEntry, Panel, SettingsHeader, SettingsHeaderText, TabButton};
         match self {
             Panel | SettingsHeader | SettingsHeaderText => None,
@@ -213,13 +220,15 @@ impl Element {
                 enable_speed: style.button_animation.enable_speed,
                 disable_speed: style.button_animation.disable_speed,
             }),
-            TabButton | OptionEntry => Some(button_shift::Animation {
-                rest_color: style.palette.standby_text(),
-                active_color: style.palette.hover(),
-                active_right_shift: 0,
-                enable_speed: style.button_animation.enable_speed,
-                disable_speed: style.button_animation.disable_speed,
-            }),
+            TabButton | OptionEntry | OptionBoxLArrow | OptionBoxRArrow | OptionBoxChoice => {
+                Some(button_shift::Animation {
+                    rest_color: style.palette.standby_text(),
+                    active_color: style.palette.hover(),
+                    active_right_shift: 0,
+                    enable_speed: style.button_animation.enable_speed,
+                    disable_speed: style.button_animation.disable_speed,
+                })
+            }
         }
     }
     fn set_style(&self, style: &Bevypunk, (text, bg, ui_image, anim): QueryItem<StyleComponents>) {
@@ -262,6 +271,25 @@ impl Element {
                 text.sections[0].style.color = style.palette.settings_category_text();
                 text.sections[0].style.font_size = f32::from(style.fonts.size);
             }
+            Element::OptionBoxLArrow => {
+                let mut ui_image = ui_image.unwrap();
+                let mut anim = anim.unwrap();
+                ui_image.texture = style.images.option_arrow.clone_weak();
+                *anim = self.shift_animation(style).unwrap();
+            }
+            Element::OptionBoxRArrow => {
+                let mut ui_image = ui_image.unwrap();
+                let mut anim = anim.unwrap();
+                ui_image.texture = style.images.option_arrow.clone_weak();
+                ui_image.flip_x = true;
+                *anim = self.shift_animation(style).unwrap();
+            }
+            Element::OptionBoxChoice => {
+                let mut text = text.unwrap();
+                text.sections[0].style.font = style.fonts.options.clone_weak();
+                text.sections[0].style.color = style.palette.standby_text();
+                text.sections[0].style.font_size = f32::from(style.fonts.size);
+            }
         }
     }
 
@@ -275,16 +303,16 @@ impl Element {
         let bg = BgColor::default;
         match self.clone() {
             Element::Panel => {}
-            Element::MainMenuItemButton => {
-                cmds.insert((ui_image(), shift(), self));
-            }
             Element::MainMenuItemText | Element::TabButton | Element::OptionEntry => {
                 cmds.insert((text(), shift(), self));
             }
             Element::SettingsHeader => {
                 cmds.insert((bg(), self));
             }
-            Element::SettingsHeaderText => {
+            Element::MainMenuItemButton | Element::OptionBoxRArrow | Element::OptionBoxLArrow => {
+                cmds.insert((ui_image(), shift(), self));
+            }
+            Element::SettingsHeaderText | Element::OptionBoxChoice => {
                 cmds.insert((text(), self));
             }
         }

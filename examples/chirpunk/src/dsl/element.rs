@@ -27,14 +27,8 @@ impl Element {
 }
 fn tab_button(name: &str, cmds: &mut EntityCommands) {
     dsl! { @entity <BevypunkDsl> cmds,
-        spawn(
-            named name,
-            main_margin 10.,
-            width child(1.),
-            style style::Element::TabButton,
-            row,
-        ) {
-            spawn(text name, style style::Element::MainMenuItemText);
+        spawn(named name, focusable, rules(child(2.), child(2.))) {
+            spawn(text name, style style::Element::TabButton);
         }
     };
 }

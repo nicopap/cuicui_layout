@@ -59,6 +59,7 @@ use cuicui_chirp::Chirp;
 use cuicui_layout::LayoutRootCamera;
 
 use animate::button_shift;
+use show_menus::SwatchBuilder;
 use ui_offset::UiOffset;
 
 /// Animate stuff.
@@ -71,6 +72,8 @@ mod animate;
 mod colormix;
 /// Extensions to the DSL required for the menu.
 mod dsl;
+/// Handle Showing & hidding menus & submenus
+mod show_menus;
 /// Runtime style controls.
 ///
 /// Basically all color, fonts and animations are defined in this module. Since
@@ -88,24 +91,26 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins
+                // .set(bevy::log::LogPlugin {
+                //     level: bevy::log::Level::TRACE,
+                //     filter: "\
+                //       cuicui_layout=info,cuicui_layout_bevy_ui=info,\
+                //       cuicui_chirp=debug,\
+                //       gilrs_core=info,gilrs=info,\
+                //       naga=info,wgpu=error,wgpu_hal=error,\
+                //       bevy_app=info,bevy_render::render_resource::pipeline_cache=info,\
+                //       bevy_render::view::window=info,bevy_ecs::world::entity_ref=info"
+                //         .to_string(),
+                // })
                 .set(AssetPlugin {
                     watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
                     ..default()
-                })
-                .set(bevy::log::LogPlugin {
-                    level: bevy::log::Level::TRACE,
-                    filter: "\
-                      cuicui_layout=trace,cuicui_layout_bevy_ui=trace,\
-                      gilrs_core=info,gilrs=info,\
-                      naga=info,wgpu=error,wgpu_hal=error,\
-                      bevy_app=info,bevy_render::render_resource::pipeline_cache=info,bevy_render::view::window=info"
-                        .to_string(),
                 }),
-            (style::Plugin, animate::Plugin, ui_offset::Plugin),
-            (dsl::Plugin, ui_event::Plugin),
-                cuicui_layout_bevy_ui::Plugin,
-                cuicui_chirp::loader::Plugin::new::<dsl::BevypunkDsl>(),
-                bevy_ui_navigation::DefaultNavigationPlugins,
+            (style::Plugin, animate::Plugin, dsl::Plugin),
+            (ui_offset::Plugin, ui_event::Plugin, show_menus::Plugin),
+            cuicui_layout_bevy_ui::Plugin,
+            cuicui_chirp::loader::Plugin::new::<dsl::BevypunkDsl>(),
+            bevy_ui_navigation::DefaultNavigationPlugins,
             bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
             bevy_framepace::FramepacePlugin,
         ))
@@ -114,7 +119,20 @@ fn main() {
 }
 #[allow(clippy::needless_pass_by_value)] // false positive
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
+    use ui_event::SwatchMarker::Root;
+
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
-    cmds.spawn(assets.load::<Chirp, _>("menus/main.chirp"));
-    cmds.spawn(assets.load::<Chirp, _>("menus/settings.chirp"));
+
+    // TODO(feat): This is a workaround not having single-chirp-entity &
+    // not being able to refer to other chirp files within chirp files.
+    // This is so bad, it makes me angry.
+    cmds.spawn((Root, SwatchBuilder::new(), NodeBundle::default())).with_children(|cmds| {
+        let mut spawn_menu = |file: &str| {
+            cmds.spawn(NodeBundle::default()).with_children(|cmds| {
+                cmds.spawn((NodeBundle::default(), assets.load::<Chirp, _>(file)));
+            });
+        };
+        spawn_menu("menus/main.chirp");
+        spawn_menu("menus/settings.chirp");
+    });
 }

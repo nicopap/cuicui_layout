@@ -1,19 +1,37 @@
 // The settings menu
-spawn(menu "SETTINGS", wrap, scope, hidden) {
+// fn tab_button(text) {
+//     focusable(named text) {
+//         spawn(text text, style TabButton);
+//     }
+// }
+screen_root(
+    layout "vdSaS", root,
+    "settings menu",
+    wrap, scope, menu "SETTINGS",
+    image "images/settings/background.png"
+) {
     // The header consists of (1) the "RETURN" button (2) each individual tab
-    row("header") {
-        button("RETURN", cancel);
-        row("tab bar") {
-            tab_button("DISPLAY");
-            tab_button("SOUND");
-            tab_button("TAB 3");
-            tab_button("TAB 4");
+    row("header", width 100%, height 10%, main_margin 50) {
+        column(rules(100%, 100%)) {
+            row("tab buttons", rules(100%, 99%)) {
+                cancel("RETURN", text "RETURN", width 20%);
+                row("tab bar", width 80%, main_margin 100) {
+                    tab_button("DISPLAY", row, swatch_target Display);
+                    tab_button("SOUND", row, swatch_target Sound);
+                    tab_button("TAB 3", row, swatch_target Tab3);
+                    tab_button("TAB 4", row, swatch_target Tab4);
+                }
+            }
+            spawn("tab line separator", bg(rgb(255, 98, 81)), rules(100%, 0.99%));
         }
     }
     // all tabs are actually loaded, but only one is shown at the same time
-    row("All tabs", inline_alt_menu) {
-        column(menu "DISPLAY", shown) {
-            settings_header("Display");
+    // The logic is implemented by show_menus::Plugin.
+    // Here, the `swatch_name` method inserts a SwatchBuilder component that
+    // triggers the behaviors implemented by show_menus::Plugin
+    row("All tabs", swatch_name SettingsSubmenu, rules(100%, 90%)) {
+        column(menu "DISPLAY", "display menu") {
+            settings_header("Display", text "Display");
             column("Display items") {
                 settings_row("Window mode", options(Choice(["Windowed", "Borderless"])));
                 settings_row("Mouse lock", options(Toggle));
@@ -22,23 +40,23 @@ spawn(menu "SETTINGS", wrap, scope, hidden) {
                 settings_row("Profiler Overlay", options(Toggle));
             }
         }
-        column(menu "SOUND") {
-            settings_header("Audio settings");
+        column(menu "SOUND", "sound menu") {
+            settings_header("Audio settings", text "Audio settings");
             column("Sound items") {
                 settings_row("Master volume", options(Increments(9)));
                 settings_row("Effects volume", options(Increments(9)));
                 settings_row("Music volume", options(Increments(9)));
             }
         }
-        column(menu "TAB 3") {
-            settings_header("Tab 3");
+        column(menu "TAB 3", "tab3 menu") {
+            settings_header("Tab 3", text "Tab 3");
             column("Random items") {
                 settings_row("Sound effect 1", options(Click));
                 settings_row("Sound effect 2", options(Click));
             }
         }
-        column(menu "TAB 4") {
-            settings_header("Tab 4");
+        column(menu "TAB 4", "tab4 menu") {
+            settings_header("Tab 4", text "Tab 4");
             column("More random stuff") {
                 settings_row("Fine grained clicking", options(Increments(55)));
                 settings_row("UI highlight color", options(Choice([
