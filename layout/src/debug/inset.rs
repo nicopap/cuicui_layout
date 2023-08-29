@@ -46,8 +46,11 @@ impl DrawnLines {
             if !self.lines.contains(&on_grid) {
                 return ((on_grid as f32) + fract) * self.width;
             }
-            // TODO(bug): Panics sometimes
-            on_grid = on_grid.saturating_add(increment);
+            // TODO(clean): This fixes a panic, but I'm not sure how valid this is
+            let Some(added) = on_grid.checked_add(increment) else {
+                return ((on_grid as f32) + fract) * self.width;
+            };
+            on_grid = added;
         }
     }
     /// Remove a line from the collection of drawn lines.
@@ -58,7 +61,10 @@ impl DrawnLines {
     fn remove(&mut self, value: f32, increment: i64) {
         let mut on_grid = (value / self.width).floor() as i64;
         loop {
-            let next_cell = on_grid + increment;
+            // TODO(clean): This fixes a panic, but I'm not sure how valid this is
+            let Some(next_cell) = on_grid.checked_add(increment) else {
+                return;
+            };
             if !self.lines.contains(&next_cell) {
                 self.lines.remove(&on_grid);
                 return;
@@ -74,7 +80,11 @@ impl DrawnLines {
             if did_not_exist {
                 return;
             }
-            on_grid += increment;
+            // TODO(clean): This fixes a panic, but I'm not sure how valid this is
+            let Some(added) = on_grid.checked_add(increment) else {
+                return;
+            };
+            on_grid = added;
         }
     }
 }
