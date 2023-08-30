@@ -1,8 +1,5 @@
 # The `chirp` file format
 
-| **❗ A syntax overall is expected in 0.10.0!!! Beware ❗** |
-|------------------------------------------------------------|
-
 The `.chirp` file format is a **general bevy scene text file format**. It was
 designed to look as close as possible to the [`dsl!`] macro from `cuicui_dsl`.
 
