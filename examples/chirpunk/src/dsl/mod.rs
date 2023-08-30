@@ -1,4 +1,4 @@
-use std::{borrow::Cow, mem};
+use std::{borrow::Cow, fmt, mem};
 
 use bevy::prelude::{Plugin as BevyPlugin, *};
 use bevy_ui_navigation::prelude::{Focusable, MenuBuilder, MenuSetting};
@@ -77,6 +77,15 @@ impl Navigation {
     }
 }
 
+#[derive(Default)]
+struct Arbitrary(Vec<Box<dyn FnOnce(&mut EntityCommands)>>);
+impl fmt::Debug for Arbitrary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let n = self.0.len();
+        f.debug_tuple("Arbitrary").field(&format!("[{{closure}}; {n}]")).finish()
+    }
+}
+
 #[allow(clippy::module_name_repetitions)]
 #[derive(Deref, DerefMut, Default, Debug)]
 pub struct BevypunkDsl {
@@ -91,6 +100,7 @@ pub struct BevypunkDsl {
     swatch_target: Option<SwatchTarget>,
     swatch_name: Option<SwatchMarker>,
     cancel: bool,
+    arbitrary: Arbitrary,
 }
 #[parse_dsl_impl(delegate = inner)]
 impl BevypunkDsl {
@@ -189,6 +199,12 @@ impl BevypunkDsl {
     fn prioritized(&mut self) {
         self.nav.set_prioritized();
     }
+    #[parse_dsl(ignore)]
+    fn arbitrary(&mut self, bundle: impl Bundle) {
+        self.arbitrary.0.push(Box::new(move |cmds| {
+            cmds.insert(bundle);
+        }));
+    }
 }
 impl DslBundle for BevypunkDsl {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
@@ -210,6 +226,9 @@ impl DslBundle for BevypunkDsl {
         }
         if self.cancel {
             cmds.insert(QuitGame);
+        }
+        for to_add in self.arbitrary.0.drain(..) {
+            to_add(cmds);
         }
         self.element.spawn(&name, cmds, self.settings_option.take());
         self.nav.spawn(cmds);

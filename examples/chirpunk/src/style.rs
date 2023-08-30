@@ -200,6 +200,7 @@ pub enum Element {
     TabButton,
     TabText,
     OptionEntry,
+    OptionRow,
     SettingsHeader,
     SettingsHeaderText,
     OptionBoxLArrow,
@@ -211,11 +212,11 @@ pub enum Element {
 }
 impl Element {
     fn shift_animation(&self, style: &Bevypunk) -> Option<button_shift::Animation> {
-        use Element::OptionTick;
         use Element::{OptionBox, OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow, TabText};
         use Element::{OptionEntry, Panel, SettingsHeader, SettingsHeaderText, TabButton};
+        use Element::{OptionRow, OptionTick};
         match self {
-            OptionBox | Panel | SettingsHeader | SettingsHeaderText | OptionTick => None,
+            Panel | SettingsHeader | SettingsHeaderText | OptionTick => None,
             Self::MainMenuItemButton => Some(button_shift::Animation {
                 rest_color: style.palette.standby_item_outline(),
                 active_color: style.palette.hover(),
@@ -230,15 +231,21 @@ impl Element {
                 enable_speed: style.button_animation.enable_speed,
                 disable_speed: style.button_animation.disable_speed,
             }),
-            TabButton | OptionEntry | OptionBoxLArrow | OptionBoxRArrow | OptionBoxChoice => {
-                Some(button_shift::Animation {
-                    rest_color: style.palette.standby_text(),
-                    active_color: style.palette.hover(),
-                    active_right_shift: 0,
-                    enable_speed: style.button_animation.enable_speed,
-                    disable_speed: style.button_animation.disable_speed,
-                })
-            }
+            OptionRow | OptionEntry | OptionBox | OptionBoxLArrow | OptionBoxRArrow
+            | OptionBoxChoice => Some(button_shift::Animation {
+                rest_color: style.palette.red_dim,
+                active_color: style.palette.hover(),
+                active_right_shift: 0,
+                enable_speed: style.button_animation.enable_speed,
+                disable_speed: style.button_animation.disable_speed,
+            }),
+            TabButton => Some(button_shift::Animation {
+                rest_color: style.palette.standby_text(),
+                active_color: style.palette.hover(),
+                active_right_shift: 0,
+                enable_speed: style.button_animation.enable_speed,
+                disable_speed: style.button_animation.disable_speed,
+            }),
         }
     }
     fn set_style(&self, style: &Bevypunk, (text, bg, ui_image, anim): QueryItem<StyleComponents>) {
@@ -271,7 +278,7 @@ impl Element {
                 text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::TabButton => {
+            Element::TabButton | Element::OptionRow => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
                 text.sections[0].style.font = style.fonts.tabline.clone_weak();
@@ -313,25 +320,25 @@ impl Element {
             Element::OptionBoxChoice => {
                 let mut text = text.unwrap();
                 text.sections[0].style.font = style.fonts.options.clone_weak();
-                text.sections[0].style.color = style.palette.standby_text();
+                text.sections[0].style.color = style.palette.red_dim;
                 text.sections[0].style.font_size = f32::from(style.fonts.size);
             }
             Element::OptionBox => {
                 let mut ui_image = ui_image.unwrap();
                 let mut bg = bg.unwrap();
                 ui_image.texture = style.images.item_button.clone_weak();
-                bg.0 = style.palette.standby_text();
+                bg.0 = style.palette.red_dim;
             }
             Element::OptionTick => {
                 let mut bg = bg.unwrap();
-                bg.0 = style.palette.standby_text();
+                bg.0 = style.palette.red_dim;
             }
         }
     }
 
     pub(crate) fn insert(self, cmds: &mut EntityCommands) {
+        use Element::{BackText, OptionRow, OptionTick, SettingsHeader};
         use Element::{MainMenuItemButton, MainMenuItemText, TabButton, TabText};
-        use Element::{OptionTick, SettingsHeader};
 
         let ui_offset = UiOffset::default;
         let animation = button_shift::Animation::default;
@@ -342,7 +349,7 @@ impl Element {
         let bg = BgColor::default;
         match self.clone() {
             Self::Panel => {}
-            Self::BackText | MainMenuItemText | TabText | TabButton => {
+            BackText | MainMenuItemText | TabText | TabButton | OptionRow => {
                 cmds.insert((text(), shift(), self));
             }
             Self::OptionEntry => {

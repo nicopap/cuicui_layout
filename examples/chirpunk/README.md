@@ -56,6 +56,9 @@ cd ../../../..
 >
 > (the feature flag is optional)
 
+Use `--no-default-features` to not spawn the `bevy-inspector-egui` world inspector.
+And use `--features advanced_logging` to log more stuff.
+
 ## Limitations
 
 - Uses `bevy_ui` (through `cuicui_layout_bevy_ui`):
@@ -65,12 +68,14 @@ cd ../../../..
 - Missing cuicui features:
   - A "all overlapping" `Distribution` mode, to replace some of the `MenuSwatch`
     functionality and the deep nesting on the main menu background.
-  - A "templating" feature, replacing `dsl::{element, cycle_button}`
+  - A "templating" feature, replacing `dsl::element`
   - Single root attribute, so to avoid some nesting required for `bevy_ui` to
     not panic, and generally better scene management.
 - General 3rd party crate ideas:
   - Extract and generalize the `style.rs` module, which is really cool.
-- Animation handling is far from ideal (`ui_event.rs`)
+- When using mouse input, the current tab in the settings menu is not highlighted.
+- The "BACK" button is part of the tabs menu
+
 
 The end-goal is to use `cuicui_layout_bevy_sprite` instead of
 `cuicui_layout_bevy_ui` as "rendering backend". As we don't need `bevy_ui` for
@@ -109,6 +114,7 @@ We have five modules:
   or modified through `bevy-inspector-egui`.
 
 The `.chirp` files defining the menus are in the `menus` directory.
+
 [`bevy-lunex`]: https://github.com/bytestring-net/bevy-lunex
 [cyberpunk example]: https://github.com/IDEDARY/bevy-lunex-cyberpunk
 [`bevy-ui-navigation`]: https://lib.rs/crates/bevy-ui-navigation

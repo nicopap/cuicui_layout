@@ -83,34 +83,36 @@ fn settings_header(name: &str, cmds: &mut EntityCommands) {
         }
     };
 }
-fn box_mark(cmds: &mut EntityCommands) {
+fn box_mark(size: u16, cmds: &mut EntityCommands) {
     dsl! { @entity <BevypunkDsl> cmds,
-        spawn(rules(px(20), px(3)), style style::Element::OptionTick ) {}
+        spawn(rules(px(size), px(3)), style style::Element::OptionTick ) {}
     };
 }
 fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) {
     use style::Element::{
-        OptionBox, OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow, OptionEntry,
+        OptionBox, OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow, OptionEntry, OptionRow,
     };
     let default_choice_text = options.default_text();
     let choice_count = options.choices();
 
     dsl! { @entity <BevypunkDsl> cmds,
-        spawn("Settings Row", rules(pct(100), child(1.)), row) {
+        spawn("Settings Row", rules(pct(100), child(1.)), row, style OptionRow) {
             spawn("Settings Text", text name, style OptionEntry, width pct(50));
-            row("Settings box", rules(pct(45), child(1.5)), style OptionBox) {
-                spawn("larrow", style OptionBoxLArrow, focusable);
+            row("Settings box", rules(pct(45), child(1.5)), style OptionBox, main_margin 10.) {
+                spawn("larrow", style OptionBoxLArrow, height px(25));
                 column("Box content", rules(child(1.), child(1.2))) {
                     spawn("Box selected text", style OptionBoxChoice, text &default_choice_text);
                     row("Box ticks", rules(child(1.3), child(1.))) {
                         code(let cmds) {
                             for _ in 0..choice_count {
-                                box_mark(&mut cmds.spawn_empty());
+                                let max_size = u16::try_from(350 / choice_count).unwrap();
+                                let size = 20_u16.min(max_size);
+                                box_mark(size, &mut cmds.spawn_empty());
                             }
                         }
                     }
                 }
-                spawn("rarrow", style OptionBoxRArrow, focusable);
+                spawn("rarrow", style OptionBoxRArrow, height px(25));
             }
         }
     };

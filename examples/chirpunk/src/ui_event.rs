@@ -65,11 +65,11 @@ fn highlight_focused(
     let initial_time = time.elapsed_seconds_f64();
     for (mut anim, focusable) in &mut focus_change {
         match focusable.state() {
-            Focused if !matches!(*anim.state, Shifted { .. }) => {
+            Focused | Active if !matches!(*anim.state, Shifted { .. }) => {
                 set_new_input_source(&mut state, InputSource::Gamepad);
                 anim.set_state(&mut child_anim, Shifted { initial_time });
             }
-            Prioritized | Active | Blocked | Inert if !matches!(*anim.state, AtRest { .. }) => {
+            Prioritized | Blocked | Inert if !matches!(*anim.state, AtRest { .. }) => {
                 set_new_input_source(&mut state, InputSource::Gamepad);
                 anim.set_state(&mut child_anim, AtRest(initial_time));
             }
@@ -115,7 +115,7 @@ fn clear_unused_input(
     )>,
 ) {
     use bshift::State::{AtRest, Shifted};
-    use FocusState::Focused;
+    use FocusState::{Active, Focused};
     use Interaction::{Hovered, Pressed};
 
     if !state.is_changed() {
@@ -125,7 +125,7 @@ fn clear_unused_input(
     if state.input == InputSource::Mouse {
         let (mut focusables, mut child_anim) = set.p1();
         for (mut anim, focus) in &mut focusables {
-            if focus.state() == Focused {
+            if matches!(focus.state(), Focused | Active) {
                 anim.set_state(&mut child_anim, Shifted { initial_time });
             }
         }

@@ -6,6 +6,11 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = ["inspector"]
+inspector = []
+advanced_logging = []
+
 [dependencies]
 anyhow.workspace = true
 bevy_framepace.workspace = true
