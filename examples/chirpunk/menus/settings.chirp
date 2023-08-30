@@ -16,7 +16,7 @@ screen_root(
             row("tab buttons", rules(100%, 99%)) {
                 cancel("RETURN", text "RETURN", width 20%, style BackText);
                 row("tab bar", width 80%, main_margin 100) {
-                    tab_button("DISPLAY", row, swatch_target Display);
+                    tab_button("DISPLAY", row, swatch_target Display, prioritized);
                     tab_button("SOUND", row, swatch_target Sound);
                     tab_button("TAB 3", row, swatch_target Tab3);
                     tab_button("TAB 4", row, swatch_target Tab4);

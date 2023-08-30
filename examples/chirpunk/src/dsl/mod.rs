@@ -53,6 +53,9 @@ impl Navigation {
     fn set_cancel(&mut self) {
         *self = Navigation::Focusable(Focusable::cancel());
     }
+    fn set_prioritized(&mut self) {
+        *self = Navigation::Focusable(Focusable::new().prioritized());
+    }
     fn set_focusable(&mut self) {
         *self = Navigation::Focusable(Focusable::new());
     }
@@ -182,6 +185,9 @@ impl BevypunkDsl {
     }
     fn focusable(&mut self) {
         self.nav.set_focusable();
+    }
+    fn prioritized(&mut self) {
+        self.nav.set_prioritized();
     }
 }
 impl DslBundle for BevypunkDsl {

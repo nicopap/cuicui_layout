@@ -1,6 +1,6 @@
 [package]
 name = "chirpunk"
-description = "Demonstrates the bevy-lunex cyberpunk menu using .chirp files"
+description = "Reproduces the bevy-lunex cyberpunk menu using cuicui"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,9 @@ publish = false
 anyhow.workspace = true
 bevy_framepace.workspace = true
 bevy-inspector-egui.workspace = true
+# This would prevent click-through for the bevy-inspector-egui window, but saddly
+# it causes a massive frame drop
+# bevy_mod_picking.workspace = true
 bevy-ui-navigation.workspace = true
 rust-hsluv.workspace = true
 cuicui_chirp.workspace = true

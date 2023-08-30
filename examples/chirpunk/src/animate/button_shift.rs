@@ -1,4 +1,5 @@
-use bevy::prelude::*;
+use bevy::ecs::prelude::{Component, DetectChanges, Query, Ref, ReflectComponent, Res};
+use bevy::prelude::{Color, Reflect, Time, Transform};
 
 use crate::animate::AnimatedComponents;
 use crate::colormix::color_lerp;
@@ -36,39 +37,40 @@ pub(super) fn animate(
     mut offsets: Query<(AnimatedComponents, Ref<State>, Ref<Animation>)>,
     time: Res<Time>,
 ) {
+    use State::{AtRest, Shifted};
+
     let current = time.elapsed_seconds_f64();
     for (components, state, animation) in &mut offsets {
         let Animation {
             rest_color,
             active_color,
-            active_right_shift: active_left_shift,
+            active_right_shift,
             enable_speed,
             disable_speed,
         } = *animation;
 
         let (speed, initial_time, from_color, to_color) = match *state {
-            State::Shifted { initial_time } => {
-                (enable_speed, initial_time, rest_color, active_color)
-            }
-            State::AtRest(init) => (disable_speed, init, active_color, rest_color),
+            Shifted { initial_time } => (enable_speed, initial_time, rest_color, active_color),
+            AtRest(init) => (disable_speed, init, active_color, rest_color),
         };
         let speed = f64::from(speed);
-        let lerp = ((current - initial_time) / speed).clamp(0., 1.);
+        let lerp = ((current - initial_time) / speed).clamp(0., 2.);
 
         let requires_color = components.1.is_some() || components.2.is_some();
         let changed = state.is_changed() || animation.is_changed();
         let color = match () {
-            () if lerp != 0. && lerp != 1. && requires_color => {
+            () if lerp != 0. && lerp < 1. && requires_color => {
                 color_lerp(from_color, to_color, lerp)
             }
-            () if lerp == 1. && changed => to_color,
+            () if lerp >= 1. && (lerp != 2. || changed) => to_color,
             () if lerp == 0. && changed => from_color,
             () => continue,
         };
+        let lerp = lerp.clamp(0., 1.);
         if let Some(mut ui_offset) = components.0 {
             let at_rest = matches!(*state, State::AtRest(_));
             let lerp = if at_rest { 1. - lerp } else { lerp };
-            let x_offset = lerp as f32 * f32::from(active_left_shift);
+            let x_offset = lerp as f32 * f32::from(active_right_shift);
             ui_offset.0 = Transform::from_xyz(x_offset, 0., 0.);
         }
         if let Some(mut bg_color) = components.2 {

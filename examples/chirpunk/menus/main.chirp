@@ -37,7 +37,7 @@ root_menu(swatch_target Root, layout ">dSaS", screen_root, "root", image "images
          row("logo shadow",  image "images/main_menu/logo_shadow.png", rules(100%, 1*)) {
              spawn("logo", image "images/main_menu/logo.png", width 100%);
          }
-         main_menu_item("CONTINUE");
+         main_menu_item("CONTINUE", prioritized);
          main_menu_item("NEW GAME");
          main_menu_item("LOAD GAME");
          main_menu_item("SETTINGS", swatch_target Settings);
