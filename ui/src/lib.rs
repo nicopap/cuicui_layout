@@ -66,7 +66,7 @@ use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root, Scree
 
 pub use dsl::UiDsl;
 
-mod text_fixup;
+mod fixup;
 
 pub mod content_sized;
 pub mod dsl;
@@ -161,6 +161,9 @@ impl BevyPlugin for Plugin {
                 (update_ui_camera_root, set_added_camera_root).before(ComputeLayoutSet),
             )
             .add_systems(PostUpdate, set_layout_style.before(UiSystem::Layout))
-            .add_systems(Last, text_fixup::add_text_components);
+            .add_systems(
+                Last,
+                (fixup::add_text_components, fixup::add_image_components),
+            );
     }
 }
