@@ -32,7 +32,7 @@ pretty_assertions = "1.4.0"
 proc-macro2 = "1.0.66"
 quote = "1.0.32"
 ron = "0.8.1"
-syn = { version = "2.0.28", default-features = false, features = ["full", "parsing", "proc-macro", "printing"] }
+syn = { version = "2.0.28", default-features = false, features = ["full", "parsing", "proc-macro", "printing", "clone-impls"] }
 smallvec = { version = "1.11.0", features = ["union", "const_generics"] }
 thiserror = "1.0.44"
 winnow = "0.5.10"
