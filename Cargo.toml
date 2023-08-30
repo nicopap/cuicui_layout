@@ -51,16 +51,16 @@ bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
   "backend_bevy_ui",
   "backend_egui",
 ] }
-bevy-ui-navigation = "0.30.0"
+bevy-ui-navigation = "0.31.0"
 rust-hsluv = "0.1.4"
 
-# [patch.crates-io]
-# bevy = { path = "../../gitimpo/bevy" }
 # bevy_ui hot reloading only works with a patched version of bevy:
 #     https://github.com/bevyengine/bevy/pull/9621
 # bevy_sprite should just work. The following line is to quickly generate the lines
 # necessary to patch dependencies with a local version of bevy.
-# |app|asset|core|ecs|hierarchy|log|math|reflect|utils|window|mikktspace|transform|render|time|core_pipeline|pbr
+# [patch.crates-io]
+# bevy = { git = "https://github.com/nicopap/bevy.git", branch = "v0.11.2-no-ui-panic" }
+#app|asset|core|ecs|hierarchy|log|math|reflect|utils|window|mikktspace|transform|render|time|core_pipeline|pbr|
 
 [workspace.metadata.release]
 dependent-version = "upgrade"

@@ -45,31 +45,33 @@ impl From<Fract> for f64 {
 }
 
 #[derive(Reflect, Debug)]
-pub struct ButtonAnimation {
-    pub item_offset: u8,
-    pub text_inner_offset: u8,
-    pub enable_speed: Fract,
-    pub disable_speed: Fract,
+struct ButtonAnimation {
+    item_offset: u8,
+    text_inner_offset: u8,
+    enable_speed: Fract,
+    disable_speed: Fract,
 }
 const RED_INDEX: u8 = 0;
 const BLUE_INDEX: u8 = 2;
-const YELLOW_INDEX: u8 = 4;
 const GREY_INDEX: u8 = 5;
 const TRANSPARENT_INDEX: u8 = 6;
+const SUBTILE_MARINE_INDEX: u8 = 7;
+
 #[derive(Reflect, Debug)]
-pub struct Palette {
-    pub red: Color,
-    pub red_dim: Color,
-    pub blue: Color,
-    pub purple: Color,
-    pub yellow: Color,
-    pub grey: Color,
-    pub transparent: Color,
-    pub standby_item_outline_index: u8,
-    pub standby_text_index: u8,
-    pub hover_index: u8,
-    pub settings_category_bg_index: u8,
-    pub settings_category_text_index: u8,
+struct Palette {
+    red: Color,
+    red_dim: Color,
+    blue: Color,
+    purple: Color,
+    yellow: Color,
+    grey: Color,
+    transparent: Color,
+    subtile_marine: Color,
+    standby_item_outline_index: u8,
+    standby_text_index: u8,
+    hover_index: u8,
+    settings_category_bg_index: u8,
+    settings_category_text_index: u8,
 }
 impl Palette {
     fn get_color(&self, field_index: usize) -> Color {
@@ -82,45 +84,46 @@ impl Palette {
         };
         *color.as_any().downcast_ref().unwrap()
     }
-    pub fn standby_item_outline(&self) -> Color {
+    fn standby_item_outline(&self) -> Color {
         self.get_color(usize::from(self.standby_item_outline_index))
     }
-    pub fn standby_text(&self) -> Color {
+    fn standby_text(&self) -> Color {
         self.get_color(usize::from(self.standby_text_index))
     }
-    pub fn hover(&self) -> Color {
+    fn hover(&self) -> Color {
         self.get_color(usize::from(self.hover_index))
     }
-    pub fn settings_category_bg(&self) -> Color {
+    fn settings_category_bg(&self) -> Color {
         self.get_color(usize::from(self.settings_category_bg_index))
     }
-    pub fn settings_category_text(&self) -> Color {
+    fn settings_category_text(&self) -> Color {
         self.get_color(usize::from(self.settings_category_text_index))
     }
 }
 #[derive(Reflect, Debug)]
-pub struct Fonts {
-    pub navigation: Handle<Font>,
-    pub options: Handle<Font>,
-    pub item: Handle<Font>,
-    pub tabline: Handle<Font>,
-    pub main_menu: Handle<Font>,
-    pub size: u8,
-    pub main_item_size: u8,
+struct Fonts {
+    navigation: Handle<Font>,
+    options: Handle<Font>,
+    item: Handle<Font>,
+    tabline: Handle<Font>,
+    main_menu: Handle<Font>,
+    size: u8,
+    main_item_size: u8,
 }
 #[derive(Reflect, Debug)]
-pub struct Images {
+struct Images {
     item_button: Handle<Image>,
     // left and right arrows have sprite flipped duh.
     option_arrow: Handle<Image>,
+    option_shadow: Handle<Image>,
 }
 #[derive(Resource, Reflect, Debug)]
 #[reflect(Resource)]
-pub struct Bevypunk {
-    pub fonts: Fonts,
-    pub images: Images,
-    pub palette: Palette,
-    pub button_animation: ButtonAnimation,
+struct Bevypunk {
+    fonts: Fonts,
+    images: Images,
+    palette: Palette,
+    button_animation: ButtonAnimation,
 }
 
 impl Default for ButtonAnimation {
@@ -143,11 +146,12 @@ impl Default for Palette {
             yellow: Color::rgb_u8(255, 245, 34),
             grey: Color::rgb_u8(199, 186, 174),
             transparent: Color::rgba_u8(255, 98, 81, 0),
+            subtile_marine: Color::rgba_u8(17, 17, 55, 62),
             standby_item_outline_index: TRANSPARENT_INDEX,
             standby_text_index: RED_INDEX,
             hover_index: BLUE_INDEX,
-            settings_category_bg_index: GREY_INDEX,
-            settings_category_text_index: YELLOW_INDEX,
+            settings_category_bg_index: SUBTILE_MARINE_INDEX,
+            settings_category_text_index: GREY_INDEX,
         }
     }
 }
@@ -160,7 +164,7 @@ impl FromWorld for Fonts {
             item: assets.load("fonts/rajdhani/Rajdhani-Medium.ttf"),
             tabline: assets.load("fonts/blender/BlenderPro-Medium.ttf"),
             main_menu: assets.load("fonts/rajdhani/Rajdhani-Medium.ttf"),
-            size: 16,
+            size: 25,
             main_item_size: 29,
         }
     }
@@ -171,6 +175,7 @@ impl FromWorld for Images {
         Images {
             item_button: assets.load("images/main_menu/button.png"),
             option_arrow: assets.load("images/settings/arrow_left_empty.png"),
+            option_shadow: assets.load("images/settings/selection_shadow.png"),
         }
     }
 }
@@ -193,27 +198,32 @@ pub enum Element {
     MainMenuItemButton,
     MainMenuItemText,
     TabButton,
+    TabText,
     OptionEntry,
     SettingsHeader,
     SettingsHeaderText,
     OptionBoxLArrow,
     OptionBoxRArrow,
     OptionBoxChoice,
+    OptionBox,
+    BackText,
+    OptionTick,
 }
 impl Element {
     fn shift_animation(&self, style: &Bevypunk) -> Option<button_shift::Animation> {
-        use Element::{OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow};
+        use Element::OptionTick;
+        use Element::{OptionBox, OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow, TabText};
         use Element::{OptionEntry, Panel, SettingsHeader, SettingsHeaderText, TabButton};
         match self {
-            Panel | SettingsHeader | SettingsHeaderText => None,
-            Element::MainMenuItemButton => Some(button_shift::Animation {
+            OptionBox | Panel | SettingsHeader | SettingsHeaderText | OptionTick => None,
+            Self::MainMenuItemButton => Some(button_shift::Animation {
                 rest_color: style.palette.standby_item_outline(),
                 active_color: style.palette.hover(),
                 active_right_shift: style.button_animation.item_offset,
                 enable_speed: style.button_animation.enable_speed,
                 disable_speed: style.button_animation.disable_speed,
             }),
-            Element::MainMenuItemText => Some(button_shift::Animation {
+            Self::MainMenuItemText | Self::BackText | TabText => Some(button_shift::Animation {
                 rest_color: style.palette.standby_text(),
                 active_color: style.palette.hover(),
                 active_right_shift: style.button_animation.text_inner_offset,
@@ -247,6 +257,20 @@ impl Element {
                 text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
                 *anim = self.shift_animation(style).unwrap();
             }
+            Element::TabText => {
+                let mut text = text.unwrap();
+                let mut anim = anim.unwrap();
+                text.sections[0].style.font = style.fonts.tabline.clone_weak();
+                text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
+                *anim = self.shift_animation(style).unwrap();
+            }
+            Element::BackText => {
+                let mut text = text.unwrap();
+                let mut anim = anim.unwrap();
+                text.sections[0].style.font = style.fonts.navigation.clone_weak();
+                text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
+                *anim = self.shift_animation(style).unwrap();
+            }
             Element::TabButton => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
@@ -257,8 +281,10 @@ impl Element {
             Element::OptionEntry => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
+                let mut ui_image = ui_image.unwrap();
                 text.sections[0].style.font = style.fonts.options.clone_weak();
                 text.sections[0].style.font_size = f32::from(style.fonts.size);
+                ui_image.texture = style.images.option_shadow.clone_weak();
                 *anim = self.shift_animation(style).unwrap();
             }
             Element::SettingsHeader => {
@@ -267,9 +293,9 @@ impl Element {
             }
             Element::SettingsHeaderText => {
                 let mut text = text.unwrap();
-                text.sections[0].style.font = style.fonts.options.clone_weak();
+                text.sections[0].style.font = style.fonts.item.clone_weak();
                 text.sections[0].style.color = style.palette.settings_category_text();
-                text.sections[0].style.font_size = f32::from(style.fonts.size);
+                text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
             }
             Element::OptionBoxLArrow => {
                 let mut ui_image = ui_image.unwrap();
@@ -290,10 +316,23 @@ impl Element {
                 text.sections[0].style.color = style.palette.standby_text();
                 text.sections[0].style.font_size = f32::from(style.fonts.size);
             }
+            Element::OptionBox => {
+                let mut ui_image = ui_image.unwrap();
+                let mut bg = bg.unwrap();
+                ui_image.texture = style.images.item_button.clone_weak();
+                bg.0 = style.palette.standby_text();
+            }
+            Element::OptionTick => {
+                let mut bg = bg.unwrap();
+                bg.0 = style.palette.standby_text();
+            }
         }
     }
 
     pub(crate) fn insert(self, cmds: &mut EntityCommands) {
+        use Element::{MainMenuItemButton, MainMenuItemText, TabButton, TabText};
+        use Element::{OptionTick, SettingsHeader};
+
         let ui_offset = UiOffset::default;
         let animation = button_shift::Animation::default;
         let state = button_shift::State::default;
@@ -302,17 +341,23 @@ impl Element {
         let text = || Text::from_section("", default());
         let bg = BgColor::default;
         match self.clone() {
-            Element::Panel => {}
-            Element::MainMenuItemText | Element::TabButton | Element::OptionEntry => {
+            Self::Panel => {}
+            Self::BackText | MainMenuItemText | TabText | TabButton => {
                 cmds.insert((text(), shift(), self));
             }
-            Element::SettingsHeader => {
+            Self::OptionEntry => {
+                cmds.insert((ui_image(), text(), shift(), self));
+            }
+            SettingsHeader | OptionTick => {
                 cmds.insert((bg(), self));
             }
-            Element::MainMenuItemButton | Element::OptionBoxRArrow | Element::OptionBoxLArrow => {
+            Self::OptionBox => {
+                cmds.insert((bg(), ui_image(), self));
+            }
+            MainMenuItemButton | Self::OptionBoxRArrow | Self::OptionBoxLArrow => {
                 cmds.insert((ui_image(), shift(), self));
             }
-            Element::SettingsHeaderText | Element::OptionBoxChoice => {
+            Self::SettingsHeaderText | Self::OptionBoxChoice => {
                 cmds.insert((text(), self));
             }
         }

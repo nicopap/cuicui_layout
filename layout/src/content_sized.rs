@@ -139,27 +139,41 @@ fn compute_content_size<S: ComputeContentParam>(
 where
     for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
 {
+    let mut errs: Option<(Why<S>, usize)> = None;
     assert_is_system(compute_content_size::<S>);
     debug!(
         "Computing content-sized nodes for {}",
         bevy::utils::get_short_name(std::any::type_name::<S>())
     );
-
     for (e, name, parent, (node, components)) in &mut content_sized {
         if !node.content_sized() {
             continue;
         }
         trace!("Computing size of a node with constraints: {node:?}");
-        let size = node_content_size(parent, &node, &nodes).map_err(|err| err.into_why(e, name))?;
+        let size = match node_content_size(parent, &node, &nodes) {
+            Ok(size) => size,
+            Err(err) => {
+                let errs = errs.get_or_insert((err.into_why(e, name), 0));
+                errs.1 += 1;
+                continue;
+            }
+        };
         let computed = compute_param.compute_content(components, size);
         let computed = Size {
             width: size.width.is_none().then_some(computed.width),
             height: size.height.is_none().then_some(computed.height),
         };
         trace!("It is: {computed:?}");
-        set_node_content_size(node, computed).map_err(|err| err.into_why(e, name))?;
+        if let Err(err) = set_node_content_size(node, computed) {
+            let errs = errs.get_or_insert((err.into_why(e, name), 0));
+            errs.1 += 1;
+        };
     }
-    Ok(())
+    if let Some((err, _)) = errs.take() {
+        Err(err)
+    } else {
+        Ok(())
+    }
 }
 
 enum BadRule {

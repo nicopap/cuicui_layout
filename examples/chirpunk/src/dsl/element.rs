@@ -1,9 +1,41 @@
+use std::borrow::Cow;
+
 use bevy::prelude::*;
 use cuicui_dsl::{dsl, EntityCommands};
-use cuicui_layout::dsl_functions::{child, pct};
+use cuicui_layout::dsl_functions::{child, pct, px};
 
 use super::BevypunkDsl;
 use crate::style;
+
+/// A button that can cycle through multiple options.
+///
+/// Currently, the only way to achieve re-usability in through rust code, but
+/// the aim is to completely replace this with the `fn` statement.
+#[derive(Reflect, Debug)]
+pub(super) enum SettingsOption {
+    Choice(Vec<String>),
+    Toggle,
+    Click,
+    Increments(usize),
+}
+impl SettingsOption {
+    fn default_text(&self) -> Cow<'static, str> {
+        match self {
+            SettingsOption::Choice(elems) => elems[0].clone().into(),
+            SettingsOption::Toggle => "Enabled".into(),
+            SettingsOption::Click => "Click".into(),
+            SettingsOption::Increments(_) => "0".into(),
+        }
+    }
+    fn choices(&self) -> usize {
+        match self {
+            SettingsOption::Choice(elems) => elems.len(),
+            SettingsOption::Toggle => 2,
+            SettingsOption::Click => 0,
+            SettingsOption::Increments(count) => *count,
+        }
+    }
+}
 
 #[derive(Default, Debug)]
 pub enum Element {
@@ -15,20 +47,25 @@ pub enum Element {
     MainMenuItem,
 }
 impl Element {
-    pub fn spawn(&self, name: &str, cmds: &mut EntityCommands) {
+    pub(super) fn spawn(
+        &self,
+        name: &str,
+        cmds: &mut EntityCommands,
+        options: Option<Box<SettingsOption>>,
+    ) {
         match self {
             Element::None => {}
             Element::TabButton => tab_button(name, cmds),
             Element::SettingsHeader => settings_header(name, cmds),
-            Element::SettingsRow => settings_row(name, cmds),
+            Element::SettingsRow => settings_row(name, cmds, *options.unwrap()),
             Element::MainMenuItem => main_menu_item(name, cmds),
         }
     }
 }
 fn tab_button(name: &str, cmds: &mut EntityCommands) {
     dsl! { @entity <BevypunkDsl> cmds,
-        spawn(named name, focusable, rules(child(2.), child(2.))) {
-            spawn(text name, style style::Element::TabButton);
+        spawn(named name, focusable, rules(child(2.), child(2.)), style style::Element::TabButton) {
+            spawn(text name,  style style::Element::TabText);
         }
     };
 }
@@ -36,24 +73,45 @@ fn settings_header(name: &str, cmds: &mut EntityCommands) {
     dsl! { @entity <BevypunkDsl> cmds,
         spawn(
             named name,
-            main_margin 10.,
-            width pct(90),
+            main_margin 40.,
+            width pct(100),
             style style::Element::SettingsHeader,
+            distrib_start,
             row,
         ) {
             spawn(text name, style style::Element::SettingsHeaderText);
         }
     };
 }
-fn settings_row(name: &str, cmds: &mut EntityCommands) {
+fn box_mark(cmds: &mut EntityCommands) {
     dsl! { @entity <BevypunkDsl> cmds,
-        spawn(
-            named name,
-            main_margin 10.,
-            width pct(90),
-            row,
-        ) {
-            spawn(text name, style style::Element::OptionEntry);
+        spawn(rules(px(20), px(3)), style style::Element::OptionTick ) {}
+    };
+}
+fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) {
+    use style::Element::{
+        OptionBox, OptionBoxChoice, OptionBoxLArrow, OptionBoxRArrow, OptionEntry,
+    };
+    let default_choice_text = options.default_text();
+    let choice_count = options.choices();
+
+    dsl! { @entity <BevypunkDsl> cmds,
+        spawn("Settings Row", rules(pct(100), child(1.)), row) {
+            spawn("Settings Text", text name, style OptionEntry, width pct(50));
+            row("Settings box", rules(pct(45), child(1.5)), style OptionBox) {
+                spawn("larrow", style OptionBoxLArrow, focusable);
+                column("Box content", rules(child(1.), child(1.2))) {
+                    spawn("Box selected text", style OptionBoxChoice, text &default_choice_text);
+                    row("Box ticks", rules(child(1.3), child(1.))) {
+                        code(let cmds) {
+                            for _ in 0..choice_count {
+                                box_mark(&mut cmds.spawn_empty());
+                            }
+                        }
+                    }
+                }
+                spawn("rarrow", style OptionBoxRArrow, focusable);
+            }
         }
     };
 }

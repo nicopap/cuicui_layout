@@ -4,7 +4,7 @@ use crate::animate::AnimatedComponents;
 use crate::colormix::color_lerp;
 use crate::style::Fract;
 
-#[derive(Component, Reflect, Debug)]
+#[derive(Component, Clone, Copy, Reflect, Debug)]
 #[reflect(Component)]
 pub enum State {
     Shifted {

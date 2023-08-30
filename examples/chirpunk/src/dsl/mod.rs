@@ -11,14 +11,8 @@ use crate::animate::{bloom, main_menu_bg::Animation as BgAnimation};
 use crate::show_menus::SwatchBuilder;
 use crate::style;
 use crate::ui_event::{QuitGame, SwatchMarker, SwatchTarget};
-use cycle_button::SettingsOption;
-use element::Element as DslElement;
+use element::{Element as DslElement, SettingsOption};
 
-/// A button that can cycle through multiple options.
-///
-/// Currently, the only way to achieve re-usability in through rust code, but
-/// the aim is to completely replace this with the `fn` statement.
-mod cycle_button;
 /// Elements (hierarchy of entities) used in [`BevypunkDsl`].
 ///
 /// This allows dsl methods such as [`BevypunkDsl::settings_header`] and
@@ -160,14 +154,6 @@ impl BevypunkDsl {
     }
 
     //
-    // self::cycle_button methods
-    //
-
-    // fn box_mark(&mut self) {
-    //     error!("TODO(feat)");
-    // }
-
-    //
     // bevy-ui-navigation methods
     //
 
@@ -219,7 +205,7 @@ impl DslBundle for BevypunkDsl {
         if self.cancel {
             cmds.insert(QuitGame);
         }
-        self.element.spawn(&name, cmds);
+        self.element.spawn(&name, cmds, self.settings_option.take());
         self.nav.spawn(cmds);
         self.inner.insert(cmds)
     }

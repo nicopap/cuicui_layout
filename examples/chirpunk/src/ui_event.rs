@@ -1,10 +1,32 @@
 use bevy::{
     app::AppExit,
+    ecs::query::{ReadOnlyWorldQuery, WorldQuery},
     prelude::{Plugin as BevyPlugin, *},
 };
 use bevy_ui_navigation::prelude::*;
 
-use crate::{animate::button_shift, show_menus::Swatch};
+use crate::{animate::button_shift as bshift, show_menus::Swatch};
+
+#[derive(WorldQuery)]
+#[world_query(mutable)]
+struct StateItem {
+    children: Option<&'static Children>,
+    state: &'static mut bshift::State,
+}
+impl StateItemItem<'_> {
+    fn set_state<F: ReadOnlyWorldQuery>(
+        &mut self,
+        child_anim: &mut Query<&mut bshift::State, F>,
+        new_state: bshift::State,
+    ) {
+        *self.state = new_state;
+        let children = self.children.into_iter().flatten();
+        let mut iter = child_anim.iter_many_mut(children);
+        while let Some(mut anim) = iter.fetch_next() {
+            *anim = new_state;
+        }
+    }
+}
 
 #[derive(Resource, Debug)]
 struct Swatches {
@@ -23,28 +45,33 @@ enum InputSource {
 struct InputState {
     input: InputSource,
 }
+
+fn set_new_input_source(state: &mut ResMut<InputState>, new_source: InputSource) {
+    if state.input != new_source {
+        state.input = new_source;
+    }
+}
+
+// TODO(feat): highlight selected tab
 fn highlight_focused(
     time: Res<Time>,
     mut state: ResMut<InputState>,
-    mut focus_change: Query<(&mut button_shift::State, &Focusable), Changed<Focusable>>,
+    mut child_anim: Query<&mut bshift::State, Without<Focusable>>,
+    mut focus_change: Query<(StateItem, &Focusable), Changed<Focusable>>,
 ) {
-    use button_shift::State::{AtRest, Shifted};
+    use bshift::State::{AtRest, Shifted};
     use FocusState::{Active, Blocked, Focused, Inert, Prioritized};
 
     let initial_time = time.elapsed_seconds_f64();
     for (mut anim, focusable) in &mut focus_change {
         match focusable.state() {
-            Focused if !matches!(*anim, Shifted { .. }) => {
-                if state.input != InputSource::Gamepad {
-                    state.input = InputSource::Gamepad;
-                }
-                *anim = Shifted { initial_time };
+            Focused if !matches!(*anim.state, Shifted { .. }) => {
+                set_new_input_source(&mut state, InputSource::Gamepad);
+                anim.set_state(&mut child_anim, Shifted { initial_time });
             }
-            Prioritized | Active | Blocked | Inert if !matches!(*anim, AtRest { .. }) => {
-                if state.input != InputSource::Gamepad {
-                    state.input = InputSource::Gamepad;
-                }
-                *anim = AtRest(initial_time);
+            Prioritized | Active | Blocked | Inert if !matches!(*anim.state, AtRest { .. }) => {
+                set_new_input_source(&mut state, InputSource::Gamepad);
+                anim.set_state(&mut child_anim, AtRest(initial_time));
             }
             _ => {}
         }
@@ -53,23 +80,21 @@ fn highlight_focused(
 fn highlight_hovered(
     time: Res<Time>,
     mut state: ResMut<InputState>,
-    mut hover_change: Query<(&mut button_shift::State, &Interaction), Changed<Interaction>>,
+    mut child_anim: Query<&mut bshift::State, Without<Interaction>>,
+    mut hover_change: Query<(StateItem, &Interaction), Changed<Interaction>>,
 ) {
-    use button_shift::State::{AtRest, Shifted};
+    use bshift::State::{AtRest, Shifted};
     use Interaction::{Hovered, Pressed};
 
     let initial_time = time.elapsed_seconds_f64();
     for (mut anim, interaction) in &mut hover_change {
-        if state.input != InputSource::Mouse {
-            state.input = InputSource::Mouse;
-        }
-
+        set_new_input_source(&mut state, InputSource::Mouse);
         match interaction {
-            Pressed | Hovered if !matches!(*anim, Shifted { .. }) => {
-                *anim = Shifted { initial_time };
+            Pressed | Hovered if !matches!(*anim.state, Shifted { .. }) => {
+                anim.set_state(&mut child_anim, Shifted { initial_time });
             }
-            Interaction::None if !matches!(*anim, AtRest { .. }) => {
-                *anim = AtRest(initial_time);
+            Interaction::None if !matches!(*anim.state, AtRest { .. }) => {
+                anim.set_state(&mut child_anim, AtRest(initial_time));
             }
             _ => {}
         }
@@ -79,10 +104,17 @@ fn clear_unused_input(
     time: Res<Time>,
     state: Res<InputState>,
     mut set: ParamSet<(
-        Query<(&mut button_shift::State, &Interaction)>,
-        Query<(&mut button_shift::State, &Focusable)>,
+        (
+            Query<(StateItem, &Interaction)>,
+            Query<&mut bshift::State, Without<Interaction>>,
+        ),
+        (
+            Query<(StateItem, &Focusable)>,
+            Query<&mut bshift::State, Without<Focusable>>,
+        ),
     )>,
 ) {
+    use bshift::State::{AtRest, Shifted};
     use FocusState::Focused;
     use Interaction::{Hovered, Pressed};
 
@@ -91,15 +123,17 @@ fn clear_unused_input(
     }
     let initial_time = time.elapsed_seconds_f64();
     if state.input == InputSource::Mouse {
-        for (mut anim, focus) in &mut set.p1() {
+        let (mut focusables, mut child_anim) = set.p1();
+        for (mut anim, focus) in &mut focusables {
             if focus.state() == Focused {
-                *anim = button_shift::State::AtRest(initial_time);
+                anim.set_state(&mut child_anim, Shifted { initial_time });
             }
         }
     } else {
-        for (mut anim, interaction) in &mut set.p0() {
+        let (mut interactions, mut child_anim) = set.p0();
+        for (mut anim, interaction) in &mut interactions {
             if matches!(interaction, Pressed | Hovered) {
-                *anim = button_shift::State::AtRest(initial_time);
+                anim.set_state(&mut child_anim, AtRest(initial_time));
             }
         }
     }
@@ -217,6 +251,7 @@ fn switch_swatch(
     swatch_targets: Query<&SwatchTarget>,
 ) {
     for ev in nav_events.iter() {
+        info!("event: {ev:?}");
         let NavEvent::FocusChanged { to, .. } = ev else {
             continue;
         };

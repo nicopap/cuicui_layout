@@ -50,18 +50,39 @@ cd lunex-cyberpunk-assets/assets
 cd ../../../..
 ```
 
-
 ## Running
 
-This crate has two bin targets. One uses the `dsl!` macro found in `cuicui_dsl`,
-the other uses the `AssetLoader` for `.chirp` files found in `cuicui_chirp`.
+> `cargo run --bin chirpunk --features cuicui_layout/debug`
+>
+> (the feature flag is optional)
 
-Both spawn the same menus. Run one of the following commands to try them out:
+## Limitations
 
-- `cargo run --bin chirpunk_dsl`
-- `cargo run --bin chirpunk_chirp`
+- Uses `bevy_ui` (through `cuicui_layout_bevy_ui`):
+  - Bloom doesn't work on UI
+  - Requires a patches version of bevy for hot reloading to work (see the
+    repository's workspace `Cargo.toml`)
+- Missing cuicui features:
+  - A "all overlapping" `Distribution` mode, to replace some of the `MenuSwatch`
+    functionality and the deep nesting on the main menu background.
+  - A "templating" feature, replacing `dsl::{element, cycle_button}`
+  - Single root attribute, so to avoid some nesting required for `bevy_ui` to
+    not panic, and generally better scene management.
+- General 3rd party crate ideas:
+  - Extract and generalize the `style.rs` module, which is really cool.
+- Animation handling is far from ideal (`ui_event.rs`)
 
-Note that **currently only the chirp-based version exists**.
+The end-goal is to use `cuicui_layout_bevy_sprite` instead of
+`cuicui_layout_bevy_ui` as "rendering backend". As we don't need `bevy_ui` for
+this specific example (the only benefit of `bevy_ui` over `bevy_sprite` is
+layouting, click management and borders, of which we use none), and bevy' sprite
+renderer is more flexible.
+
+But I wanted to start with a working example, and `cuicui_layout_bevy_sprite`
+still is missing some basic features to make it useable.
+
+In the future, we will add a new bin target, that re-uses most of the code but
+uses the `dsl!` macro instead of chirp files.
 
 
 ## Architecture
@@ -88,19 +109,6 @@ We have five modules:
   or modified through `bevy-inspector-egui`.
 
 The `.chirp` files defining the menus are in the `menus` directory.
-
-
-## Limitations
-
-The end-goal is to use `cuicui_layout_bevy_sprite` instead of
-`cuicui_layout_bevy_ui` as "rendering backend". As we don't need `bevy_ui` for
-this specific example (the only benefit of `bevy_ui` over `bevy_sprite` is
-layouting, click management and borders, of which we use none), and bevy' sprite
-renderer is more flexible.
-
-But I wanted to start with a working example, and `cuicui_layout_bevy_sprite`
-still is missing some basic features to make it useable.
-
 [`bevy-lunex`]: https://github.com/bytestring-net/bevy-lunex
 [cyberpunk example]: https://github.com/IDEDARY/bevy-lunex-cyberpunk
 [`bevy-ui-navigation`]: https://lib.rs/crates/bevy-ui-navigation
