@@ -22,7 +22,7 @@ The idea is to clone the bevy-lunex cyberpunk example and re-use its `asset`
 directory.
 
 If `make` is not an option for you, the following shell commands _should work_,
-although it has only been proved to work on my machine™.
+although it has only been proven to work on my machine™.
 
 ```sh
 # First Make sure that your working directory (PWD) is the cuicui_layout workspace root.
@@ -63,7 +63,7 @@ And use `--features advanced_logging` to log more stuff.
 
 - Uses `bevy_ui` (through `cuicui_layout_bevy_ui`):
   - Bloom doesn't work on UI
-  - Requires a patches version of bevy for hot reloading to work (see the
+  - **Requires a patches version of bevy for hot reloading** to work (see the
     repository's workspace `Cargo.toml`)
 - Missing cuicui features:
   - A "all overlapping" `Distribution` mode, to replace some of the `MenuSwatch`

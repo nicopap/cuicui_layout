@@ -79,6 +79,39 @@ Use the `cargo run --bin` command to list possible examples, and run them.
 
 We do this because it allows us to have different dependencies between examples.
 
+### Specific example docs
+
+#### `chirpunk`
+
+A clone of the cyberpunk 2077 main menu and settings menu.
+
+Demonstrates full end-to-end usage of `.chirp`, including common patterns for
+managining complexity.
+
+This example requires additional steps to work properly.
+
+Check the [example's README](./examples/chirpunk/) for more details.
+
+#### `simple_menu`
+
+A single menu made using `cuicui_dsl`.
+
+#### `dsl_and_chirp`
+
+Demonstrates the equivalence between the `dsl!` macro and the `.chirp` file
+format. Also used as a test to make sure it is trully equivalent.
+
+#### `sprite_debug`
+
+Demonstrates usage of `cuicui_layout_bevy_sprite`. Due to a quirk in the way
+cargo resolves workspace features, the debug overlay is specifically broken for
+this. You need to use the following command line to run it with the layout debug
+overlay:
+
+```sh
+cargo run --bin sprite_debug -p sprite_debug --features cuicui_layout/debug
+```
+
 ## Stability
 
 This crate is in expansion, use at your own risk, it is extremely likely that
@@ -94,6 +127,8 @@ First, chose which crate you want to use:
   [`cuicui_layout_bevy_sprite`] is for you.
 - Using a custom renderer or want your UI to be part of the 3D environment?
   Build on top of [`cuicui_layout`] itself then.
+- Are you making a complex menu requiring a lot of iterations? Consider using
+  [`cuicui_chirp`] and the `.chirp` file format!
 
 Secondly, add your chosen integration crate to your `Cargo.toml`:
 
@@ -172,11 +207,59 @@ Also check the [`cuicui_dsl`] crate documentation for details on the
 `DslBundle` trait (the trait providing the `node` and `insert` methods)
 and the `IntoEntityCommands` trait (for the `to_cmds` method).
 
+### What's that `.chirp` file format?
+
+See the [`cuicui_chirp` crate README](./chirp).
+
+#### How do I use `.chirp` files?
+
+Reproducing the previous example with `.chirp` files:
+
+First, write the chirp file:
+
+```ron
+// file: <scene.chirp>
+// Use screen_root to follow the screen's boundaries
+row(screen_root) {
+    row(margin 9, border(5, cyan), bg navy) {
+        spawn(text "Hello world!");
+    }
+}
+```
+
+Second, add the plugin and load the chirp file:
+
+```rust,no_run
+use bevy::prelude::*;
+use cuicui_layout::{dsl, LayoutRootCamera, dsl_functions::*};
+use cuicui_layout_bevy_ui::UiDsl;
+use cuicui_chirp::Chirp;
+
+fn main() {
+    // Do not forget to add cuicui_layout_bevy_{ui,sprite}::Plugin
+    // and cuicui_chirp::loader::Plugin with the wanted DSL as type parameter
+    App::new().add_plugins((
+        DefaultPlugins,
+        cuicui_layout_bevy_ui::Plugin,
+        cuicui_chirp::loader::Plugin::new::<UiDsl>(),
+    ))
+        .add_systems(Startup, setup)
+        .run();
+}
+fn setup(mut commands: Commands, assets: Res<AssetServer>) {
+    commands.spawn((Camera2dBundle::default(), LayoutRootCamera));
+    // Spawn the chirp scene as is. Yeah that's it.
+    commands.spawn(assets.load::<Chirp, _>("scene.chirp"));
+}
+```
+
 [`cuicui_layout_bevy_sprite`]: https://lib.rs/crates/cuicui_layout_bevy_sprite
 [`cuicui_layout_bevy_ui`]: https://lib.rs/crates/cuicui_layout_bevy_ui
 [`cuicui_layout`]: https://lib.rs/crates/cuicui_layout
 [`cuicui_dsl`]: https://lib.rs/crates/cuicui_dsl
+[`cuicui_chirp`]: https://lib.rs/crates/cuicui_chirp
 [`LayoutDsl`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html
+[`ReflectDsl`]: https://docs.rs/cuicui_chirp/latest/cuicui_chirp/reflect/struct.ReflectDsl.html
 [`dsl!`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html
 
 ## `cuicui_layout` crates
@@ -231,6 +314,7 @@ This repository contains several crates:
   why things do not turn out as expected.
 - `cuicui_layout`'s algo runs in `O(n)` where `n` is how many nodes you have.
 - An extensive debugging overlay.
+- Working hot reloading.
 
 ## Why not Flexbox
 

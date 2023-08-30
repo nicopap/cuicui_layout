@@ -1,13 +1,13 @@
 [package]
-name = "parse_dsl_macro"
-description = "Shows usage of the ParseDslImpl macro from cuicui_format"
+name = "dsl_and_chirp"
+description = "Demonstrate equivalence between cuicui_chirp and cuicui_dsl"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 publish = false
 
 [[bin]]
-name = "parse_dsl_macro"
+name = "dsl_and_chirp"
 path = "main.rs"
 
 [dependencies]
