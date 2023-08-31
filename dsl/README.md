@@ -18,12 +18,12 @@ let bg: Handle<_> = serv.load("background.png");
 let board: Handle<_> = serv.load("board.png");
 
 dsl! {
-    &mut cmds,
-    row(screen_root, "root", main_margin 100., align_start, image &bg) {
-        spawn(button "Button text 1", color Color::BLUE, width px(40), height pct(100));
-        spawn(button "Button text 2", color Color::RED, width px(40), height pct(100));
-        column("menu", fill_main_axis, image &board) {
-            spawn("Title card", height px(100), width pct(100));
+    &mut cmds.spawn_empty(),
+    Root(screen_root main_margin(100.) align_start image(&bg) row) {
+        Entity(button("Button text 1") color(Color::BLUE) rules(px(40), pct(100)))
+        Entity(button("Button text 2") color(Color::RED) rules(px(40), pct(100)))
+        Menu(fill_main_axis image(&board) column) {
+            TitleCard(rules(pct(100), px(100)))
         }
     }
 }
@@ -42,42 +42,39 @@ let bg = serv.load("background.png");
 let board = serv.load("board.png");
 
 let mut x = <Dsl>::default();
+x.named("Root");
 x.screen_root();
-x.named("root");
 x.main_margin(100.);
 x.align_start();
 x.image(&bg);
 x.row();
-x.node(&mut cmds.to_cmds(), |cmds| {
+x.node(&mut cmds.spawn_empty(), |cmds| {
     let mut x = <Dsl>::default();
-    let mut leaf_cmd = cmds.to_cmds();
+    let leaf_cmd = &mut cmds.spawn_empty();
     x.button("Button text 1");
     x.color(Color::BLUE);
-    x.width(px(40));
-    x.height(pct(100));
-    x.insert(&mut leaf_cmd);
+    x.rules(px(40), pct(100));
+    x.insert(leaf_cmd);
 
     let mut x = <Dsl>::default();
-    let mut leaf_cmd = cmds.to_cmds();
+    let leaf_cmd = &mut cmds.spawn_empty();
     x.button("Button text 2");
     x.color(Color::RED);
-    x.width(px(40));
-    x.height(pct(100));
-    x.insert(&mut leaf_cmd);
+    x.rules(px(40), pct(100));
+    x.insert(leaf_cmd);
 
     let mut x = <Dsl>::default();
-    let mut node_cmd = cmds.to_cmds();
-    x.named("menu");
+    let node_cmd = &mut cmds.spawn_empty();
+    x.named("Menu");
     x.fill_main_axis();
     x.image(&board);
     x.column();
-    x.node(&mut node_cmd, |cmds| {
+    x.node(node_cmd, |cmds| {
         let mut x = <Dsl>::default();
-        let mut leaf_cmd = cmds.to_cmds();
-        x.named("Title card");
-        x.height(px(100));
-        x.width(pct(100));
-        x.insert(&mut leaf_cmd);
+        let leaf_cmd = &mut cmds.spawn_empty();
+        x.named("TitleCard");
+        x.rules(pct(100), px(100));
+        x.insert(leaf_cmd);
     });
 });
 }

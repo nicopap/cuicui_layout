@@ -63,29 +63,29 @@ impl Element {
     }
 }
 fn tab_button(name: &str, cmds: &mut EntityCommands) {
-    dsl! { @entity <BevypunkDsl> cmds,
-        spawn(named name, focusable, rules(child(2.), child(2.)), style style::Element::TabButton) {
-            spawn(text name,  style style::Element::TabText);
+    dsl! { <BevypunkDsl> cmds,
+        Entity(named(name) focusable rules(child(2.), child(2.)) style(style::Element::TabButton)) {
+            Entity(text(name) style(style::Element::TabText))
         }
     };
 }
 fn settings_header(name: &str, cmds: &mut EntityCommands) {
-    dsl! { @entity <BevypunkDsl> cmds,
-        spawn(
-            named name,
-            main_margin 40.,
-            width pct(100),
-            style style::Element::SettingsHeader,
-            distrib_start,
-            row,
+    dsl! { <BevypunkDsl> cmds,
+        Entity(
+            named(name)
+            main_margin(40.)
+            width(pct(100))
+            style(style::Element::SettingsHeader)
+            distrib_start
+            row
         ) {
-            spawn(text name, style style::Element::SettingsHeaderText);
+            Entity(text(name) style(style::Element::SettingsHeaderText))
         }
     };
 }
 fn box_mark(size: u16, cmds: &mut EntityCommands) {
-    dsl! { @entity <BevypunkDsl> cmds,
-        spawn(rules(px(size), px(3)), style style::Element::OptionTick ) {}
+    dsl! { <BevypunkDsl> cmds,
+        Entity(rules(px(size), px(3)) style(style::Element::OptionTick)) {}
     };
 }
 fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) {
@@ -95,36 +95,38 @@ fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) 
     let default_choice_text = options.default_text();
     let choice_count = options.choices();
 
-    dsl! { @entity <BevypunkDsl> cmds,
-        spawn("Settings Row", rules(pct(100), child(1.)), row, style OptionRow) {
-            spawn("Settings Text", text name, style OptionEntry, width pct(50));
-            row("Settings box", rules(pct(45), child(1.5)), style OptionBox, main_margin 10.) {
-                spawn("larrow", style OptionBoxLArrow, height px(25));
-                column("Box content", rules(child(1.), child(1.2))) {
-                    spawn("Box selected text", style OptionBoxChoice, text &default_choice_text);
-                    row("Box ticks", rules(child(1.3), child(1.))) {
+    dsl! { <BevypunkDsl> cmds,
+        SettingsRow(rules(pct(100), child(1.)) row style(OptionRow)) {
+            SettingsText(text(name) style(OptionEntry) width(pct(50)))
+            SettingsBox(row rules(pct(45), child(1.5)) style(OptionBox) main_margin(10.)) {
+                LArrow(style(OptionBoxLArrow) height(px(25)))
+                BoxContent(column rules(child(1.), child(1.2))) {
+                    BoxSelectedText(style(OptionBoxChoice) text(&default_choice_text))
+                    BoxTicks(row rules(child(1.3), child(1.))) {
                         code(let cmds) {
+                            cmds.with_children(|cmds| {
                             for _ in 0..choice_count {
                                 let max_size = u16::try_from(350 / choice_count).unwrap();
                                 let size = 20_u16.min(max_size);
                                 box_mark(size, &mut cmds.spawn_empty());
                             }
+                            });
                         }
                     }
                 }
-                spawn("rarrow", style OptionBoxRArrow, height px(25));
+                RArrow(style(OptionBoxRArrow) height(px(25)))
             }
         }
     };
 }
 fn main_menu_item(name: &str, cmds: &mut EntityCommands) {
-    dsl! { @entity <BevypunkDsl> cmds,
-        spawn(
-            named name,
-            style style::Element::MainMenuItemButton,
-            image &Handle::default(),
+    dsl! { <BevypunkDsl> cmds,
+        Entity(
+            named(name)
+            style(style::Element::MainMenuItemButton)
+            image(&Handle::default())
         ) {
-            spawn(text name, style style::Element::MainMenuItemText);
+            Entity(text(name) style(style::Element::MainMenuItemText))
         }
     };
 }

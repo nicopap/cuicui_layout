@@ -29,7 +29,7 @@ use bevy::ecs::prelude::*;
 
 pub use alignment::{Alignment, Distribution};
 pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};
-pub use cuicui_dsl::{dsl, DslBundle, IntoEntityCommands};
+pub use cuicui_dsl::{dsl, DslBundle};
 pub use direction::{Flow, Oriented, Size};
 pub use dsl::LayoutDsl;
 pub use error::ComputeLayoutError;

@@ -23,11 +23,12 @@ examples/chirpunk/assets/menus: examples/chirpunk/assets examples/chirpunk/menus
 checkout-cyberpunk: examples/chirpunk/assets examples/chirpunk/assets/menus
 
 check:
-	cargo clippy -p chirpunk $(CLIPPY_ARGS)
+	cargo clippy -p sprite_debug $(CLIPPY_ARGS)
 
 run:
-	# cargo test -p parse_dsl_macro # --features cuicui_chirp/trace_parser
-	RUST_BACKTRACE=1 cargo run -p chirpunk --features cuicui_layout/debug
+	cargo test -p dsl_and_chirp  --features cuicui_chirp/test_and_doc
+	cargo test -p cuicui_dsl  --features test_and_doc
+	# RUST_BACKTRACE=1 cargo run -p chirpunk --features cuicui_layout/debug
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded
 	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc -p bevypunk -- -Z macro-backtrace
 

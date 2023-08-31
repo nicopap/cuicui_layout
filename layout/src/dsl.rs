@@ -43,12 +43,13 @@ use crate::{Root, ScreenRoot};
 /// }
 ///
 /// fn setup(mut cmds: Commands) {
-///
 ///     dsl! {
-///         <LayoutDsl> &mut cmds,
-///         spawn(ui "Hello world", width px(350));
-///         spawn(ui "Even hi!", width px(350));
-///         spawn(ui "Howdy partner", width px(350));
+///         <LayoutDsl> &mut cmds.spawn_empty(),
+///         Entity {
+///             Entity(ui("Hello world") width(px(350)))
+///             Entity(ui("Even hi!") width(px(350)))
+///             Entity(ui("Howdy partner") width(px(350)))
+///         }
 ///     };
 /// }
 /// ```

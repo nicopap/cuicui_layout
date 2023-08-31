@@ -32,15 +32,15 @@
 //! let button = serv.load("button.png");
 //!
 //! dsl! {
-//!     &mut cmds,
-//!     // Notice the `image` argument                          vvvvvvvvv
-//!     row(screen_root, "root", main_margin 100., align_start, image &bg) {
-//!         column("menu", width px(310), main_margin 40., fill_main_axis, image &board) {
-//!             spawn(ui title_card, "Title card", height px(100), width pct(100));
+//!     &mut cmds.spawn_empty(),
+//!     // Notice the `image` argument                     vvvvvvvvvv
+//!     Root(row screen_root main_margin(100.) align_start image(&bg)) {
+//!         Menu(column width(px(310)) main_margin(40.) fill_main_axis image(&board)) {
+//!             TitleCard(ui(title_card) height(px(100)) width(pct(100)))
 //!             code(let cmds) {
 //!                 for n in &menu_buttons {
 //!                     let name = format!("{n} button");
-//!                     dsl!(cmds, spawn(ui *n, named name, image &button, height px(30));)
+//!                     dsl!(cmds, Entity(ui(*n) named(name) image(&button) height(px(30))))
 //!                 }
 //!             }
 //!         }

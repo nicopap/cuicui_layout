@@ -108,6 +108,7 @@ impl fmt::Display for NiceErrors<'_> {
 ///   this can be used to get arbitrary `Handle<T>`s.
 /// - `&mut Commands`: Commands to spawn entities.
 /// - `Option<Entity>`: the current parent, if there is one.
+// TODO(0.10): Replace with &mut EntityCommands, since we now require 0-1 entity per statement.
 pub type CodeFunctionBox =
     Box<dyn Fn(&TypeRegistry, Option<&LoadContext>, &mut Commands, Option<Entity>) + Send + Sync>;
 

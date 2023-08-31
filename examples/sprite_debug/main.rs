@@ -142,82 +142,82 @@ fn setup(mut cmds: Commands) {
     });
     cmds.spawn(render::UiCameraBundle::for_layer(1, 20));
     dsl! {
-        &mut cmds,
-        column("root", screen_root, margins(50., 100.)) {
-            row("horiz_cont1", align_start, width pct(85), main_margin 30.) {
-                spawn (ui Fixed(10, 10), "h1_1_fix");
-                spawn (ui Fixed(30, 10), "h1_2_fix");
-                spawn (ui Fixed(50, 20), "h1_3_fix");
-                spawn (empty_pct 10, "h1_4_spacer");
-                spawn (ui Fixed(51, 32), "h1_5_fix");
+        &mut cmds.spawn_empty(),
+        Root(column screen_root margins(50., 100.)) {
+            HorizCont1(row align_start width(pct(85)) main_margin(30.)) {
+                H1_1fix(ui(Fixed(10, 10)))
+                H1_2fix(ui(Fixed(30, 10)))
+                H1_3fix(ui(Fixed(50, 20)))
+                H1_4spacer(empty_pct(10))
+                H1_5fix(ui(Fixed(51, 32)))
             }
-            row("deep1", rules(pct(80), pct(10))) {
-                spawn (empty_px 5);
-                row("deepA1", rules(px(300), pct(100))) {
-                    row("deepA2", rules(pct(85), pct(100))) {
-                        row("deepA3", rules(pct(85), pct(100))) {
-                            row("deepA4", rules(pct(85), pct(100))) {
-                                row("deepA5", rules(pct(85), pct(100))) {
-                                    row("deepA6", rules(pct(85), pct(100))) {
-                                        spawn (ui Fixed(30, 30), "deepA7");
+            Deep1(row rules(pct(80), pct(10))) {
+                Entity(empty_px(5))
+                DeepA1(row rules(px(300), pct(100))) {
+                    DeepA2(row rules(pct(85), pct(100))) {
+                        DeepA3(row rules(pct(85), pct(100))) {
+                            DeepA4(row rules(pct(85), pct(100))) {
+                                DeepA5(row rules(pct(85), pct(100))) {
+                                    DeepA6(row rules(pct(85), pct(100))) {
+                                        DeepA7(ui(Fixed(30, 30)))
                                     }
                                 }
                             }
                         }
                     }
                 }
-                row("deepB2", rules(child(1.5), child(3.))) {
-                    row("deepB3", rules(child(1.5), child(1.))) {
-                        row("deepB4", rules(child(1.5), child(1.))) {
-                            row("deepB5", rules(child(1.5), child(1.))) {
-                                row("deepB6", rules(child(4.), child(1.5))) {
-                                    spawn (ui Fixed(10, 10), "deepB7");
+                DeepB2(row rules(child(1.5), child(3.))) {
+                    DeepB3(row rules(child(1.5), child(1.))) {
+                        DeepB4(row rules(child(1.5), child(1.))) {
+                            DeepB5(row rules(child(1.5), child(1.))) {
+                                DeepB6(row rules(child(4.), child(1.5))) {
+                                    DeepB7(ui(Fixed(10, 10)))
                                 }
                             }
                         }
                     }
                 }
-                spawn (empty_px 0);
+                Entity(empty_px(0))
             }
-            row("single_child", rules(child(2.), child(2.))) {
-                spawn (ui Fixed(40, 40), "fix2");
+            SingleChild(row rules(child(2.), child(2.))) {
+                Fix2(ui(Fixed(40, 40)))
             }
-            spawn ("horiz_cont2", layout ">dSaC", main_margin 30.) {
-                spawn (ui Fixed(10, 14), "h2_1_fix");
-                spawn (ui Fixed(12, 12), "h2_2_fix");
-                spawn (ui Fixed(14, 10), "h2_3_fix");
+             HorizCont2(layout(">dSaC") main_margin(30.)) {
+                H2_1_fix(ui(Fixed(10, 14)))
+                H2_2_fix(ui(Fixed(12, 12)))
+                H2_3_fix(ui(Fixed(14, 10)))
             }
-            row("horiz_cont3", width pct(100), main_margin 30.) {
-                // row("horiz_cont4", fill_main) {
-                //     spawn (ui Fixed(10, 14), "h4_1" );
-                //     spawn (ui Fixed(12, 12), "h4_2" );
-                //     spawn (ui Fixed(14, 10), "h4_3" );
+            HorizCont3(row width(pct(100)) main_margin(30.)) {
+                // HorizCont4(row fill_main) {
+                //      H4_1(ui(Fixed(10, 14)))
+                //      H4_2(ui(Fixed(12, 12)))
+                //      H4_3(ui(Fixed(14, 10)))
                 // }
-                column("vert_cont1", align_start, width pct(25), margins(30., 5.0)) {
-                    spawn (ui Fixed(10, 21), "v1_1_fix");
-                    spawn (ui Fixed(12, 12), "v1_2_fix");
-                    spawn (ui Fixed(14, 20), "v1_3_fix");
-                    spawn (ui Fixed(16, 21), "v1_4_fix");
-                    spawn (ui Fixed(18, 12), "v1_5_fix");
-                    spawn (ui Fixed(20, 20), "v1_6_fix");
+                VertCont1(column align_start width(pct(25)) margins(30., 5.0)) {
+                    V1_1_fix(ui(Fixed(10, 21)))
+                    V1_2_fix(ui(Fixed(12, 12)))
+                    V1_3_fix(ui(Fixed(14, 20)))
+                    V1_4_fix(ui(Fixed(16, 21)))
+                    V1_5_fix(ui(Fixed(18, 12)))
+                    V1_6_fix(ui(Fixed(20, 20)))
                 }
-                row("horiz_inner", distrib_end, height child(4.), margins(30., 5.0)) {
-                    spawn (ui Fixed(10, 21), "v2_1_fix");
-                    spawn (ui Fixed(12, 12), "v2_2_fix");
-                    spawn (ui Fixed(14, 20), "v2_3_fix");
-                    spawn (ui Fixed(16, 21), "v2_4_fix");
-                    spawn (ui Fixed(18, 12), "v2_5_fix");
-                    spawn (ui Fixed(20, 20), "v2_6_fix");
+                HorizInner(row distrib_end height(child(4.)) margins(30., 5.0)) {
+                    V2_1_fix(ui(Fixed(10, 21)))
+                    V2_2_fix(ui(Fixed(12, 12)))
+                    V2_3_fix(ui(Fixed(14, 20)))
+                    V2_4_fix(ui(Fixed(16, 21)))
+                    V2_5_fix(ui(Fixed(18, 12)))
+                    V2_6_fix(ui(Fixed(20, 20)))
                 }
-                spawn ("vert_cont3", layout "vdSaE", margins(30., 5.)) {
-                    spawn (ui Fixed(10, 21), "v3_1_fix");
-                    spawn (ui Fixed(12, 12), "v3_2_fix");
-                    spawn (ui Fixed(14, 20), "v3_3_fix");
-                    spawn (ui Fixed(16, 21), "v3_4_fix");
-                    spawn (ui Fixed(18, 12), "v3_5_fix");
-                    spawn (ui Fixed(20, 20), "v3_6_fix");
+                 VertCont3(layout("vdSaE") margins(30., 5.)) {
+                    V3_1_fix(ui(Fixed(10, 21)))
+                    V3_2_fix(ui(Fixed(12, 12)))
+                    V3_3_fix(ui(Fixed(14, 20)))
+                    V3_4_fix(ui(Fixed(16, 21)))
+                    V3_5_fix(ui(Fixed(18, 12)))
+                    V3_6_fix(ui(Fixed(20, 20)))
                 }
-                spawn (empty_pct 4, "spacer4");
+                Spacer4(empty_pct(4))
             }
         }
     }

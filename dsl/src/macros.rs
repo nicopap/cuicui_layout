@@ -14,15 +14,11 @@
 /// You already know how to use `dsl!`? here are the quick links:
 ///
 /// - [**dsl statements**](#dsl-statements):
-///   - [**spawn**](#spawn)
+///   - [**Entity**](#entity)
 ///   - [**leaf node**](#leaf-node)
 ///   - [**parent node**](#parent-node)
 ///   - [**code**](#code)
-/// - [**dsl methods**](#dsl-methods):
-///   - [**name literal**](#name-literal)
-///   - [**bare**](#method-calls)
-///   - [**single argument**](#method-calls)
-///   - [**multiple arguments**](#method-calls)
+/// - [**dsl methods**](#dsl-methods)
 ///
 /// ## Extending `dsl!`
 ///
@@ -95,12 +91,14 @@
 ///     }
 /// }
 ///
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// type Dsl = BlinkDsl<BaseDsl>;
 /// dsl! {
 ///     &mut cmds,
-///     spawn(frequency 0.5, "FastBlinker");
-///     spawn(amplitude 2., frequency 3.0, "SlowBlinker");
+///     Entity {
+///         FastBlinker(frequency(0.5))
+///         SlowBlinker(amplitude(2.) frequency(3.0))
+///     }
 /// }
 /// ```
 ///
@@ -110,15 +108,17 @@
 ///
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl; type BlinkDsl<T> = DocDsl<T>;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// type Dsl = BlinkDsl<LayoutDsl>;
 /// dsl! {
 ///     &mut cmds,
-///     spawn(ui "Fast blink", frequency 0.5, color Color::GREEN);
-///     row(frequency 1., amplitude 1.0, main_margin 10., fill_main_axis) {
-///         spawn(ui "Some text", amplitude 10.0, color Color::BLUE);
+///     Entity {
+///         Entity(ui("Fast blink") frequency(0.5) color(Color::GREEN))
+///         Entity(row frequency(1.) amplitude(1.0) main_margin(10.) fill_main_axis) {
+///             Entity(ui("Some text") amplitude(10.0) color(Color::BLUE))
+///         }
+///         Entity(ui("Slow blink") frequency(2.) color(Color::RED))
 ///     }
-///     spawn(ui "Slow blink", frequency 2., color Color::RED);
 /// }
 /// ```
 ///
@@ -139,7 +139,7 @@
 /// 1. (optionally) between `<$ty>`, a [`DslBundle`] type.
 ///    By default, it will use the identifier `Dsl` in scope.
 ///    This will be referred as **`Dsl`** in the rest of this documentation.
-/// 2. An expression implementing [`IntoEntityCommands`].
+/// 2. An expression of type `&mut EntityCommands`.
 /// 3. A series of [**DSL statements**](#dsl-statements).
 ///    * DSL statements contain themselves series of [**DSL methods**](#dsl-methods).
 ///
@@ -148,92 +148,88 @@
 /// A DSL statement spawns a single entity.
 ///
 /// There are three kinds of DSL statements:
-/// - spawn statements
+/// - Entity statements
 /// - leaf node statement
 /// - parent node statement
 /// - code statement
 ///
-/// ### Spawn
+/// ### Entity
 ///
-/// Spawn statements create an `Entity` and calls [`DslBundle::insert`].
+/// Entity statements create an `Entity` and calls [`DslBundle::insert`].
 /// They basically spawn an entity with the given [**DSL methods**](#dsl-methods).
 ///
 /// Optionally, they can act like parent nodes if they are directly followed
 /// by curly braces:
 ///
 /// ```text
-/// spawn([dsl methods]*);
-/// spawn([dsl methods]*) {
+/// Entity([dsl methods]*)
+/// Entity([dsl methods]*) {
 ///     [dsl statements]*
 /// }
 /// ```
 /// Concretely:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
-/// # dsl!{ &mut cmds,
-/// spawn(color Color::BLUE, width px(40), height pct(100));
-/// spawn(fill_main_axis) {
-///     spawn(color Color::GREEN);
-/// }
-/// # }
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
+/// dsl!{ &mut cmds,
+///     Entity(color(Color::BLUE) rules(px(40), pct(100)))
+/// };
+/// dsl!{ &mut cmds,
+///     Entity(fill_main_axis) {
+///         Entity(color(Color::GREEN))
+///     }
+/// };
 /// ```
 /// This will expand to the following code:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// let mut x = <Dsl>::default();
 /// x.color(Color::BLUE);
-/// x.width(px(40));
-/// x.height(pct(100));
-/// x.insert(&mut cmds.to_cmds());
+/// x.rules(px(40), pct(100));
+/// x.insert(&mut cmds);
 ///
 /// let mut x = <Dsl>::default();
 /// x.fill_main_axis();
-/// x.node(&mut cmds.to_cmds(), |cmds| {
+/// x.node(&mut cmds, |cmds| {
 ///     let mut x = <Dsl>::default();
 ///     x.color(Color::GREEN);
-///     x.insert(&mut cmds.to_cmds());
+///     x.insert(&mut cmds.spawn_empty());
 /// });
 /// ```
 ///
 /// ### Leaf node
 ///
-/// Leaf node statements look exactly like parent nodes, but instead of having
-/// a list of children statement between braces, it ends with a semicolon:
+/// Leaf node statements are statements without subsequent braces.
+///
+/// The head identifier is used as the spawned entity's name. You may also use
+/// any [**rust literal**][literal] (including strings) instead of an identifier.
+///
+/// It looks as follow:
 ///
 /// ```text
-/// <ident>([dsl methods]*);
+/// <ident>([dsl methods]*)
 /// ```
 /// Concretely:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
-/// # dsl!{ &mut cmds,
-/// button_named("Button Text", color Color::BLUE, width px(40), height pct(100));
-/// # }
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
+/// # dsl!{ &mut cmds, Entity {
+/// ButtonText(color(Color::BLUE) width(px(40)) height(pct(100)) button_named)
+/// # } }
 /// ```
-///
-/// The methods are called similarly to a Parent node statement:
-///
+/// This expands to:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// let mut x = <Dsl>::default();
-/// let mut c = cmds.to_cmds();
-/// x.named("Button Text");
+/// let mut c: &mut EntityCommands = &mut cmds;
+/// x.named("ButtonText");
 /// x.color(Color::BLUE);
 /// x.width(px(40));
 /// x.height(pct(100));
 /// x.button_named();
-/// x.insert(&mut c);
-/// ```
-///
-/// This means that methods valid in leaf node position have the following
-/// signature:
-///
-/// ```ignore
-/// fn leaf_node_method(&mut self);
+/// x.insert(c);
 /// ```
 ///
 /// ### Parent node
@@ -247,13 +243,13 @@
 /// Concretely, it looks like the following:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let (bg, board) = ((),());
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let (bg, board) = ((),()); let mut cmds = cmds.spawn_empty();
 /// # dsl!{ &mut cmds,
-/// row(screen_root, "root", main_margin 100., align_start, image &bg) {
-///     button_named("Button text 1", color Color::BLUE, width px(40), height pct(100));
-///     button_named("Button text 2", color Color::RED, width px(40), height pct(100));
-///     column("menu", width px(310), main_margin 10., fill_main_axis, image &board) {
-///         spawn("Title card", height px(100), width pct(100));
+/// Root(screen_root main_margin(100.) align_start image(&bg) row) {
+///     ButtonText1(color(Color::BLUE) rules(px(40), pct(100)) button_named)
+///     ButtonText2(color(Color::RED) rules(px(40), pct(100)) button_named)
+///     Menu(width(px(310)) main_margin(10.) fill_main_axis image(&board) column) {
+///         TitleCard(rules(pct(100), px(100)))
 ///     }
 /// }
 /// # }
@@ -261,8 +257,7 @@
 ///
 /// The part between parenthesis (`()`) is a list of [DSL methods](#dsl-methods).
 /// They are applied to the `Dsl` [`DslBundle`] each one after the other.
-/// Then, the `<ident>` (here `row`) DSL method is applied.
-/// And finally, an entity is spawned with the so-constructed bundle,
+/// Then, an entity is spawned with the so-constructed bundle,
 /// following, the DSL statements within braces (`{}`) are spawned
 /// as children of the parent node entity.
 ///
@@ -271,20 +266,20 @@
 ///
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let bg = ();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let bg = (); let mut cmds = cmds.spawn_empty();
 /// let mut x = <Dsl>::default();
+/// x.named("Root");
 /// x.screen_root();
-/// x.named("root");
 /// x.main_margin(100.);
 /// x.align_start();
 /// x.image(&bg);
 /// x.row();
-/// x.node(&mut cmds.to_cmds(), |cmds| {
+/// x.node(&mut cmds, |cmds| {
 ///     // Same goes with the children:
-///     // button_named("Button text 1", color Color::BLUE, width 40., height 100.);
-///     // button_named("Button text 2", color Color::RED, width 40., height 100.);
-///     // column("menu", width px 310, main_margin 40., fill_main_axis, image &board) {
-///     //     spawn(title_card, "Title card", height px 100, width %100);
+///     // ButtonText1(color(Color::BLUE) rules(px(40), pct(100)) button_named)
+///     // ButtonText2(color(Color::RED) rules(px(40), pct(100)) button_named)
+///     // Menu(width(px(310)) main_margin(10.) fill_main_axis image(&board) column) {
+///     //     TitleCard(rules(pct(100), px(100)))
 ///     // }
 /// });
 /// ```
@@ -303,47 +298,50 @@
 /// Concretely:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// let menu_buttons = ["Hello", "This is a", "Menu"];
-/// let mut cmds = cmds.spawn_empty();
 ///
-/// dsl!{ cmds,
-///    code(let my_cmd) {
-///        for n in &menu_buttons {
-///            let name = format!("{n} button");
-///            println!("{name}");
-///            my_cmd.insert(Name::new(name));
-///        }
+/// dsl!{ &mut cmds,
+///    code(let my_cmds) {
+///        my_cmds.with_children(|mut cmds| {
+///            for n in &menu_buttons {
+///                let name = format!("{n} button");
+///                println!("{name}");
+///                cmds.spawn(Name::new(name));
+///            }
+///        });
 ///    }
 /// }
 /// ```
 /// This is directly inserted as-is in the macro, so it would look as follow:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// # let menu_buttons = ["Hello", "This is a", "Menu"];
-/// # let mut cmds = cmds.spawn_empty();
 /// let my_cmd = &mut cmds;
-/// for n in &menu_buttons {
-///     let name = format!("{n} button");
-///     println!("{name}");
-///     my_cmd.insert(Name::new(name));
-/// }
+/// my_cmd.with_children(|mut cmds| {
+///     for n in &menu_buttons {
+///         let name = format!("{n} button");
+///         println!("{name}");
+///         cmds.spawn(Name::new(name));
+///     }
+/// });
 /// ```
-///
 /// Nothing prevents you from using `code` inside a parent node,
-/// neither using the `dsl!` macro within rust code within a code statement.
-///
+/// neither using the `dsl!` macro within rust code within a code statement:
 /// ```
 /// # use cuicui_dsl::macros::__doc_helpers::*; use cuicui_dsl::dsl;
-/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd();
+/// # let mut w = WorldCheck::new(); let mut cmds = w.cmd(); let mut cmds = cmds.spawn_empty();
 /// # let menu_buttons = ["Hello", "This is a", "Menu"];
 /// dsl!(&mut cmds,
-///     row(height pct(100), fill_main_axis) {
+///     Entity(height(pct(100)) fill_main_axis row) {
 ///         code(let my_cmds) {
-///             for name in &menu_buttons {
-///                 dsl!(my_cmds, spawn(button name, color Color::BLUE);)
-///             }
+///             my_cmds.with_children(|mut cmds| {
+///                 for name in &menu_buttons {
+///                     let mut entity = cmds.spawn_empty();
+///                     dsl!(&mut entity, Entity(button(name) color(Color::BLUE)))
+///                 }
+///             });
 ///         }
 ///     }
 /// )
@@ -352,55 +350,20 @@
 /// ## DSL methods
 ///
 /// Stuff within parenthesis in a DSL statement are **DSL methods**.
-/// DSL methods are nothing more than method calls on `Dsl`.
+/// Methods are translated directly into rust method calls on `Dsl`:
 ///
-/// There are four kind of DSL methods:
-/// - name literal methods
-/// - bare methods
-/// - single argument methods
-/// - multiple arguments methods
-///
-/// ### Name literals
-///
-/// The only "special" kind of DSL method that does more than call a method
-/// is the name literal argument. It simply calls a method called `named` with
-/// the string literal in question… Yep. You'd argue it's nothing special, yet
-/// it's the _most_ special of all DSL methods.
-///
-/// A name literal argument looks as follow:
 /// ```text
-/// <literal>
-/// ```
-/// Or concretely, several examples:
-/// ```text
-/// "MyName"
-/// "hello world"
-/// ```
-/// It gets translated into the following:
-/// ```ignore
-/// x.named("MyName");
-/// x.named("hello world");
-/// ```
-/// Of course, if the `Dsl` doesn't have a `named` method, this will fail.
-/// This crate exports [`BaseDsl`], which exposes the `named` method,
-/// [`BaseDsl`], in fact, does nothing else than precisely that: providing a
-/// `named` method.
-///
-/// ### Method calls
-///
-/// Otherwise, methods are translated directly into rust method calls on `Dsl`:
-/// ```text
-/// some_method               // bare method
-/// method_with_arg <expr>    // single argument method
-/// several_args ([<expr>],*) // multiple arguments method
+/// some_method                   // bare method
+/// method_with_args ([<expr>],*) // arguments method
 /// ```
 /// Which would be translated into rust code as follow:
 /// ```ignore
 /// x.some_method();
-/// x.method_with_arg(15 * 25. as u32);
-/// x.several_args("hi folks", variable_name, Color::RED);
+/// x.method_with_args(15 * 25. as u32);
+/// x.method_with_args("hi folks", variable_name, Color::RED);
 /// ```
 ///
+/// [literal]: https://doc.rust-lang.org/reference/expressions/literal-expr.html
 /// [`DslBundle`]: crate::DslBundle
 /// [`DslBundle::insert`]: crate::DslBundle::insert
 /// [`BaseDsl`]: crate::BaseDsl
@@ -408,90 +371,51 @@
 #[rustfmt::skip]
 #[macro_export]
 macro_rules! dsl {
-    (@before_coma [$($prefix:tt)*], $($_:tt)*) => {
-        stringify!($($prefix)*)
-    };
-    (@before_coma [$($prefix:tt)*] $head:tt $($tail:tt)*) => {
-        dsl!(@before_coma [$($prefix)* $head] $($tail)*)
-    };
-    (@arg $x:ident, $m:ident ($($m_args:expr),*) $(,$($t:tt)*)?) => {
-        $x.$m($($m_args),*) $(; dsl!(@arg $x, $($t)*))?
-    };
-    (@arg $x:ident, $(.$f:ident)+ $set:expr $(,$($t:tt)*)?) => {
-        #[deprecated(since = "0.9.0", note = "The Field setting method syntax is \
-            not compatible with cuicui_chirp. To simplify DslBundle implementation, \
-            you can now use the DslBundle derive macro.")]
-        fn field_setting_method() {};
-        field_setting_method();
-        $x $(.$f)+ = $set $(; dsl!(@arg $x, $($t)*))?
-    };
-    (@arg $x:ident, ) => {  };
-    (@arg $x:ident, $nm:literal          $(,$($t:tt)*)?)=>{$x.named($nm) $(; dsl!(@arg $x, $($t)*))?};
-    (@arg $x:ident, $m:ident $m_arg:expr $(,$($t:tt)*)?)=>{$x.$m($m_arg) $(; dsl!(@arg $x, $($t)*))?};
-    (@arg $x:ident, $m:ident             $(,$($t:tt)*)?)=>{$x.$m()       $(; dsl!(@arg $x, $($t)*))?};
-    (@arg $x:ident, ,) => {  };
-    (@arg $x:ident, , $($t:tt)*)=> {
-        compile_error!(
-            "Found trailing comma in method list, before end of parenthesis. \
-            Currently dsl! DOES NOT ALLOW TRAILING COMMAS in method list."
-        );
-    };
-    (@arg $x:ident, $($t:tt)*)=> {
-        compile_error!(concat!(
-            "`", dsl!(@before_coma [] $($t)*), "` is an invalid DSL method",
-            "\n\nPossible methods syntax is described at:",
-            "\nhttps://docs.rs/cuicui_dsl/latest/cuicui_dsl/macro.dsl.html#dsl-methods\n",
-            "\nCurrently dsl! DOES NOT ALLOW TRAILING COMMAS in method list.\n",
-            "\nYou may see this message because you previously used a leaf_node method. ",
-            "Leaf node methods has been removed directly without deprecation. ",
-            "I'm sorry for the inconvinience, but there were no other ways to handle it. ",
-            "See the following for guidance on how to migrate to the new syntax.\n",
-            "https://github.com/nicopap/cuicui_layout/blob/v0.9.0/CHANGELOG.md#how-to-migrate-leaf-nodes\n",
-        ));
-    };
+    (@methods [$d_ty:ty] $($args:tt)*) => {{
+        let mut x = <$d_ty>::default();
+        dsl!(@arg [x] $($args)*);
+        x
+    }};
+    (@arg [$x:tt] ) => {  };
+    (@arg [$x:tt] $m:ident ($($arg:tt)*) $($t:tt)*)=>{$x.$m($($arg)*) ; dsl!(@arg [$x] $($t)*)};
+    (@arg [$x:tt] $m:ident               $($t:tt)*)=>{$x.$m()         ; dsl!(@arg [$x] $($t)*)};
 
     (@statement [$d_ty:ty, $cmds:expr] ) => { };
     (@statement [$d_ty:ty, $cmds:expr] code (let $cmds_ident:ident) {$($code:tt)*} $($($t:tt)+)?) => {
-        let $cmds_ident = &mut $cmds;
+        let mut $cmds_ident: &mut EntityCommands = $cmds;
         $($code)*
         // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
-    (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) ; $($($t:tt)+)?) => {
-        let mut x = <$d_ty>::default();
-        dsl!(@arg x, $($args)*);
-        x.insert(&mut $cmds.to_cmds());
-        // Generate the rest of the code
-        $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
-    };
-    (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) {$($inner:tt)*} $($($t:tt)+)?) => {
-        let mut arg = <$d_ty>::default();
-        dsl!(@arg arg, $($args)*);
-        arg.node(&mut $cmds.to_cmds(), |mut cmds| {
+    (@statement [$d_ty:ty, $cmds:expr] Entity ($($args:tt)*) {$($inner:tt)*} $($t:tt)*) => {
+        dsl!(@methods [$d_ty] $($args)*).node($cmds, |mut child_builder| {
             // Generate code for statements inside curly braces
-            dsl!(@statement [$d_ty, cmds] $($inner)*);
-        })
+            dsl!(@statement [$d_ty, &mut child_builder.spawn_empty()] $($inner)*);
+        });
         // Generate the rest of the code
-        $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
+        dsl!(@statement [$d_ty, $cmds] $($t)*)
     };
-    (@statement [$d_ty:ty, $cmds:expr] $node_name:ident ($($($args:tt)+)?) $($t:tt)*) => {
-        dsl!(@statement [$d_ty, $cmds] spawn ($($($args)+,)? $node_name) $($t)*)
+    (@statement [$d_ty:ty, $cmds:expr] spawn ($($args:tt)*) $($t:tt)*) => { // spawn: requires trailing ()
+        dsl!(@statement [$d_ty, $cmds] Entity ($($args)*) $($t)*)
     };
-    (@entity <$builder:ty> $cmds:expr, spawn ($($args:tt)*) {$($inner:tt)*}) => {
-        use $crate::{IntoEntityCommands, DslBundle};
-        fn is_dsl_bundle<D: DslBundle>() {} is_dsl_bundle::<$builder>();
-        let mut arg = <$builder>::default();
-        dsl!(@arg arg, $($args)*);
-        arg.node($cmds, |mut cmds| {
-            // Generate code for statements inside curly braces
-            dsl!(@statement [$builder, cmds] $($inner)*);
-        })
+    (@statement [$d_ty:ty, $cmds:expr] Entity ($($args:tt)*) $($t:tt)*) => { // no {}
+        dsl!(@statement [$d_ty, $cmds] Entity ($($args)*) {} $($t)*)
+    };
+    (@statement [$d_ty:ty, $cmds:expr] Entity $($t:tt)*) => { // no ()
+        dsl!(@statement [$d_ty, $cmds] Entity () $($t)*)
+    };
+    (@statement [$d_ty:ty, $cmds:expr] $entity_name:literal ($($args:tt)*) $($t:tt)*) => {
+        dsl!(@statement [$d_ty, $cmds] Entity (named($entity_name.to_string()) $($args)*) $($t)*)
+    };
+    (@statement [$d_ty:ty, $cmds:expr] $entity_name:ident ($($args:tt)*) $($t:tt)*) => {
+        dsl!(@statement [$d_ty, $cmds] Entity (named(stringify!($entity_name)) $($args)*) $($t)*)
     };
     (<$builder:ty> $cmds:expr, $($t:tt)*) => {{
-        use $crate::{IntoEntityCommands, DslBundle};
+        use $crate::{DslBundle, EntityCommands};
         fn is_dsl_bundle<D: DslBundle>() {} is_dsl_bundle::<$builder>();
+        let cmds: &mut EntityCommands = $cmds;
         // Generate code for all statements
-        dsl!(@statement [$builder, $cmds] $($t)*);
+        dsl!(@statement [$builder, cmds] $($t)*);
     }};
     // Just call the match above with <Dsl>
     ($cmds:expr, $($t:tt)*) => { dsl!(<Dsl> $cmds, $($t)*) };
@@ -505,7 +429,7 @@ pub mod __doc_helpers {
     use std::num::ParseIntError;
     use std::str::FromStr;
 
-    pub use crate::{BaseDsl, DslBundle, IntoEntityCommands};
+    pub use crate::{BaseDsl, BuildChildren, ChildBuilder, DslBundle};
     pub use bevy::ecs::system::EntityCommands;
     pub use bevy::prelude::{
         default, AssetServer, Bundle, Commands, Component, Deref, DerefMut, Entity, Handle, Image,
@@ -564,6 +488,7 @@ pub mod __doc_helpers {
         pub fn row(&mut self) {}
         pub fn width(&mut self, _: Val) {}
         pub fn height(&mut self, _: Val) {}
+        pub fn rules(&mut self, _: Val, _: Val) {}
         pub fn button(&mut self, _: &str) {}
         pub fn button_named(&mut self) {}
         pub fn screen_root(&mut self) {}

@@ -1,3 +1,140 @@
+# 0.10.0
+
+## `cuicui_dsl` & `cuicui_chirp`: Major DSL syntax change
+
+The DSL syntax has gotten a lifting!
+
+- All separators got removed.
+- The "name literal" method syntax has been removed
+- The "single arg" method syntax has been removed
+- The deprecated field access syntax has been removed
+- The "leaf node" statement syntax is now an alias for entity `Name`, it is
+  not a method call anymore. (this replaces the name literal syntax)
+- Only a single root entity is allowed per chirp/dsl! declaration
+
+Let's take a look at the old syntax:
+
+```ron
+// OLD SYNTAX, not valid anymore
+row(screen_root, "root", main_margin 100., align_start, image "images/background.png") {
+    spawn(button "Button text 1", color Color::BLUE, width px(40), height pct(100));
+    spawn(button "Button text 2", color Color::RED, width px(40), height pct(100));
+    column("menu", fill_main_axis, image "images/board.png") {
+        spawn("Title card", height px(100), width pct(100));
+    }
+}
+```
+
+This should be translated to:
+
+```ron
+// new syntax
+// `root` also works, but we now recommend entity names to be uppercased
+// Notice that `row` is moved at the very end of the method list.
+Root(screen_root main_margin(100.) align_start image("images/background.png") row) {
+    spawn(button("Button text 1") color(Color::BLUE) width(px(40)) height(pct(100)))
+    // `spawn` still spawns an entity without a name, but I recommend switching to
+    // `Entity`, which will also spawn an entity without a name.
+    Entity(button("Button text 2") color(Color::RED) width(px(40)) height(pct(100)))
+    Menu(fill_main_axis image("images/board.png") column) {
+        TitleCard(height(px(100)) width(pct(100)))
+        // This is allowed if you want to preserve the space in the entity Name:
+        "Title card"(height(px(100)) width(pct(100)))
+    }
+}
+```
+
+Is this an improvement? My subjective opinion is that it's not that much better.
+But we got rid of a lot of concepts.
+
+- "name literals" were mixing in with method calls, which could be confusing
+  and a bit too magic.
+- the unified method call syntax, similar to a rust method call, might help
+  understand better what a "method" is (ie: a method on the `DslBundle`)
+- The fact _there is only methods_ in method position should also help.
+- Removing the quirky method outside of the method list should help understand
+  the syntax better.
+- Prefixing entity with their name is neat, and it reflects the way
+  `bevy-inspector-egui` works.
+  Entities can only have a single name, so it also makes sense ot use them
+  as the "introduction" modifier
+- Have you ever wondered whether you should or not add a `,` or `;`? Well, without
+  separators, this isn't a problem anymore. No "automatic `;` insertion" required,
+  it's just how the grammar works.
+- Spawning a single entity enables a lot of fixes to `cuicui_chirp` and makes
+  templating a bit more principled.
+
+Less concepts should make it easier to learn and pick up.
+
+### Root entity change
+
+Files with several root entities won't work anymore:
+
+```ron
+// This will fail:
+Red(row color(Color::GREEN))
+Green(row color(Color::BLUE))
+Blue(row color(Color::RED))
+```
+
+To fix this, wrap them in a single root entity:
+
+```ron
+// Now interprets correctly:
+Colors {
+    Red(row color(Color::GREEN))
+    Green(row color(Color::BLUE))
+    Blue(row color(Color::RED))
+}
+```
+
+## `cuicui_dsl`: Remove the `IntoEntityCommands` trait
+
+Now that dsl declarations MUST spawn a single entity, the `cmds` argument
+should be a `&mut EntityCommands`. The components of the root entity will
+be added to the entity of the `EntityCommands`.
+
+## `cuicui_chirp`: Add `use` and `fn` statements
+
+It is now possible to define templates in `chirp` files. It is also possible
+to load external chirp files and spawn them in-line.
+
+Use `fn` to define a template, use `use` to use them:
+
+```ron
+fn my_template() {
+    Colors {
+        Red(row color(Color::GREEN))
+        Green(row color(Color::BLUE))
+        Blue(row color(Color::RED))
+    }
+}
+fn template_with_arguments(fantasy_color) {
+    FantasyColor(row color(fantasy_color))
+}
+Palette {
+    // Use a `fn` template
+    use my_template
+    // Just in-line another scene.
+    use "path/to/scene.chirp"
+    // Use a `fn` template with arguments
+    use template_with_arguments(Color::PINK)
+}
+```
+
+Currently only `fn` defined within the same file are recognized.
+
+## `cuicui_layout`: Add `Distribution::Overlap`
+
+With this distribution mode, all children start at the beginning of
+this container. They are not "distributed", they overlap.
+
+## Add `cuicui_layout::debug::Options::hide_invisible`
+
+Now `cuicui_layout`'s debug view do not draw outline of invisibile containers.
+To control this new behavior, toggle the `hide_invisible` field. It is `true`
+by default. Setting it to `false` will show the outline of hidden containers.
+
 # 0.9.0
 
 ## All DSL implementations (`LayoutDsl`, `UiDsl`, `SpriteDsl`)

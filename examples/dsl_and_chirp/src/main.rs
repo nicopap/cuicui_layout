@@ -3,11 +3,26 @@ use std::{fmt, num::ParseIntError, str::FromStr};
 use bevy::app::{App, Plugin};
 use bevy::ecs::{prelude::*, system::SystemState};
 use bevy::log::Level;
-use bevy::prelude::{BuildChildren, ChildBuilder, Deref, DerefMut, Parent};
+use bevy::prelude::{BuildChildren, Deref, DerefMut, Parent};
 use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
 use cuicui_chirp::{parse_dsl_impl, ChirpReader, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands, Name};
 use pretty_assertions::assert_eq;
+
+/* Additional syntax to test
+// ----- Invalid Syntax -----
+// 1. Named entity without either method or children
+EntityName
+// 2. Literal-style named entity without either method or children
+"Entity Name"
+// ----- Valid Syntax -----
+// 1. Without methods, but children
+EntityName {  }
+// 2. With methods only
+EntityName ()
+// 3. single entity is valid
+Entity
+*/
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Reflect)]
 enum Flow {
@@ -155,19 +170,23 @@ impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
         self.height = height;
     }
 }
-fn inner_children(builder: &mut ChildBuilder) {
+fn inner_children(cmds: &mut EntityCommands) {
     let menu_buttons = ["CONTINUE", "NEW GAME"];
-    for (i, name) in menu_buttons.iter().enumerate() {
-        let pixels = u16::try_from(i).unwrap();
-        builder.spawn((Name::new(format!("{name} inner")), Pixels(pixels)));
-    }
+    cmds.with_children(|cmds| {
+        for (i, name) in menu_buttons.iter().enumerate() {
+            let pixels = u16::try_from(i).unwrap();
+            cmds.spawn((Name::new(format!("{name} inner")), Pixels(pixels)));
+        }
+    });
 }
-fn outer_children(cmds: &mut Commands) {
+fn outer_children(cmds: &mut EntityCommands) {
     let menu_buttons = ["CONTINUE", "NEW GAME"];
-    for (i, name) in menu_buttons.iter().enumerate() {
-        let pixels = u16::try_from(i).unwrap();
-        cmds.spawn((Name::new(format!("{name} outer")), Pixels(pixels + 70)));
-    }
+    cmds.with_children(|cmds| {
+        for (i, name) in menu_buttons.iter().enumerate() {
+            let pixels = u16::try_from(i).unwrap();
+            cmds.spawn((Name::new(format!("{name} outer")), Pixels(pixels + 70)));
+        }
+    });
 }
 fn main() {
     bevy::log::LogPlugin { level: Level::TRACE, ..Default::default() }.build(&mut App::new());
@@ -177,30 +196,37 @@ fn main() {
     let mut world1 = World::new();
     let chirp = r#"
         // Some comments
-        row(
-            "first row", // demonstrating
-            rules(px(10), pct(11))
-        ) { // that it is possible
-            code(inner_children);
-            spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
-            code(inner_children);
-            spawn(empty_px 31, "2"); // add comments
-            code(inner_children);
-        }
-        code(outer_children);
-        // To a chirp file
-        column("second element", rules(px(40), pct(41))) {
-            spawn(rules(pct(50), px(51)), empty_px 60, "child3");
-            spawn(empty_px 61, "so called \"fourth\" child");
+        spawn (column) {
+            row(
+                "first row", // demonstrating
+                rules(px(10), pct(11))
+            ) { // that it is possible
+                code(inner_children);
+                spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
+                code(inner_children);
+                spawn(empty_px 31, "2"); // add comments
+                code(inner_children);
+            }
+            code(outer_children);
+            // To a chirp file
+            column("second element", rules(px(40), pct(41))) {
+                spawn(rules(pct(50), px(51)), empty_px 60, "child3");
+                spawn(empty_px 61, "so called \"fourth\" child");
+            }
         }
 "#;
     let mut handles: Handles = Handles::new();
     handles.add_function("inner_children".to_owned(), |_, _, cmds, entity| {
-        cmds.entity(entity.unwrap()).with_children(inner_children);
+        let mut cmds = cmds.entity(entity.unwrap());
+        cmds.with_children(|cmds| {
+            inner_children(&mut cmds.spawn_empty());
+        });
     });
-    handles.add_function("outer_children".to_owned(), |_, _, cmds, p| {
-        assert!(p.is_none());
-        outer_children(cmds);
+    handles.add_function("outer_children".to_owned(), |_, _, cmds, entity| {
+        let mut cmds = cmds.entity(entity.unwrap());
+        cmds.with_children(|cmds| {
+            outer_children(&mut cmds.spawn_empty());
+        });
     });
 
     let mut world_chirp = ChirpReader::new(&mut world1);
@@ -214,31 +240,34 @@ fn main() {
     let mut world2 = World::new();
     let mut state = SystemState::<Commands>::new(&mut world2);
     let mut cmds = state.get_mut(&mut world2);
-    dsl! { <LayoutDsl> cmds,
+    dsl! { <LayoutDsl> &mut cmds.spawn_empty(),
         // Some comments
-        row(
-            "first row", // demonstrating
-            rules(px(10), pct(11))
-        ) { // that it is possible
-            code(let cmds) {
-                inner_children(cmds);
+        spawn (column) {
+            "first row"(
+                // demonstrating
+                rules(px(10), pct(11))
+                row
+            ) { // that it is possible
+                code(let cmds) {
+                    inner_children(cmds);
+                }
+                "first child"(rules(pct(20), px(21)) empty_px(30)) // to
+                code(let cmds) {
+                    inner_children(cmds);
+                }
+                2(empty_px(31)) // add comments
+                code(let cmds) {
+                    inner_children(cmds);
+                }
             }
-            spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
             code(let cmds) {
-                inner_children(cmds);
+                outer_children(cmds);
             }
-            spawn(empty_px 31, "2"); // add comments
-            code(let cmds) {
-                inner_children(cmds);
+            // To a chirp file
+            "second element"(rules(px(40), pct(41)) column) {
+                child3(rules(pct(50), px(51)) empty_px(60))
+                "so called \"fourth\" child"(empty_px(61))
             }
-        }
-        code(let cmds) {
-            outer_children(cmds);
-        }
-        // To a chirp file
-        column("second element", rules(px(40), pct(41))) {
-            spawn(rules(pct(50), px(51)), empty_px 60, "child3");
-            spawn(empty_px 61, "so called \"fourth\" child");
         }
     };
     state.apply(&mut world2);

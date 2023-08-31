@@ -5,12 +5,6 @@
 
 # Cuicui Layout
 
-| **❗ A syntax overall is expected in 0.10.0!!! Beware ❗** |
-|------------------------------------------------------------|
-| **[Want to have an impact on how it will look like? VOTE FOR YOUR FAVORITE HERE][vote]** |
-
-[vote]: https://github.com/nicopap/cuicui_layout/discussions/72
-
 A dumb layout algorithm you can rely on, built for and with bevy.
 
 <details><summary><h2>The Cyberpunk 2077 showcase</h2></summary>
@@ -53,15 +47,15 @@ let board = serv.load("board.png");
 let button = serv.load("button.png");
 
 dsl! {
-    &mut cmds,
-    row(screen_root, "root", main_margin 100., distrib_start, align_start, image &bg) {
-        column("menu", width px(310), height pct(100), main_margin 40., image &board) {
-            spawn(image &title_card, "Title card", width pct(100));
-            spawn(ui title_card, "Title card 2", width pct(50));
+    &mut cmds.spawn_empty(),
+    Root(row screen_root main_margin(100.) distrib_start align_start image(&bg)) {
+        Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
+            TitleCard(image(&title_card) width(pct(100)))
+            MiniTitleCard(ui(title_card) width(pct(50)))
             code(let cmds) {
                 for n in &menu_buttons {
                     let name = format!("{n} button");
-                    dsl!(cmds, spawn(ui *n, named name, image &button, height px(33)););
+                    dsl!(cmds, Entity(ui(*n) named(name) image(&button) height(px(33))));
                 }
             }
         }
@@ -154,11 +148,11 @@ fn main() {
 fn setup(mut commands: Commands) {
     // Use LayoutRootCamera to mark a camera as the screen boundaries.
     commands.spawn((Camera2dBundle::default(), LayoutRootCamera));
-    dsl! { &mut commands,
+    dsl! { &mut commands.spawn_empty(),
         // Use screen_root to follow the screen's boundaries
-        row(screen_root) {
-            row(margin 9., border(5, Color::CYAN), bg Color::NAVY) {
-                spawn(ui "Hello world!");
+        Entity(row screen_root) {
+            Entity(row margin(9.) border(5, Color::CYAN) bg(Color::NAVY)) {
+                Entity(ui("Hello world!"))
             }
         }
     };
@@ -181,19 +175,20 @@ use cuicui_layout_bevy_ui::UiDsl as Dsl;
 // ...
 
 fn setup(mut commands: Commands) {
-    use cuicui_dsl::{IntoEntityCommands, DslBundle};
+    use cuicui_dsl::DslBundle;
     let mut x = <Dsl>::default();
+    x.row();
     x.screen_root();
-    x.node(&mut commands.to_cmds(), |cmds| {
+    x.node(&mut commands.spawn_empty(), |cmds| {
       let mut x = <Dsl>::default();
+      x.row();
       x.margin(9.);
       x.border(5, Color::CYAN);
       x.bg(Color::NAVY);
-      x.node(&mut cmds.to_cmds(), |cmds| {
+      x.node(&mut cmds.spawn_empty(), |cmds| {
         let mut x = <Dsl>::default();
-        let mut cmds = cmds.to_cmds();
         x.ui("Hello world!");
-        x.insert(&mut cmds);
+        x.insert(&mut cmds.spawn_empty());
       });
     });
 }
@@ -220,9 +215,9 @@ First, write the chirp file:
 ```ron
 // file: <scene.chirp>
 // Use screen_root to follow the screen's boundaries
-row(screen_root) {
-    row(margin 9, border(5, cyan), bg navy) {
-        spawn(text "Hello world!");
+Entity(screen_root row) {
+    Entity(margin(9) border(5, cyan) bg(navy) row) {
+        Entity(text("Hello world!"))
     }
 }
 ```
@@ -416,9 +411,9 @@ Say you have the following layout:
 
 ```text
 dsl! {
-  row(rules(pct(100), pct(100))) {
-    row(margins 10, rules(pct(100), pct(100))) {
-      some_element();
+  Entity(rules(pct(100), pct(100)) row) {
+    Entity(margins(10) rules(pct(100), pct(100)) row) {
+      Entity(some_element)
     }
   }
 }

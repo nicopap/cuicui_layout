@@ -8,32 +8,14 @@
 
 use std::borrow::Cow;
 
-use bevy::prelude::{BuildChildren, ChildBuilder, Commands, Entity};
+use bevy::prelude::Entity;
 
+pub use bevy::prelude::{BuildChildren, ChildBuilder};
 pub use bevy::{core::Name, ecs::system::EntityCommands};
 
 /// This exports the dummy impls we make to test the documentation on the macro.
 #[doc(hidden)]
 pub mod macros;
-
-/// Convert this into an [`EntityCommands`].
-///
-/// This allows using the [`dsl!`] macro with common spawner types.
-pub trait IntoEntityCommands<'w, 's>: Sized {
-    /// Convert to [`EntityCommands`].
-    fn to_cmds<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a>;
-}
-
-impl<'w, 's> IntoEntityCommands<'w, 's> for Commands<'w, 's> {
-    fn to_cmds<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
-        self.spawn_empty()
-    }
-}
-impl<'w, 's> IntoEntityCommands<'w, 's> for ChildBuilder<'w, 's, '_> {
-    fn to_cmds<'a>(&'a mut self) -> EntityCommands<'w, 's, 'a> {
-        self.spawn_empty()
-    }
-}
 
 /// The base [`DslBundle`] for the [`crate::dsl!`] macro.
 ///
@@ -60,8 +42,8 @@ pub trait DslBundle: Default {
 
     /// Spawn the entity as a container.
     fn node(&mut self, cmds: &mut EntityCommands, f: impl FnOnce(&mut ChildBuilder)) {
-        self.insert(cmds);
-        cmds.with_children(f);
+        let target_entity = self.insert(cmds);
+        cmds.commands().entity(target_entity).with_children(f);
     }
 }
 impl DslBundle for () {

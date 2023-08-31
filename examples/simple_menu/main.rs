@@ -69,15 +69,15 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
     let button = serv.load("button.png");
 
     dsl! {
-        &mut cmds,
-        spawn(layout ">dSaS", screen_root, "root", main_margin 100., image &bg) {
-            column("menu", rules(px(310), pct(100)), main_margin 40., image &board) {
-                spawn(image &title_card, "Title card", width pct(100));
-                spawn (ui title_card, "Title card 2", width pct(50));
+        &mut cmds.spawn_empty(),
+        Root(layout(">dSaS") screen_root main_margin(100.) image(&bg)) {
+            Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
+                TitleCard(image(&title_card) width(pct(100)))
+                TitleCard2(ui(title_card) width(pct(50)))
                 code(let cmds) {
                     for n in &menu_buttons {
                         let name = format!("{n} button");
-                        dsl!(cmds, spawn (ui text!(*n), named name, image &button, height px(33)););
+                        dsl!(cmds, Entity(ui(text!(*n)) named(name) image(&button) height(px(33))));
                     }
                 }
             }
