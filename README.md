@@ -310,7 +310,7 @@ This repository contains several crates:
 - `cuicui_layout`'s algo runs in `O(n)` where `n` is how many nodes you have.
 - An extensive debugging overlay.
 - Working hot reloading.
-- The `chirp` (and `dsl!`) grammar is 18 lines, one of them only exists to make
+- The `chirp` (and `dsl!`) grammar is 15 lines, one of them only exists to make
   error reporting better.
 
 ## Why not Flexbox

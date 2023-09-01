@@ -35,7 +35,7 @@ ron = "0.8.1"
 syn = { version = "2.0.28", default-features = false, features = ["full", "parsing", "proc-macro", "printing", "clone-impls"] }
 smallvec = { version = "1.11.0", features = ["union", "const_generics"] }
 thiserror = "1.0.44"
-winnow = "0.5.10"
+winnow = "0.5.15"
 
 cuicui_dsl = { version = "0.9.0", path = "./dsl" }
 cuicui_chirp = { version = "0.9.0", path = "./chirp" }

@@ -8,9 +8,7 @@ TokenTree
    | '{' (TokenTree)* '}'
    | StringLit
 
-Method
-   = 'ident' '(' (TokenTree)* ')' // argument method
-   | 'ident' // bare method
+Method = 'ident' ('(' (TokenTree)* ')')?
 
 Statement
    = 'code'    '(' 'ident' ')'
@@ -31,6 +29,11 @@ StatementTail
 * `TokenTree` aims to work like a [rust `TokenTree`], may accept more than what
   the rust grammar accepts (within acceptable limits) for performance reason.
   The inside of the parenthesis is passed as-is to `ParseDsl::method`.
+
+#### Comments
+
+`//` are token of themselves. An identifier can contain a `//`, so line comments
+must have at least one space after an identifier.
 
 #### Note on `parse_dsl_impl`-specific details
 

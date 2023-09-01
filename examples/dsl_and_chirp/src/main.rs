@@ -197,21 +197,22 @@ fn main() {
     let chirp = r#"
         // Some comments
         spawn (column) {
-            row(
-                "first row", // demonstrating
-                rules(px(10), pct(11))
+            "first row"(
+                // demonstrating
+                rules(10px, 11%)
+                row
             ) { // that it is possible
-                code(inner_children);
-                spawn(rules(pct(20), px(21)), "first child", empty_px 30); // to
-                code(inner_children);
-                spawn(empty_px 31, "2"); // add comments
-                code(inner_children);
+                code(inner_children)
+                "first child"(rules(20%, 21px) empty_px(30)) // to
+                code(inner_children)
+                2(empty_px(31)) // add comments
+                code(inner_children)
             }
-            code(outer_children);
+            code(outer_children)
             // To a chirp file
-            column("second element", rules(px(40), pct(41))) {
-                spawn(rules(pct(50), px(51)), empty_px 60, "child3");
-                spawn(empty_px 61, "so called \"fourth\" child");
+            "second element"(rules(40px,41%) column) {
+                child3(rules(50%, 51px) empty_px(60))
+                "so called \"fourth\" child"(empty_px(61))
             }
         }
 "#;

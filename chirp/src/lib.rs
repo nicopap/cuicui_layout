@@ -37,6 +37,8 @@ pub use loader::spawn::{Chirp, ChirpInstances};
 pub use parse::ParseDsl;
 pub use reflect::ReflectDsl;
 
+mod grammar;
+mod lex;
 mod load_asset;
 
 pub mod interpret;

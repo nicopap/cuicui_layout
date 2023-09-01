@@ -1,19 +1,20 @@
 //! Interpret `.chirp` files, spawning entities with a provided [`Commands`].
 
-use std::{borrow::Cow, cell::RefCell, fmt, mem, ops::Range, str};
+use std::{borrow::Cow, cell::RefCell, fmt, fmt::Debug, mem, ops::Range, str};
 
 use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
 use bevy::hierarchy::BuildChildren;
-use bevy::log::{error, trace, warn};
+use bevy::log::{error, trace};
 use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
 use bevy::utils::HashMap;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use smallvec::SmallVec;
 use thiserror::Error;
-use winnow::{BStr, Located, PResult, Parser};
+use winnow::BStr;
 
-use crate::parse::{scoped_text, MethodCtx, ParseDsl};
+use crate::grammar;
+use crate::parse::{MethodCtx, ParseDsl};
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
@@ -171,7 +172,7 @@ impl Handles {
 }
 
 struct BevyCmds<'w, 's, 'a>(&'a mut Commands<'w, 's>);
-impl fmt::Debug for BevyCmds<'_, '_, '_> {
+impl Debug for BevyCmds<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "BevyCmds(Commands)")
     }
@@ -180,7 +181,7 @@ struct LoadCtx<'h, 'r> {
     reg: &'r TypeRegistry,
     handles: &'h Handles,
 }
-impl fmt::Debug for LoadCtx<'_, '_> {
+impl Debug for LoadCtx<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LoadCtx")
             .field("reg", &"&TypeRegistry")
@@ -195,7 +196,7 @@ struct InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     load_ctx: Option<&'l mut LoadContext<'ll>>,
     dsl: D,
 }
-impl<D: fmt::Debug> fmt::Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
+impl<D> Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let is_load_ctx = self.load_ctx.is_some();
         let load_ctx = if is_load_ctx { "Some(&mut LoadContext)" } else { "None" };
@@ -204,7 +205,7 @@ impl<D: fmt::Debug> fmt::Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
             .field("current", &self.current)
             .field("errors", &self.errors)
             .field("load_ctx", &load_ctx)
-            .field("dsl", &self.dsl)
+            .field("dsl", &std::any::type_name::<D>())
             .finish()
     }
 }
@@ -215,12 +216,19 @@ impl<'w, 's, 'a, 'l, 'll, D> InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
         self.errors.push(SpannedError::new(error, span));
     }
 }
-#[derive(Debug)]
 pub(crate) struct Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
     // TODO(perf): Can use an UnsafeCell instead, since we'll never access this
     // concurrently, as the parsing is linear.
     mutable: RefCell<InnerInterpreter<'w, 's, 'a, 'l, 'll, D>>,
     ctx: LoadCtx<'h, 'r>,
+}
+impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D> fmt::Debug for Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Interpreter")
+            .field("mutable", &self.mutable)
+            .field("ctx", &self.ctx)
+            .finish()
+    }
 }
 
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
@@ -243,48 +251,6 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
     }
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-    fn method(&self, span: Range<usize>, method: &[u8], args: impl AsRef<[u8]>) {
-        let mut args = args.as_ref();
-        if args.first() == Some(&b'(') {
-            args = &args[1..args.len() - 1];
-        }
-        let Ok(name) = str::from_utf8(method) else {
-            let error = InterpError::BadUtf8MethodName;
-            self.mutable.borrow_mut().push_error(span, error);
-            return;
-        };
-        let Ok(args) = str::from_utf8(args) else {
-            let error = InterpError::BadUtf8Argument;
-            self.mutable.borrow_mut().push_error(span, error);
-            return;
-        };
-        trace!("Method: {name} '{args}'");
-        let interp = &mut *self.mutable.borrow_mut();
-        let InnerInterpreter { load_ctx, dsl, .. } = interp;
-        let ctx = MethodCtx {
-            name,
-            args,
-            ctx: load_ctx.as_deref_mut(),
-            registry: self.ctx.reg,
-        };
-        if let Err(err) = dsl.method(ctx) {
-            interp.push_error(span, err);
-        }
-    }
-    fn code(&self, span: Range<usize>, name: &[u8]) {
-        let b_name = BStr::new(name);
-        trace!("Calling registered function {b_name}");
-        let Some(code) = self.ctx.handles.get_function_u8(name) else {
-            let name = String::from_utf8_lossy(name).to_string();
-            let interp = &mut self.mutable.borrow_mut();
-            interp.push_error(span, InterpError::CodeNotPresent(name));
-            return;
-        };
-        let interp = &mut *self.mutable.borrow_mut();
-        let parent = interp.current.last().copied();
-        let load_ctx = interp.load_ctx.as_deref();
-        code(self.ctx.reg, load_ctx, interp.cmds.0, parent);
-    }
     fn statement_spawn(&self) -> Entity {
         trace!("Spawning an entity with provided methods!");
         let interp = &mut *self.mutable.borrow_mut();
@@ -307,12 +273,14 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         self.mutable.borrow_mut().current.pop();
     }
     pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
-        let spanned_input = Located::new(BStr::new(input));
-        let mut parser = |i: &mut _| self.statements(i);
-        let parse_error = parser.parse(spanned_input);
+        let stateful_input = crate::lex::Stateful::new(BStr::new(input), &*self);
+        let parse_error = grammar::chirp_document(stateful_input);
         let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
         if let Err(err) = parse_error {
-            let error = SpannedError::new(InterpError::ParseError, err.offset()..err.offset());
+            let input = err.input();
+            let start = err.offset();
+            let end = start + input.len();
+            let error = SpannedError::new(InterpError::ParseError, start..end);
             errors.push(error);
         }
         if errors.is_empty() {
@@ -327,166 +295,68 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             Err(Errors { source_code, errors })
         }
     }
-    // TODO(perf): Can get away with a custom stream type that stores span
-    // in a (u32, u32) so that it only occupies
-    // 16 bytes (1 pointer: usize + start: u32 + end: u32) instead of
-    // 32 bytes (2 times (pointer: usize + len: usize))
-    // concievably, we could store the pointer in this struct and only hold
-    // spans in the parser state.
-    fn statements(&self, input: &mut Located<&BStr>) -> PResult<(), ()> {
-        use winnow::{
-            ascii::{escaped, multispace0, multispace1},
-            combinator::{
-                alt, cut_err, delimited as delim, dispatch, opt, preceded as starts, repeat,
-                separated0, separated_pair, terminated,
-            },
-            token::{one_of, take_till1 as until},
+}
+impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
+    for &'i Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D>
+{
+    fn method(&self, span: Range<usize>, method: &[u8], args: Option<&[u8]>) {
+        let Ok(name) = str::from_utf8(method) else {
+            let error = InterpError::BadUtf8MethodName;
+            self.mutable.borrow_mut().push_error(span, error);
+            return;
         };
-        // Note: we use `void` to reduce the size of input/output types. It's
-        // a major source of performance problems in winnow.
-        let line_comment = || starts(b"//", until(b'\n').void());
-        let repeat = repeat::<_, _, (), _, _>;
-        let spc_trail = || repeat(.., (line_comment(), multispace0));
-        let (spc, spc1, opt_spc) = (
-            || (multispace0, spc_trail()).void(),
-            || multispace1.void(),
-            || opt(b' ').void(),
-        );
-        let ident = || until(b" \n\t;\",()\\{}");
+        let Ok(args) = args.map_or(Ok(""), str::from_utf8) else {
+            let error = InterpError::BadUtf8Argument;
+            self.mutable.borrow_mut().push_error(span, error);
+            return;
+        };
+        trace!("Method: {name} '{args}'");
+        let interp = &mut *self.mutable.borrow_mut();
+        let InnerInterpreter { load_ctx, dsl, .. } = interp;
+        let ctx = MethodCtx {
+            name,
+            args,
+            ctx: load_ctx.as_deref_mut(),
+            registry: self.ctx.reg,
+        };
+        if let Err(err) = dsl.method(ctx) {
+            interp.push_error(span, err);
+        }
+    }
 
-        let methods = &|| {
-            let str_literal = || {
-                delim(
-                    b'"',
-                    escaped(until(b"\\\""), '\\', one_of(b"\\\"")).recognize(),
-                    b'"',
-                )
-            };
-            let args = alt((
-                starts(spc1(), ident()),
-                // TODO(perf): split this in a sane way, re-parsing might be costly
-                starts(spc(), scoped_text),
-                starts(spc1(), str_literal()),
-            ));
-            let method = alt((
-                str_literal()
-                    .with_span()
-                    .map(|(i, span)| self.method(span, b"named", escape_literal(i))),
-                (ident(), opt(args))
-                    .with_span()
-                    .map(|((n, arg), span)| self.method(span, n, arg.unwrap_or(b""))),
-            ));
-            let comma_list = |p| separated0::<_, _, (), _, _, _, _>(p, (b',', spc()));
-            cut_err(delim(
-                b'(',
-                delim(spc(), comma_list(cut_err(method)), spc()),
-                b')',
-            ))
+    fn spawn(&self) {
+        self.push_children();
+    }
+    fn spawn_leaf(&self) {
+        self.statement_spawn();
+    }
+    fn code(&self, (identifier, span): (&[u8], Range<usize>)) {
+        let b_name = BStr::new(identifier);
+        trace!("Calling registered function {b_name}");
+        let Some(code) = self.ctx.handles.get_function_u8(identifier) else {
+            let name = String::from_utf8_lossy(identifier).to_string();
+            let interp = &mut self.mutable.borrow_mut();
+            interp.push_error(span, InterpError::CodeNotPresent(name));
+            return;
         };
-        let nest = |i: &mut _| {
-            self.push_children();
-            let ret = self.statements(i);
-            self.pop_children();
-            ret
-        };
-        let terminal = |_| {
-            self.statement_spawn();
-        };
-        let tail = || alt((b';'.map(terminal), delim(b'{', nest, b'}')));
-        let statement = dispatch! { ident();
-            reserved_keyword @ (
-                b"abstract" | b"as"      | b"async"  | b"await"    | b"become"
-                | b"box"    | b"break"   | b"const"  | b"continue" | b"crate"
-                | b"do"     | b"dyn"     | b"else"   | b"enum"     | b"extern"
-                | b"false"  | b"final"   | b"fn"     | b"for"      | b"if"
-                | b"impl"   | b"in"      | b"let"    | b"loop"     | b"macro"
-                | b"match"  | b"mod"     | b"move"   | b"mut"      | b"override"
-                | b"priv"   | b"pub"     | b"ref"    | b"return"   | b"self"
-                | b"static" | b"struct"  | b"super"  | b"trait"    | b"true"
-                | b"try"    | b"type"    | b"typeof" | b"unsafe"   | b"unsized"
-                | b"use"    | b"virtual" | b"where"  | b"while"    | b"yeet"
-            ) => {
-                let show_keyword = BStr::new(reserved_keyword);
-                warn!(
-                    "Encountered a '{show_keyword}' statement! \
-                    All rust keywords are reserved in statement position. \
-                    Currently this is equivalent to 'spawn', but may change \
-                    without notice in the future."
-                );
-                let head = starts(opt_spc(), methods());
-                separated_pair(head, opt_spc(), tail()).void()
-            },
-            b"code" => {
-                let head = starts(opt_spc(), delim(b'(', ident(), b')'));
-                let head = head.with_span().map(|(i, span)| self.code(span, i));
-                terminated(head, (opt_spc(), b';'))
-            },
-            b"spawn" | b"entity" => {
-                let head = starts(opt_spc(), methods());
-                separated_pair(head, opt_spc(), tail()).void()
-            },
-            method => {
-                let head = starts(opt_spc(), methods());
-                let head = head.with_span().map(|(_, span)| self.method(span, method, b""));
-                separated_pair(head, opt_spc(), tail()).void()
-            },
-        };
-        let space_list = |p| separated0::<_, _, (), _, _, _, _>(p, spc());
-        let mut statements = cut_err(delim(spc(), space_list(statement), spc()));
-        statements.parse_next(input)
+        let interp = &mut *self.mutable.borrow_mut();
+        let parent = interp.current.last().copied();
+        let load_ctx = interp.load_ctx.as_deref();
+        code(self.ctx.reg, load_ctx, interp.cmds.0, parent);
+    }
+
+    fn entity(&self, span: Range<usize>, name: Option<&[u8]>) {
+        if let Some(name) = name {
+            self.method(span, b"named", Some(name));
+        }
+    }
+
+    fn complete(self) {
+        self.pop_children();
     }
 }
 
-type Swar = u32;
-const LANES: usize = 8;
-const SWAR_BYTES: usize = (Swar::BITS / 8) as usize;
-
-#[allow(clippy::verbose_bit_mask)] // what a weird lint
-fn contains_swar(mut xored: Swar) -> bool {
-    // For a position, nothing easier: pos = 0; pos += ret; ret &= xored & 0xff != 0;
-    let mut ret = false;
-    for _ in 0..SWAR_BYTES {
-        ret |= xored & 0xff == 0;
-        xored >>= 8;
-    }
-    ret
-}
-
-fn fast_contains<const WHAT: u8>(check: &[u8]) -> bool {
-    let mask = Swar::from_le_bytes([WHAT; SWAR_BYTES]);
-
-    // SAFETY: [u8; SWAR_BYTES] is a valid Swar
-    let (head, body, tail) = unsafe { check.align_to::<[Swar; LANES]>() };
-
-    head.iter().chain(tail).any(|c| *c == WHAT)
-        || body
-            .iter()
-            .map(|vs| {
-                vs.iter()
-                    .fold(false, |acc, &v| acc | contains_swar(v ^ mask))
-            })
-            .any(Into::into)
-}
-fn escape_literal(to_escape: &[u8]) -> Cow<[u8]> {
-    #[cold]
-    fn owned(bytes: &[u8]) -> Cow<[u8]> {
-        let mut ret = bytes.to_vec();
-        let mut prev_bs = false;
-        ret.retain(|c| {
-            let is_bs = c == &b'\\';
-            let keep = !is_bs | prev_bs;
-            prev_bs = !keep & is_bs;
-            keep
-        });
-        Cow::Owned(ret)
-    }
-    if fast_contains::<b'\\'>(to_escape) {
-        owned(to_escape)
-    } else {
-        Cow::Borrowed(to_escape)
-    }
-}
-#[cfg(test)]
+#[cfg(never)]
 mod tests {
     use super::*;
 
