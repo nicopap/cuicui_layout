@@ -1,38 +1,44 @@
-# New syntax
-
-[Cart's proposal][cpro] gave me ideas:
-
-* Remove the "leaf node" syntax (using arbitrary methods where `spawn` and `code`
-  are valid) It's confusing to have an two ways of doing the same thing.
-* In place of this, use the "leaf node" as the entity name
-* Remove the name literal method syntax
-* "Reserve" rust keywords for future compatibility.
-
-[cpro]: https://github.com/bevyengine/bevy/discussions/9538
-
 ## Grammar
 
 ```ungrammar
+TokenTree
+   = 'ident'
+   | '(' (TokenTree)* ')'
+   | '[' (TokenTree)* ']'
+   | '{' (TokenTree)* '}'
+   | StringLit
+
 Method
-   = 'ident'                  // bare method
-   | 'ident' ':' 'expr'       // property method
-   | 'ident' '(' ExprList ')' // argument method
+   = 'ident' '(' (TokenTree)* ')' // argument method
+   | 'ident' // bare method
 
-StatementHead
-   = 'code'    'ident'
-   | 'rust_kw' MethodList
-   | 'entity'  MethodList
-   | 'ident'   MethodList
-   | StringLit MethodList
+Statement
+   = 'code'    '(' 'ident' ')'
+   | 'Entity'  StatementTail
+   | 'ident'   StatementTail
+   | StringLit StatementTail
 
-StatementTail = ';' | '{' Statement* '}'
-Statement     = StatementHead statementTail
-
-MethodList = Method (',' Method)* ','?
-ExprList   = 'expr' (',' 'expr')* ','?
-StringLit  = 'string'
+StatementTail
+   = '(' (Method)* ')' ('{' (Statement)* '}')?
+   | '{' (Statement)* '}'
 ```
 
-* `'rust_kw'`: Any existing rust keyword such as `for`, `in`, `let`, `fn` etc.
-* When `StatementHead` is an arbitrary identifier or a `StringLit`, it is used
-  as the entity's name.
+* Notice how `StatementTail` is **never empty**. This ensures that syntax errors
+  such as `My Entity Name()` are detected and reported correctly.
+* `'ident'` is any series of character that is not a whitespace or delimiter such
+  as `[]{}()"'`, so this includes surprising stuff such as `+-_` and `234`.
+* `StringLit` works similarly to a rust string literal.
+* `TokenTree` aims to work like a [rust `TokenTree`], may accept more than what
+  the rust grammar accepts (within acceptable limits) for performance reason.
+  The inside of the parenthesis is passed as-is to `ParseDsl::method`.
+
+#### Note on `parse_dsl_impl`-specific details
+
+* `parse_dsl_impl` splits the `TokenTree`s on comma, and passes the split arguments
+  to the methods defined in the `impl` blocks it decorates.
+* It checks how many arguments there are when split on comma, to raise an error
+  when too many or too little arguments are passed to the method.
+* If an individual argument `TokenTree` is a string literal, it also removes the
+  quotes and applies backslash escapes before passing it to the method.
+
+[rust `TokenTree`]: https://doc.rust-lang.org/reference/macros.html#macro-invocation

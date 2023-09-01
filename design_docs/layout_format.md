@@ -224,3 +224,16 @@ Considered designs:
   - `type_parsers`: I like this!
 - Use trait reflection, read from the type registry. **Does not work** since it would
   require the `FromStr` bound on every type
+
+# New syntax
+
+[Cart's proposal][cpro] gave me ideas:
+
+* Remove the "leaf node" syntax (using arbitrary methods where `spawn` and `code`
+  are valid) It's confusing to have an two ways of doing the same thing.
+* In place of this, use the "leaf node" as the entity name
+* Remove the name literal method syntax
+* "Reserve" rust keywords for future compatibility.
+
+[cpro]: https://github.com/bevyengine/bevy/discussions/9538
+
