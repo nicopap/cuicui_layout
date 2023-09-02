@@ -40,12 +40,12 @@ pub use reflect::ReflectDsl;
 mod grammar;
 mod lex;
 mod load_asset;
+// mod swar;
 
 pub mod interpret;
 pub mod loader;
 pub mod parse;
 pub mod reflect;
-pub mod wraparg;
 
 #[doc(hidden)]
 pub mod bevy_types {
@@ -99,6 +99,7 @@ impl<'a> ChirpReader<'a> {
     ) -> Result<(), interpret::Errors> {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
+        let mut cmds = cmds.spawn_empty();
         let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
         let result = interpreter.interpret(input);
         if result.is_ok() {
@@ -123,6 +124,7 @@ impl<'a> ChirpReader<'a> {
     ) -> bool {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
+        let mut cmds = cmds.spawn_empty();
         let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
         let result = interpreter.interpret(input);
         if let Err(err) = &result {

@@ -9,7 +9,8 @@ use winnow::{
 
 impl<'i, S> Stateful<'i, S> {
     /// Wrap another Stream with span tracking
-    pub fn new(input: &'i BStr, state: S) -> Self {
+    pub fn new(input: &'i [u8], state: S) -> Self {
+        let input = BStr::new(input);
         let initial = input.as_ptr() as usize;
         Self { initial, input, state }
     }
@@ -27,6 +28,15 @@ impl<'i, S> Offset<<&'i BStr as Stream>::Checkpoint> for Stateful<'_, S> {
     }
 }
 
+/// Custom stream impl.
+///
+/// Right now, it's more-or-less a direct copy of winnow's
+/// `Stateful<Located<&'i BStr>, S>`. But the intent is to replace this with a
+/// streaming tokenizer, so that in the future, the output type is not `&'i [u8]`
+/// but `Token<'i>`.
+///
+/// TODO(clean): This would greatly simplify the parser implementation, most
+/// notably allow us to remove from the grammar the awkward handling of whitespaces.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) struct Stateful<'i, S> {
     initial: usize,

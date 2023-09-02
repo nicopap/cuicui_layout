@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, quote_spanned};
+use quote::{quote, quote_spanned};
 use syn::{meta::ParseNestedMeta, spanned::Spanned};
 
 #[derive(Default, Debug, PartialEq)]
@@ -99,15 +99,16 @@ const CONFIG_ATTR_DESCR: &str = "\
         input: &'a str,
     ) -> Result<ArgumentType, anyhow::Error>;
 
-To parse the argument. The default are as follow:
+`parse_dsl_impl` uses functions in the `cuicui_chirp::parse::args` module.
+To parse the argument. The defaults are as follow:
 
-- For `Handle<T>` and `&Handle<T>` arguments, `to_handle` is used.
-- For `&str` arguments, `maybe_quoted` is used.
-- For any other type, `from_reflect` is used. It requires however that the \
+- For `Handle<T>` and `&Handle<T>` arguments, `args::to_handle` is used.
+- For `&str` arguments, `args::quoted` is used.
+- For any other type, `args::from_reflect` is used. It requires however that the \
   argument type be `Reflect` and `FromReflect`.
 
 There are other options available:
-- `from_str`: it only requires the argument type to be `FromStr`
+- `args::from_str`: it only requires the argument type to be `FromStr`
 - `<parser>` may accept arbitrary expressions, you can use your own parser as \
   long as it has the type signature mentioned earlier. You can even define the \
   parser as a closure inline.
@@ -198,8 +199,7 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
                 &mut self,
                 data: #this_crate::parse::MethodCtx,
             ) -> Result<(), #this_crate::anyhow::Error> {
-                use #this_crate::parse::{quick, MethodCtx, DslParseError};
-                use #this_crate::wraparg::{from_str, from_reflect, to_handle, maybe_quoted};
+                use #this_crate::parse::{split::split, MethodCtx, DslParseError, args};
 
                 let MethodCtx { name, args, mut ctx, registry } = data;
                 match name {
@@ -234,7 +234,7 @@ fn bind_to_parse_dsl(chirp_crate: &syn::Path, generics: &mut syn::Generics) {
         type_param.bounds.push(bound);
     }
 }
-// Note: assumes cuicui_chirp::parse::quick is in scope and used correctly
+// Note: assumes cuicui_chirp::parse::split::split is in scope and used correctly
 fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {
     match FnConfig::parse_list(&fun.attrs) {
         Ok(FnConfig::Ignore) => return TokenStream::new(),
@@ -247,18 +247,18 @@ fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {
             return quote!(_ => {#compile_error});
         }
     };
-    let arg_count = fun.sig.inputs.len() - 1;
-    let arg_n = format_ident!("arg{arg_count}", span = fun.sig.inputs.span());
-
-    let index = syn::Index::from;
-    let quote_arg = |i: syn::Index| if arg_count == 1 { quote!(args) } else { quote!(args.#i) };
-    let fun_args = (0..arg_count).map(index).map(quote_arg);
     let arg_parsers = fun.sig.inputs.iter().skip(1);
     let arg_parsers = arg_parsers.map(|a| argument_parser(a, parsers));
+
+    let arg_count = arg_parsers.len();
+    let index = syn::Index::from;
+    let fun_args = (0..arg_count).map(index).map(|i| quote!(args[#i]));
+
     let ident = &fun.sig.ident;
+
     quote_spanned! { fun.sig.inputs.span() =>
         stringify!(#ident) => {
-            let args = quick::#arg_n(args)?;
+            let args = split::<#arg_count>(args)?;
             self.#ident(#(#arg_parsers(registry, ctx.as_deref_mut(), #fun_args)?),*);
             Ok(())
         }
@@ -276,10 +276,10 @@ fn argument_parser(argument: &syn::FnArg, parsers: &[TypeParser]) -> TokenStream
                 let parser = parsers.iter().find_map(find).unwrap();
                 quote!(#parser)
             }
-            Path(ty) if ty.path.is_ident("Handle") => quote!(to_handle),
-            Ref(TRef { elem, .. }) if is_type(elem, "Handle") => quote!(&to_handle),
-            Ref(TRef { elem, .. }) if is_type(elem, "str") => quote!(maybe_quoted),
-            _ => quote!(from_reflect),
+            Path(ty) if ty.path.is_ident("Handle") => quote!(args::to_handle),
+            Ref(TRef { elem, .. }) if is_type(elem, "Handle") => quote!(&args::to_handle),
+            Ref(TRef { elem, .. }) if is_type(elem, "str") => quote!(args::quoted),
+            _ => quote!(args::from_reflect),
         },
     }
 }

@@ -8,6 +8,7 @@ use bevy::hierarchy::BuildChildren;
 use bevy::log::{error, trace};
 use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
 use bevy::utils::HashMap;
+use cuicui_dsl::EntityCommands;
 use miette::{Diagnostic, NamedSource, SourceSpan};
 use smallvec::SmallVec;
 use thiserror::Error;
@@ -191,7 +192,11 @@ impl Debug for LoadCtx<'_, '_> {
 }
 struct InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     cmds: BevyCmds<'w, 's, 'a>,
-    current: SmallVec<[Entity; 3]>,
+    parent_chain: SmallVec<[Entity; 3]>,
+    /// The entity on which we are spawning the chirp scene.
+    ///
+    /// It is set to `None` as soon as we start spawning children.
+    root_entity: Option<Entity>,
     errors: Vec<SpannedError>,
     load_ctx: Option<&'l mut LoadContext<'ll>>,
     dsl: D,
@@ -202,7 +207,7 @@ impl<D> Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
         let load_ctx = if is_load_ctx { "Some(&mut LoadContext)" } else { "None" };
         f.debug_struct("InnerInterpreter")
             .field("cmds", &self.cmds)
-            .field("current", &self.current)
+            .field("current", &self.parent_chain)
             .field("errors", &self.errors)
             .field("load_ctx", &load_ctx)
             .field("dsl", &std::any::type_name::<D>())
@@ -233,18 +238,21 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D> fmt::Debug for Interpreter<'w, 's, 'a, 'h, 
 
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
     pub fn new<D: ParseDsl>(
-        builder: &'a mut Commands<'w, 's>,
+        builder: &'a mut EntityCommands<'w, 's, 'a>,
         load_ctx: Option<&'l mut LoadContext<'ll>>,
         reg: &'r TypeRegistry,
         handles: &'h Handles,
     ) -> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
+        let current = builder.id();
+        let cmds = builder.commands();
         Interpreter {
             mutable: RefCell::new(InnerInterpreter {
-                cmds: BevyCmds(builder),
-                current: SmallVec::new(),
+                cmds: BevyCmds(cmds),
+                parent_chain: SmallVec::new(),
                 errors: Vec::new(),
                 dsl: D::default(),
                 load_ctx,
+                root_entity: Some(current),
             }),
             ctx: LoadCtx { reg, handles },
         }
@@ -252,34 +260,39 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
     fn statement_spawn(&self) -> Entity {
-        trace!("Spawning an entity with provided methods!");
+        trace!("Inserting DSL");
         let interp = &mut *self.mutable.borrow_mut();
 
-        let parent = interp.current.last().copied();
+        let parent = interp.parent_chain.last().copied();
         let mut dsl = mem::take(&mut interp.dsl); // we set to the default D
-        let mut cmds = interp.cmds.0.spawn_empty();
+
+        // TODO(perf): re-use this for parents, to reduce the size of
+        // the smallvec. Just need to check parent.is_none()
+        let mut cmds = match interp.root_entity.take() {
+            None => interp.cmds.0.spawn_empty(),
+            Some(entity) => interp.cmds.0.entity(entity),
+        };
         if let Some(parent) = parent {
             cmds.set_parent(parent);
         }
         dsl.insert(&mut cmds)
     }
     fn push_children(&self) {
-        let current = self.statement_spawn();
+        let inserted = self.statement_spawn();
         trace!(">>> Going deeper now…");
-        self.mutable.borrow_mut().current.push(current);
+        self.mutable.borrow_mut().parent_chain.push(inserted);
     }
     fn pop_children(&self) {
         trace!("<<< Ended spawning entities within statements block, continuing");
-        self.mutable.borrow_mut().current.pop();
+        self.mutable.borrow_mut().parent_chain.pop();
     }
     pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
-        let stateful_input = crate::lex::Stateful::new(BStr::new(input), &*self);
+        let stateful_input = crate::lex::Stateful::new(input, &*self);
         let parse_error = grammar::chirp_document(stateful_input);
         let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
         if let Err(err) = parse_error {
-            let input = err.input();
             let start = err.offset();
-            let end = start + input.len();
+            let end = err.offset();
             let error = SpannedError::new(InterpError::ParseError, start..end);
             errors.push(error);
         }
@@ -324,10 +337,10 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
         }
     }
 
-    fn spawn(&self) {
+    fn spawn_with_children(&self) {
         self.push_children();
     }
-    fn spawn_leaf(&self) {
+    fn insert_entity(&self) {
         self.statement_spawn();
     }
     fn code(&self, (identifier, span): (&[u8], Range<usize>)) {
@@ -340,18 +353,18 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
             return;
         };
         let interp = &mut *self.mutable.borrow_mut();
-        let parent = interp.current.last().copied();
+        let parent = interp.parent_chain.last().copied();
         let load_ctx = interp.load_ctx.as_deref();
         code(self.ctx.reg, load_ctx, interp.cmds.0, parent);
     }
 
-    fn entity(&self, span: Range<usize>, name: Option<&[u8]>) {
+    fn set_name(&self, span: Range<usize>, name: Option<&[u8]>) {
         if let Some(name) = name {
             self.method(span, b"named", Some(name));
         }
     }
 
-    fn complete(self) {
+    fn complete_children(self) {
         self.pop_children();
     }
 }

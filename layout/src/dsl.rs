@@ -156,7 +156,7 @@ impl<D: fmt::Debug> fmt::Debug for LayoutDsl<D> {
     }
 }
 
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Rule = from_str))]
+#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Rule = args::from_str))]
 impl<D: DslBundle> LayoutDsl<D> {
     /// Set the flow direction of a container node.
     #[parse_dsl(ignore)] // TODO(feat): When the reflect feature is disable, this doesn't compile.

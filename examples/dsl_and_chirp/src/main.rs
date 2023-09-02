@@ -64,11 +64,11 @@ impl FromStr for Rule {
         match () {
             () if s.starts_with("px(") => {
                 let number = &s[3..s.len() - 1];
-                Ok(Rule::Px(dbg!(number.parse())?))
+                Ok(Rule::Px(number.parse()?))
             }
             () if s.starts_with("pct(") => {
                 let number = &s[4..s.len() - 1];
-                Ok(Rule::Pct(dbg!(number.parse())?))
+                Ok(Rule::Pct(number.parse()?))
             }
             () => Err("badnumber".parse::<i32>().unwrap_err()),
         }
@@ -150,7 +150,7 @@ impl<D: DslBundle> DslBundle for LayoutDsl<D> {
 #[parse_dsl_impl(
     set_params <D: ParseDsl + fmt::Debug>,
     delegate = inner,
-    type_parsers(Rule = from_str),
+    type_parsers(Rule = args::from_str),
 )]
 impl<D: DslBundle + fmt::Debug> LayoutDsl<D> {
     fn empty_px(&mut self, pixels: u16) {
@@ -199,19 +199,19 @@ fn main() {
         spawn (column) {
             "first row"(
                 // demonstrating
-                rules(10px, 11%)
+                rules(px(10), pct(11))
                 row
             ) { // that it is possible
                 code(inner_children)
-                "first child"(rules(20%, 21px) empty_px(30)) // to
+                "first child"(rules(pct(20), px(21)) empty_px(30)) // to
                 code(inner_children)
                 2(empty_px(31)) // add comments
                 code(inner_children)
             }
             code(outer_children)
             // To a chirp file
-            "second element"(rules(40px,41%) column) {
-                child3(rules(50%, 51px) empty_px(60))
+            "second element"(rules(px(40),pct(41)) column) {
+                child3(rules(pct(50), px(51)) empty_px(60))
                 "so called \"fourth\" child"(empty_px(61))
             }
         }
@@ -267,7 +267,8 @@ fn main() {
             // To a chirp file
             "second element"(rules(px(40), pct(41)) column) {
                 child3(rules(pct(50), px(51)) empty_px(60))
-                "so called \"fourth\" child"(empty_px(61))
+                // TODO(bug): Interpret escapes in cuicui_chirp
+                "so called \\\"fourth\\\" child"(empty_px(61))
             }
         }
     };

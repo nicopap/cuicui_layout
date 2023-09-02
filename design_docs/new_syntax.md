@@ -24,7 +24,7 @@ StatementTail
 * Notice how `StatementTail` is **never empty**. This ensures that syntax errors
   such as `My Entity Name()` are detected and reported correctly.
 * `'ident'` is any series of character that is not a whitespace or delimiter such
-  as `[]{}()"'`, so this includes surprising stuff such as `+-_` and `234`.
+  as `=[]{}()"'`, so this includes surprising stuff such as `+-_` and `234`.
 * `StringLit` works similarly to a rust string literal.
 * `TokenTree` aims to work like a [rust `TokenTree`], may accept more than what
   the rust grammar accepts (within acceptable limits) for performance reason.

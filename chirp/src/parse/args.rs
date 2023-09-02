@@ -1,8 +1,11 @@
-//! Wrapper for method arguments for configurable parsing.
+//! Parse individual method arguments.
 //!
 //! The functions in this module are available in the `parse_dsl_impl` macro's
 //! `type_parsers` argument. It is however possible to define and substitute your
 //! own.
+//!
+//! If a method accepts several arguments, the string is first split using
+//! functions in the [`super::split`] module.
 #![allow(clippy::inline_always)]
 // allow: rust has difficulties inlining functions cross-crate. Since we only
 // use inline(always) on functions that are very small, it won't add significative
@@ -152,18 +155,22 @@ pub fn to_handle<T: Asset + LoadAsset>(
     Ok(ctx.set_labeled_asset(input, LoadedAsset::new(asset)))
 }
 
-/// Returns the input as a `&str` without further changes.
+// TODO(bug): backslash escape & error on bad escapes.
+/// Returns the input as a `&str`, removing quotes applying backslash escapes.
+///
+/// This allocates whenever a backslash is used in the input string.
 ///
 /// # Errors
+///
 /// This is always `Ok`. It is safe to unwrap. Rust guarentees that `Infallible`
 /// can't be constructed.
 #[inline(always)]
-pub fn maybe_quoted<'a>(
+pub fn quoted<'a>(
     _: &TypeRegistry,
     _: Option<&mut LoadContext>,
     mut input: &'a str,
 ) -> Result<&'a str, Infallible> {
-    if input.starts_with('"') && input.ends_with('"') && input.len() > 2 {
+    if input.len() > 2 {
         input = &input[1..input.len() - 1];
     }
     Ok(input)

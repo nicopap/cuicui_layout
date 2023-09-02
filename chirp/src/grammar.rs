@@ -3,7 +3,7 @@
 //! The current implementation is not done with a particular look for performance,
 //! just functionality and readability.
 //!
-//! ```
+//! ```text
 //! TokenTree
 //!    = 'ident'
 //!    | '(' (TokenTree)* ')'
@@ -36,23 +36,26 @@ use winnow::{stream::Stream, trace::trace, PResult, Parser};
 
 use crate::lex::Stateful;
 
-type Input<'i, T> = Stateful<'i, T>;
+pub(crate) type Input<'i, T> = Stateful<'i, T>;
 
 fn repeat0<I: Stream, O, E: ParserError<I>>(f: impl Parser<I, O, E>) -> impl Parser<I, (), E> {
     repeat(.., f)
 }
 
 fn line_comment(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    preceded(b"//", take_till0(b'\n')).void().parse_next(input)
+    let parser = preceded(b"//", take_till0(b'\n')).void();
+    trace("line_comment", parser).parse_next(input)
 }
 /// Whitespace, thing between token, including comments.
-fn whitespace(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    separated0(multispace1, line_comment).parse_next(input)
+pub(crate) fn whitespace(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
+    let parser = separated0(multispace1, line_comment);
+    trace("whitespace", parser).parse_next(input)
 }
 
 /// `D` followed by [`whitespace`].
 fn ws<const D: u8>(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    terminated(D, whitespace).void().parse_next(input)
+    let parser = terminated(D, whitespace);
+    trace("ws", parser).void().parse_next(input)
 }
 
 fn ws_terminated<'i, I: Itrp, O, F>(
@@ -71,31 +74,48 @@ where
     })
 }
 
+const ESCAPABLES: [u8; 7] = *b"\\\"'ntru";
+
 /// The inside of a `D`-delimited string, does not consume the terminating token.
 fn string_inner<'i, const D: u8>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    escaped(take_till1(&[b'\\', D]), '\\', one_of(&[b'\\', D]))
-        .recognize()
-        .parse_next(input)
+    let parser = escaped(take_till1(&[b'\\', D]), '\\', one_of(ESCAPABLES));
+    trace("string_inner", parser).recognize().parse_next(input)
 }
 
 /// A string delimited by either `'` or `"`.
 fn string<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    let dispatch = dispatch! { any;
+    let parser = dispatch! { any;
         b'"' => terminated(string_inner::<b'"'>, b'"'),
         b'\'' => terminated(string_inner::<b'\''>, b'\''),
         _ => fail
     };
-    dispatch.recognize().parse_next(input)
+    trace("string", parser).recognize().parse_next(input)
 }
 
 fn ident<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    terminated(take_till1(b"[]{}()'\" \t\n"), whitespace).parse_next(input)
+    let parser = terminated(take_till1(b"=[]{}()'\" \t\n"), whitespace);
+    trace("ident", parser).parse_next(input)
+}
+fn arg_tt_ident<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
+    trace("arg_tt_ident", take_till1(b",[]{}()'\" \t\n")).parse_next(input)
+}
+
+pub(crate) fn arg_token_tree<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
+    let delimited = dispatch! { any;
+        b'(' => delimited(whitespace, repeat0(token_tree), b')'),
+        b'[' => delimited(whitespace, repeat0(token_tree), b']'),
+        b'{' => delimited(whitespace, repeat0(token_tree), b'}'),
+        b'"' => terminated(string_inner::<b'"'>, b'"').void(),
+        b'\'' => terminated(string_inner::<b'\''>, b'\'').void(),
+        _ => fail,
+    };
+    let parser = alt((arg_tt_ident.void(), delimited));
+    trace("arg_token_tree", parser)
+        .recognize()
+        .parse_next(input)
 }
 
 fn token_tree<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    // We could use the following instead of inserting `ws` everywhere,
-    // if not for the fact we have to manage comments.
-    // let non_delimiter = not (b"()[]{}\"'");
     let delimited = dispatch! { any;
         b'(' => ws_terminated(repeat0(token_tree), b')'),
         b'[' => ws_terminated(repeat0(token_tree), b']'),
@@ -104,11 +124,13 @@ fn token_tree<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
         b'\'' => terminated(string_inner::<b'\''>, ws::<b'\''>).void(),
         _ => fail,
     };
-    alt((ident.void(), delimited)).recognize().parse_next(input)
+    let parser = alt((b'='.void(), ident.void(), delimited));
+    trace("token_tree", parser).recognize().parse_next(input)
 }
 
 fn method(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    let method_argument = delimited(ws::<b'('>, repeat0(token_tree), ws::<b')'>).recognize();
+    let parser = delimited(ws::<b'('>, repeat0(token_tree), b')').recognize();
+    let method_argument = trace("method_argument", terminated(parser, whitespace));
     let ((name, args), span) = (ident, opt(method_argument))
         .with_span()
         .parse_next(input)?;
@@ -126,8 +148,8 @@ fn statement(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
             Ok(())
         }
         (b"Entity" | b"spawn", span) => {
-            input.state.entity(span, None);
-            statement_tail.parse_next(input)
+            input.state.set_name(span, None);
+            statement_tail(input)
         }
         (
             b"abstract" | b"as" | b"async" | b"await" | b"become" | b"box" | b"break" | b"const"
@@ -139,29 +161,33 @@ fn statement(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
             | b"while" | b"yeet",
             _,
         ) => fail.parse_next(input),
-        (string, span) if string.first() == Some(&b'"') => {
-            input.state.entity(span, Some(&string[1..string.len() - 1]));
-            statement_tail.parse_next(input)
+        (str, span) if str.first() == Some(&b'"') => {
+            input.state.set_name(span, Some(&str[1..str.len() - 1]));
+            statement_tail(input)
         }
         (identifier, span) => {
-            input.state.entity(span, Some(identifier));
-            statement_tail.parse_next(input)
+            input.state.set_name(span, Some(identifier));
+            statement_tail(input)
         }
     }
 }
 
 fn statements(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    input.state.spawn();
+    input.state.spawn_with_children();
     repeat0(statement).parse_next(input)?;
-    input.state.complete();
+    input.state.complete_children();
     Ok(())
 }
-fn statement_tail(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
+fn statement_tail<I: Itrp>(input: &mut Input<I>) -> PResult<(), ()> {
     let mut methods = delimited(ws::<b'('>, repeat0(method), ws::<b')'>);
     let mut statements = delimited(ws::<b'{'>, statements, ws::<b'}'>);
     let has_methods = methods.parse_next(input).is_ok();
     if has_methods {
-        opt(statements).void().parse_next(input)
+        let no_children = |i: &mut Input<I>| {
+            i.state.insert_entity();
+            Ok(())
+        };
+        alt((statements, no_children)).void().parse_next(input)
     } else {
         statements.parse_next(input)
     }
@@ -177,11 +203,19 @@ pub(crate) fn chirp_document<I: Itrp>(mut input: Input<I>) -> CResult<(), I> {
 
 pub(crate) trait Itrp: Debug + Copy {
     fn code(&self, input: (&[u8], Range<usize>));
-    fn entity(&self, span: Range<usize>, name: Option<&[u8]>);
-    fn complete(self);
+    fn set_name(&self, span: Range<usize>, name: Option<&[u8]>);
+    fn complete_children(self);
     fn method(&self, span: Range<usize>, name: &[u8], args: Option<&[u8]>);
-    fn spawn(&self);
-    fn spawn_leaf(&self) {
-        self.spawn();
+    fn spawn_with_children(&self);
+    fn insert_entity(&self) {
+        self.spawn_with_children();
+        self.complete_children();
     }
+}
+impl Itrp for () {
+    fn code(&self, _: (&[u8], Range<usize>)) {}
+    fn set_name(&self, _: Range<usize>, _: Option<&[u8]>) {}
+    fn complete_children(self) {}
+    fn method(&self, _: Range<usize>, _: &[u8], _: Option<&[u8]>) {}
+    fn spawn_with_children(&self) {}
 }

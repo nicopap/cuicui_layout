@@ -427,8 +427,8 @@ pub enum Rule {
 }
 #[derive(Debug, Error)]
 pub enum RuleParseError {
-    #[error(transparent)]
-    ParseFloat(#[from] ParseFloatError),
+    #[error("Invalid float format: {0} for '{1}'")]
+    ParseFloat(ParseFloatError, String),
     #[error(
         "Provided a negative pixel amount ({0:.0}), this is not how you get 'negative space' \
         there is no such thing as a negative pixel, provide a positive value instead."
@@ -449,20 +449,21 @@ impl Default for Rule {
 impl FromStr for Rule {
     type Err = RuleParseError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let invalid = |err| RuleParseError::ParseFloat(err, s.to_string());
         if let Some(pixels) = s.strip_suffix("px") {
-            let pixels = pixels.parse()?;
+            let pixels = pixels.parse().map_err(invalid)?;
             if pixels < 0. {
                 return Err(RuleParseError::NegativePixels(pixels));
             }
             Ok(Self::Fixed(pixels))
         } else if let Some(percents) = s.strip_suffix('%') {
-            let percents: f32 = percents.parse()?;
+            let percents: f32 = percents.parse().map_err(invalid)?;
             if percents > 100. || percents < 0. {
                 return Err(RuleParseError::BadPercent(percents));
             }
             Ok(Self::Parent(percents / 100.))
         } else if let Some(child_ratio) = s.strip_suffix('*') {
-            let ratio: f32 = child_ratio.parse()?;
+            let ratio: f32 = child_ratio.parse().map_err(invalid)?;
             if ratio < 1. {
                 return Err(RuleParseError::BadRatio(ratio));
             }

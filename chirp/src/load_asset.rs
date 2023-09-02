@@ -18,7 +18,7 @@ use crate::Chirp;
 
 /// Synchronously load file at `path` with provided `bytes` content.
 ///
-/// Used in [`crate::wraparg`] to support [`bevy::asset::Handle`] in `.chirp` files.
+/// Used in [`crate::parse::args`] to support [`bevy::asset::Handle`] in `.chirp` files.
 ///
 /// Implementations are provided for:
 /// - `bevy::render::texture::Image` with the `load_image` feature flag.
