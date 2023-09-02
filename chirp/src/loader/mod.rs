@@ -39,7 +39,7 @@ use std::{any::type_name, marker::PhantomData, sync::Arc, sync::RwLock, sync::Tr
 use anyhow::Result;
 use bevy::app::{App, Plugin as BevyPlugin, PostUpdate};
 use bevy::asset::{prelude::*, AssetLoader, LoadContext, LoadedAsset};
-use bevy::ecs::{prelude::*, schedule::ScheduleLabel};
+use bevy::ecs::{prelude::*, schedule::ScheduleLabel, system::EntityCommands};
 use bevy::log::{error, info};
 use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
 use bevy::scene::{scene_spawner_system, Scene};
@@ -90,7 +90,7 @@ impl<D> WorldHandles<D> {
     pub fn add_function(
         &mut self,
         name: String,
-        function: impl Fn(&TypeRegistry, Option<&LoadContext>, &mut Commands, Option<Entity>)
+        function: impl Fn(&TypeRegistry, Option<&LoadContext>, &mut EntityCommands)
             + Send
             + Sync
             + 'static,

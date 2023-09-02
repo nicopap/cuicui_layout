@@ -196,14 +196,14 @@ fn main() {
     let mut world1 = World::new();
     let chirp = r#"
         // Some comments
-        spawn (column) {
+        RootEntity(column) {
             "first row"(
                 // demonstrating
                 rules(px(10), pct(11))
                 row
             ) { // that it is possible
                 code(inner_children)
-                "first child"(rules(pct(20), px(21)) empty_px(30)) // to
+                FirstChild(rules(pct(20), px(21)) empty_px(30)) // to
                 code(inner_children)
                 2(empty_px(31)) // add comments
                 code(inner_children)
@@ -217,18 +217,8 @@ fn main() {
         }
 "#;
     let mut handles: Handles = Handles::new();
-    handles.add_function("inner_children".to_owned(), |_, _, cmds, entity| {
-        let mut cmds = cmds.entity(entity.unwrap());
-        cmds.with_children(|cmds| {
-            inner_children(&mut cmds.spawn_empty());
-        });
-    });
-    handles.add_function("outer_children".to_owned(), |_, _, cmds, entity| {
-        let mut cmds = cmds.entity(entity.unwrap());
-        cmds.with_children(|cmds| {
-            outer_children(&mut cmds.spawn_empty());
-        });
-    });
+    handles.add_function("inner_children", |_, _, cmds| inner_children(cmds));
+    handles.add_function("outer_children", |_, _, cmds| outer_children(cmds));
 
     let mut world_chirp = ChirpReader::new(&mut world1);
     assert!(world_chirp.interpret_logging::<LayoutDsl>(
@@ -243,7 +233,7 @@ fn main() {
     let mut cmds = state.get_mut(&mut world2);
     dsl! { <LayoutDsl> &mut cmds.spawn_empty(),
         // Some comments
-        spawn (column) {
+        RootEntity(column) {
             "first row"(
                 // demonstrating
                 rules(px(10), pct(11))
@@ -252,7 +242,7 @@ fn main() {
                 code(let cmds) {
                     inner_children(cmds);
                 }
-                "first child"(rules(pct(20), px(21)) empty_px(30)) // to
+                FirstChild(rules(pct(20), px(21)) empty_px(30)) // to
                 code(let cmds) {
                     inner_children(cmds);
                 }

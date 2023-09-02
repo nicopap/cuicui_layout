@@ -112,11 +112,11 @@ impl fmt::Display for NiceErrors<'_> {
 /// - `Option<Entity>`: the current parent, if there is one.
 // TODO(0.10): Replace with &mut EntityCommands, since we now require 0-1 entity per statement.
 pub type CodeFunctionBox =
-    Box<dyn Fn(&TypeRegistry, Option<&LoadContext>, &mut Commands, Option<Entity>) + Send + Sync>;
+    Box<dyn Fn(&TypeRegistry, Option<&LoadContext>, &mut EntityCommands) + Send + Sync>;
 
 /// Reference-based pendant of [`CodeFunctionBox`]. See `CodeFunctionBox` docs for details.
 pub type CodeFunctionRef<'a> =
-    &'a (dyn Fn(&TypeRegistry, Option<&LoadContext>, &mut Commands, Option<Entity>) + Send + Sync);
+    &'a (dyn Fn(&TypeRegistry, Option<&LoadContext>, &mut EntityCommands) + Send + Sync);
 
 /// Registry of functions used in `code` block in [`crate::Chirp`]s.
 #[derive(Default)]
@@ -138,13 +138,13 @@ impl Handles {
     /// Returns any function already associated with provided name, if present.
     pub fn add_function(
         &mut self,
-        name: String,
-        function: impl Fn(&TypeRegistry, Option<&LoadContext>, &mut Commands, Option<Entity>)
+        name: impl Into<String>,
+        function: impl Fn(&TypeRegistry, Option<&LoadContext>, &mut EntityCommands)
             + Send
             + Sync
             + 'static,
     ) -> Option<CodeFunctionBox> {
-        let name = name.into_bytes().into_boxed_slice();
+        let name = name.into().into_bytes().into_boxed_slice();
         self.funs.insert(name, Box::new(function))
     }
     /// Associate `name` with provided `value`.
@@ -192,11 +192,11 @@ impl Debug for LoadCtx<'_, '_> {
 }
 struct InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     cmds: BevyCmds<'w, 's, 'a>,
-    parent_chain: SmallVec<[Entity; 3]>,
+    parent_chain: SmallVec<[Entity; 2]>,
     /// The entity on which we are spawning the chirp scene.
     ///
-    /// It is set to `None` as soon as we start spawning children.
-    root_entity: Option<Entity>,
+    /// Or the current parent if we are not on the root entity.
+    root_entity: Entity,
     errors: Vec<SpannedError>,
     load_ctx: Option<&'l mut LoadContext<'ll>>,
     dsl: D,
@@ -243,7 +243,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
         reg: &'r TypeRegistry,
         handles: &'h Handles,
     ) -> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-        let current = builder.id();
+        let root_entity = builder.id();
         let cmds = builder.commands();
         Interpreter {
             mutable: RefCell::new(InnerInterpreter {
@@ -252,40 +252,13 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
                 errors: Vec::new(),
                 dsl: D::default(),
                 load_ctx,
-                root_entity: Some(current),
+                root_entity,
             }),
             ctx: LoadCtx { reg, handles },
         }
     }
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-    fn statement_spawn(&self) -> Entity {
-        trace!("Inserting DSL");
-        let interp = &mut *self.mutable.borrow_mut();
-
-        let parent = interp.parent_chain.last().copied();
-        let mut dsl = mem::take(&mut interp.dsl); // we set to the default D
-
-        // TODO(perf): re-use this for parents, to reduce the size of
-        // the smallvec. Just need to check parent.is_none()
-        let mut cmds = match interp.root_entity.take() {
-            None => interp.cmds.0.spawn_empty(),
-            Some(entity) => interp.cmds.0.entity(entity),
-        };
-        if let Some(parent) = parent {
-            cmds.set_parent(parent);
-        }
-        dsl.insert(&mut cmds)
-    }
-    fn push_children(&self) {
-        let inserted = self.statement_spawn();
-        trace!(">>> Going deeper now…");
-        self.mutable.borrow_mut().parent_chain.push(inserted);
-    }
-    fn pop_children(&self) {
-        trace!("<<< Ended spawning entities within statements block, continuing");
-        self.mutable.borrow_mut().parent_chain.pop();
-    }
     pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
         let stateful_input = crate::lex::Stateful::new(input, &*self);
         let parse_error = grammar::chirp_document(stateful_input);
@@ -308,10 +281,31 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             Err(Errors { source_code, errors })
         }
     }
+    fn statement_spawn(&self) -> Entity {
+        trace!("Inserting DSL");
+        let interp = &mut *self.mutable.borrow_mut();
+
+        let mut dsl = mem::take(&mut interp.dsl); // we set to the default D
+
+        // - no parent: we are root, use root_entity
+        // - parent, but equal to root_entity: means we have a single parent use any
+        // - parent, different to root_entity: use root_entity
+        let mut cmds = if interp.parent_chain.last().is_none() {
+            interp.cmds.0.entity(interp.root_entity)
+        } else {
+            let mut cmds = interp.cmds.0.spawn_empty();
+            cmds.set_parent(interp.root_entity);
+            cmds
+        };
+        dsl.insert(&mut cmds)
+    }
 }
 impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
     for &'i Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D>
 {
+    fn insert_entity(&self) {
+        self.statement_spawn();
+    }
     fn method(&self, span: Range<usize>, method: &[u8], args: Option<&[u8]>) {
         let Ok(name) = str::from_utf8(method) else {
             let error = InterpError::BadUtf8MethodName;
@@ -336,12 +330,22 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
             interp.push_error(span, err);
         }
     }
-
     fn spawn_with_children(&self) {
-        self.push_children();
-    }
-    fn insert_entity(&self) {
-        self.statement_spawn();
+        let inserted = self.statement_spawn();
+        trace!(">>> Going deeper now…");
+        let InnerInterpreter { root_entity, parent_chain, .. } = &mut *self.mutable.borrow_mut();
+        // for the `statement_spawn` to correctly pick a parent:
+        // - no parent: push inserted, set root_entity to inserted.
+        // - parent equal to root_entity: set root_entity to inserted
+        // - parent not equal to root_entity: push root_entity, set root_entity to inserted
+        match parent_chain.last() {
+            None => {
+                parent_chain.push(inserted);
+                *root_entity = inserted;
+            }
+            Some(entity) if entity == root_entity => *root_entity = inserted,
+            Some(_) => parent_chain.push(mem::replace(root_entity, inserted)),
+        }
     }
     fn code(&self, (identifier, span): (&[u8], Range<usize>)) {
         let b_name = BStr::new(identifier);
@@ -353,9 +357,10 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
             return;
         };
         let interp = &mut *self.mutable.borrow_mut();
-        let parent = interp.parent_chain.last().copied();
         let load_ctx = interp.load_ctx.as_deref();
-        code(self.ctx.reg, load_ctx, interp.cmds.0, parent);
+        let mut cmds = interp.cmds.0.spawn_empty();
+        cmds.set_parent(interp.root_entity);
+        code(self.ctx.reg, load_ctx, &mut cmds);
     }
 
     fn set_name(&self, span: Range<usize>, name: Option<&[u8]>) {
@@ -365,7 +370,18 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
     }
 
     fn complete_children(self) {
-        self.pop_children();
+        let InnerInterpreter { root_entity, parent_chain, .. } = &mut *self.mutable.borrow_mut();
+        trace!("<<< Ended spawning entities within statements block, continuing");
+        let pop_msg = "MAJOR cuicui_chirp BUG: please open an issue 🥺 plleaaaaasse\n\
+            The parser called the interpreter's pop function more times than it \
+            called its push function, which should never happen.";
+        let entity = parent_chain.pop().expect(pop_msg);
+        // for the `statement_spawn` to still be in "child of root entity" mode,
+        // we need to add back the last parent of the chain.
+        if parent_chain.is_empty() {
+            parent_chain.push(entity);
+        }
+        *root_entity = entity;
     }
 }
 
