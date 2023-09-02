@@ -15,7 +15,7 @@ use thiserror::Error;
 use winnow::BStr;
 
 use crate::grammar;
-use crate::parse::{MethodCtx, ParseDsl};
+use crate::parse::{escape_literal, MethodCtx, ParseDsl};
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
@@ -365,7 +365,7 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
 
     fn set_name(&self, span: Range<usize>, name: Option<&[u8]>) {
         if let Some(name) = name {
-            self.method(span, b"named", Some(name));
+            self.method(span, b"named", Some(escape_literal(name).as_ref()));
         }
     }
 

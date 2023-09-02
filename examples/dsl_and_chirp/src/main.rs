@@ -257,8 +257,7 @@ fn main() {
             // To a chirp file
             "second element"(rules(px(40), pct(41)) column) {
                 child3(rules(pct(50), px(51)) empty_px(60))
-                // TODO(bug): Interpret escapes in cuicui_chirp
-                "so called \\\"fourth\\\" child"(empty_px(61))
+                "so called \"fourth\" child"(empty_px(61))
             }
         }
     };

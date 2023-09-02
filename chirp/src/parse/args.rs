@@ -4,14 +4,14 @@
 //! `type_parsers` argument. It is however possible to define and substitute your
 //! own.
 //!
-//! If a method accepts several arguments, the string is first split using
-//! functions in the [`super::split`] module.
+//! If a method accepts several arguments, the string is first split using the
+//! [`super::split()`] function.
 #![allow(clippy::inline_always)]
 // allow: rust has difficulties inlining functions cross-crate. Since we only
 // use inline(always) on functions that are very small, it won't add significative
 // compile overhead in anycase, but may help the optimizer elide some code.
 
-use std::{any, convert::Infallible, fs, io, marker::PhantomData, str, str::FromStr};
+use std::{any, borrow::Cow, convert::Infallible, fs, io, marker::PhantomData, str, str::FromStr};
 
 use bevy::asset::{Asset, FileAssetIo, Handle, LoadContext, LoadedAsset};
 use bevy::reflect::erased_serde::__private::serde::de::DeserializeSeed;
@@ -20,6 +20,7 @@ use bevy::reflect::{FromReflect, Reflect, TypeRegistryInternal as TypeRegistry};
 use thiserror::Error;
 
 use crate::load_asset::LoadAsset;
+use crate::parse::escape_literal;
 
 /// Error occuring in [`to_handle`].
 #[allow(missing_docs)] // Already documented by error message
@@ -148,14 +149,14 @@ pub fn to_handle<T: Asset + LoadAsset>(
         return Err(HandleDslDeserError::<T>::NoLoadContext);
     };
     let file_io: &FileAssetIo = ctx.asset_io().downcast_ref().ok_or(UnsupportedIo)?;
+    let input = interpret_str(input);
     let mut file_path = file_io.root_path().clone();
-    file_path.push(input);
+    file_path.push(input.as_ref());
     let bytes = fs::read(&file_path)?;
     let asset = T::load(&file_path, &bytes, ctx).map_err(BadLoad)?;
-    Ok(ctx.set_labeled_asset(input, LoadedAsset::new(asset)))
+    Ok(ctx.set_labeled_asset(input.as_ref(), LoadedAsset::new(asset)))
 }
 
-// TODO(bug): backslash escape & error on bad escapes.
 /// Returns the input as a `&str`, removing quotes applying backslash escapes.
 ///
 /// This allocates whenever a backslash is used in the input string.
@@ -168,10 +169,20 @@ pub fn to_handle<T: Asset + LoadAsset>(
 pub fn quoted<'a>(
     _: &TypeRegistry,
     _: Option<&mut LoadContext>,
-    mut input: &'a str,
-) -> Result<&'a str, Infallible> {
-    if input.len() > 2 {
+    input: &'a str,
+) -> Result<Cow<'a, str>, Infallible> {
+    Ok(interpret_str(input))
+}
+
+fn interpret_str(mut input: &str) -> Cow<str> {
+    if input.len() > 2 && input.starts_with('"') && input.ends_with('"') {
         input = &input[1..input.len() - 1];
     }
-    Ok(input)
+    // SAFTEY: transforms operated by escape_literal is always UTF8-safe
+    unsafe {
+        match escape_literal(input.as_bytes()) {
+            Cow::Borrowed(bytes) => Cow::Borrowed(str::from_utf8_unchecked(bytes)),
+            Cow::Owned(bytes_vec) => Cow::Owned(String::from_utf8_unchecked(bytes_vec)),
+        }
+    }
 }

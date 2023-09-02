@@ -1,7 +1,6 @@
 //! Split method arguments.
 //!
 //! See [`split`].
-#![allow(missing_docs, clippy::missing_errors_doc)]
 
 use std::str::from_utf8_unchecked;
 

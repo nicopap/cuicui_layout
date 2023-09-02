@@ -3,7 +3,7 @@
 //! The [`args`] module is used by the `parse_dsl_impl` macro when generating
 //! [`ParseDsl`] implementation based on methods in an `impl` block.
 //!
-//! The [`split`] module is used by the macro to separate arguments to a method.
+//! The [`split()`] function is used by the macro to separate arguments to a method.
 //!
 //! # Internal architecture
 //!
@@ -21,10 +21,14 @@ use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
+pub use escape::escape_literal;
+pub use split::split;
+
 #[cfg(test)]
 mod tests;
 
 pub mod args;
+mod escape;
 pub mod split;
 
 /// The input specification called a method not implemented in `D`.

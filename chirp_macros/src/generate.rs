@@ -278,7 +278,7 @@ fn argument_parser(argument: &syn::FnArg, parsers: &[TypeParser]) -> TokenStream
             }
             Path(ty) if ty.path.is_ident("Handle") => quote!(args::to_handle),
             Ref(TRef { elem, .. }) if is_type(elem, "Handle") => quote!(&args::to_handle),
-            Ref(TRef { elem, .. }) if is_type(elem, "str") => quote!(args::quoted),
+            Ref(TRef { elem, .. }) if is_type(elem, "str") => quote!(&args::quoted),
             _ => quote!(args::from_reflect),
         },
     }
