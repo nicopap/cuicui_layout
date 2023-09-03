@@ -13,39 +13,38 @@
 // }
 // ------------------------------------------------------
 
-root_menu(swatch_target Root, layout ">dSaS", screen_root, "root", image "images/main_menu/screen_10.png") {
+Root(root_menu swatch_target(Root) layout(">dSaS") screen_root image("images/main_menu/screen_10.png")) {
 // This 'gyro' nonsense is how the police car's strob light and the "crime scene"
 // strip works.
- spawn(
-     "blink1", full_screen, image "images/main_menu/screen_10_blink1.png",
+ Blink1(
+     full_screen image("images/main_menu/screen_10_blink1.png")
      gyro ((offset: 5, period: 10, active_period: 10))
  ) {
- spawn(
-     "blink2", full_screen, image "images/main_menu/screen_10_blink2.png",
+ Blink2(
+     full_screen image("images/main_menu/screen_10_blink2.png")
      gyro ((offset: 0, period: 10, active_period: 10))
  ) {
- spawn(
-     "blue", full_screen, image "images/main_menu/screen_10_blue.png",
+ Blue(
+     full_screen image("images/main_menu/screen_10_blue.png")
      gyro ((offset: 0.75, period: 1.5, active_period: 1))
  ) {
- row(
-     "red", full_screen, main_margin 100., image "images/main_menu/screen_10_red.png",
+ Red(
+     full_screen main_margin(100.) image("images/main_menu/screen_10_red.png")
      gyro ((offset: 0, period: 1.5, active_period: 1))
  ) {
-     column("menu", rules(420px, 100%), main_margin 40., image "images/main_menu/board.png") {
+     Menu(column rules(420px, 100%) main_margin(40) image("images/main_menu/board.png")) {
          // TODO(feat): randomly flip x/y axis
-         row("logo shadow",  image "images/main_menu/logo_shadow.png", rules(100%, 1*)) {
-             spawn("logo", image "images/main_menu/logo.png", width 100%);
+         LogoShadow(row  image("images/main_menu/logo_shadow.png") rules(100%, 1*)) {
+             Logo(image("images/main_menu/logo.png") width(100%))
          }
-         main_menu_item("CONTINUE", prioritized);
-         main_menu_item("NEW GAME");
-         main_menu_item("LOAD GAME");
-         main_menu_item("SETTINGS", swatch_target Settings);
-         main_menu_item("ADDITIONAL CONTENT");
-         main_menu_item("CREDITS");
-         cancel("QUIT GAME", main_menu_item);
-         // Empty  bottom
-         spawn(rules(95%, 10%));
+         "CONTINUE"          (main_menu_item prioritized)
+         "NEW GAME"          (main_menu_item)
+         "LOAD GAME"         (main_menu_item)
+         "SETTINGS"          (main_menu_item swatch_target(Settings))
+         "ADDITIONAL CONTENT"(main_menu_item)
+         "CREDITS"           (main_menu_item)
+         "QUIT GAME"(cancel   main_menu_item)
+         EmptyBottomMargin(rules(95%, 10%))
      }
  }
  }
