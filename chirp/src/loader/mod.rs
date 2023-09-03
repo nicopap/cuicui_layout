@@ -12,11 +12,7 @@
 // ## Jargon
 //
 // A "chirp seed" is an entity with a `Handle<Chirp>` component.
-// We call it a seed, because it is immediately removed by cuicui_chirp, and
-// stored in `ChirpInstances`.
-//
-// The role of cuicui_chirp is to consume the seed, digest it, poop it out
-// and grow a forest (a scene) in the place where the seed was dropped.
+// We call it a seed 🌱 because it grows into a full bevy hierarchy tree 🌳
 //
 // ## Architecture
 //
@@ -38,26 +34,20 @@ use std::{any::type_name, marker::PhantomData, sync::Arc, sync::RwLock, sync::Tr
 
 use anyhow::Result;
 use bevy::app::{App, Plugin as BevyPlugin, PostUpdate};
-use bevy::asset::{prelude::*, AssetLoader, LoadContext, LoadedAsset};
+use bevy::asset::{prelude::*, AssetLoader, LoadContext};
 use bevy::ecs::{prelude::*, schedule::ScheduleLabel, system::EntityCommands};
 use bevy::log::{error, info};
 use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
-use bevy::scene::{scene_spawner_system, Scene};
+use bevy::scene::scene_spawner_system;
 use bevy::transform::TransformSystem;
 use bevy::utils::get_short_name;
 use thiserror::Error;
 
-use crate::{interpret, ChirpReader, Handles, ParseDsl};
-use spawn::{Chirp, ChirpInstances};
+use crate::{Handles, ParseDsl};
+use spawn::Chirp;
 
+mod internal;
 pub(super) mod spawn;
-
-struct InternalLoader<'a, 'w, 'h, 'r, D> {
-    ctx: &'a mut LoadContext<'w>,
-    registry: &'r TypeRegistry,
-    handles: &'h Handles,
-    _parse_dsl: PhantomData<fn(D)>,
-}
 
 /// Occurs when failing update the global chirp function registry [`WorldHandles`]
 /// when [adding a function].
@@ -132,7 +122,7 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
                 let name = get_short_name(type_name::<D>());
                 return Err(anyhow::anyhow!("Can't read handles in ChirpLoader<{name}>"));
             };
-            InternalLoader::<D>::new(load_context, &registry, &handles).load(bytes);
+            internal::Loader::<D>::new(load_context, &registry, &handles).load(bytes);
             drop(registry);
             let path = load_context.path().to_string_lossy();
             info!("Complete loading of chirp: {path}");
@@ -144,41 +134,12 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
         &["chirp"]
     }
 }
-impl<'a, 'w, 'h, 'r, D: ParseDsl + 'static> InternalLoader<'a, 'w, 'h, 'r, D> {
-    fn new(ctx: &'a mut LoadContext<'w>, registry: &'r TypeRegistry, handles: &'h Handles) -> Self {
-        Self { ctx, registry, _parse_dsl: PhantomData, handles }
-    }
-
-    fn load(&mut self, file: &[u8]) {
-        let chirp = match self.load_scene(file) {
-            Ok(scene) => {
-                let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
-                spawn::Chirp::Loaded(scene)
-            }
-            Err(errors) => {
-                log_miette_error!(&errors);
-                spawn::Chirp::Error(errors)
-            }
-        };
-        self.ctx.set_default_asset(LoadedAsset::new(chirp));
-    }
-    fn load_scene(&mut self, file: &[u8]) -> Result<Scene, interpret::Errors> {
-        let mut world = World::new();
-        let mut chirp = ChirpReader::new(&mut world);
-        let result = chirp.interpret::<D>(self.handles, Some(self.ctx), self.registry, file);
-        result.map(|_| Scene::new(world))
-    }
-}
-
 /// The chirp loader plugin. Enables loading scene `.chirp` files with the
 /// bevy [`AssetLoader`].
 ///
 /// The loader is specific to the DSL. This is what the `D` is here for.
 ///
-/// To get proper hot-reloading, consider wrapping the scene into a
-/// [`bevy-scene-hook::reload::SceneHook`].
-///
-/// [`bevy-scene-hook::reload::SceneHook`]: https://docs.rs/bevy-scene-hook/latest/bevy_scene_hook/reload/index.html
+/// Hot reloading should work out of the box.
 pub struct Plugin<D>(PhantomData<fn(D)>);
 
 /// The `SpawnChirp` schedule spawns chirp scenes between `Update` and `PostUpdate`.

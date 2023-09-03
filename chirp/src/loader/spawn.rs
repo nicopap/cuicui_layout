@@ -1,15 +1,17 @@
-use bevy::asset::{AssetEvent, Assets, Handle, HandleId};
-use bevy::ecs::{prelude::*, query::Has, reflect::ReflectComponent};
+use std::fmt;
+
+use bevy::asset::{AssetEvent, Assets, Handle};
+use bevy::core::Name;
+use bevy::ecs::{prelude::*, query::Has, reflect::ReflectComponent, system::EntityCommands};
 use bevy::hierarchy::{BuildChildren, Parent};
 use bevy::log::{debug, error, trace, warn};
-use bevy::prelude::Name;
 use bevy::reflect::{Reflect, TypePath, TypeUuid};
 use bevy::scene::{InstanceId, Scene, SceneSpawner};
-use bevy::utils::HashMap;
-use smallvec::SmallVec;
 use thiserror::Error;
 
 use crate::interpret;
+
+pub use super::internal::RootInsertError;
 
 #[derive(Debug, Error)]
 pub enum ReloadError {
@@ -17,16 +19,20 @@ pub enum ReloadError {
     NotAvailable(Entity),
     #[error("Cannot reload a not-yet-loaded chirp")]
     NotYetLoaded,
+    #[error("When inserting the root entity")]
+    Root(#[from] RootInsertError),
 }
 
 /// Controls loading and reloading of scenes with a hook.
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
-pub enum State {
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Component, Reflect, Default)]
+#[reflect(Component)]
+pub enum ChirpState {
     /// The scene's entites are not yet added to the `World`.
+    #[default]
     Loading,
     /// The scene's entities are now in the `World` and its entities have the
     /// components added by the scene's [`Hook::hook`].
-    Hooked,
+    Loaded,
     /// The scene's entities, whether they are its direct children or were
     /// unparented are to be despawned next time [`run_hooks`] runs, to be
     /// reloaded, running [`Hook::hook`] again.
@@ -52,96 +58,28 @@ pub enum State {
 #[doc(hidden)]
 pub struct ChirpSeedLogged;
 
-#[derive(Debug)]
+/// Added to the root of loaded chirp scenes.
+#[derive(Component)]
+#[component(storage = "SparseSet")]
+pub struct ChirpLoaded;
+
+#[derive(Debug, Component)]
 struct ChirpInstance {
     id: InstanceId,
-    parent: Option<Entity>,
-    state: State,
-    handle: Handle<Chirp>,
 }
 
-/// Control individual spawned chirp scenes.
-///
-/// `Handle<Chirp>`s are despawned as soon as you add them to an `Entity`.
-/// Individual chirp scenes are identified by the `Entity` you used to spawn
-/// them. To get the entity, use the [`commands.spawn(…).id()`] method.
-///
-/// # Bugs
-/// Currently, the seed `Entity` becomes invalid after a hot-reload.
-///
-/// [`commands.spawn(…).id()`]: bevy::ecs::system::EntityCommands
-#[derive(Resource, Default)]
-pub struct ChirpInstances {
-    instances: HashMap<Entity, ChirpInstance>,
-    to_update: SmallVec<[Entity; 1]>,
+pub struct InsertRoot(pub Box<dyn Fn(&mut EntityCommands) + Send + Sync + 'static>);
+impl fmt::Debug for InsertRoot {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("InsertRoot")
+    }
 }
-impl ChirpInstances {
-    /// Schedule reload of `seed` instance.
-    ///
-    /// The entities present in scene when it was spawned will all be removed.
-    /// A new scene will be spawned with the same parent as the scene
-    /// when it was spawned.
-    ///
-    /// # Errors
-    /// - When `seed` isn't a valid chirp seed
-    /// - When the instance is still loading (typically if there is an error in the chirp file).
-    ///
-    /// # Bugs
-    /// Currently, the seed `Entity` becomes invalid after a hot-reload.
-    pub fn set_reload(&mut self, seed: Entity) -> Result<(), ReloadError> {
-        trace!("Reloading: chirp scene {seed:?}");
-        let Some(instance) = self.instances.get_mut(&seed) else {
-            return Err(ReloadError::NotAvailable(seed));
-        };
-        if instance.state == State::Loading {
-            return Err(ReloadError::NotYetLoaded);
-        }
-        instance.state = State::MustReload;
-        // Avoid updating twice the same instance in `update_marked`, otherwise we would panic
-        if !self.to_update.contains(&seed) {
-            self.to_update.push(seed);
-        }
-        Ok(())
-    }
-    /// Schedule deletion of `seed` instance.
-    ///
-    /// The entities present in scene when it was spawned will all be removed.
-    pub fn set_delete(&mut self, seed: Entity) {
-        trace!("Deleting: chirp scene {seed:?}");
-        let Some(instance) = self.instances.get_mut(&seed) else {
-            error!("TODO(err): set_delete failed because instance does not exist");
-            return;
-        };
-        instance.state = State::MustDelete;
-        // Avoid updating twice the same instance in `update_marked`, otherwise we would panic
-        if !self.to_update.contains(&seed) {
-            self.to_update.push(seed);
-        }
-    }
-    fn set_delete_scene(&mut self, chirp: &Handle<Chirp>) {
-        let instances = self.instances.iter_mut();
-        for (seed, instance) in instances.filter(|(_, inst)| &inst.handle == chirp) {
-            instance.state = State::MustDelete;
 
-            // Avoid updating twice the same instance in `update_marked`, otherwise we would panic
-            if !self.to_update.contains(seed) {
-                self.to_update.push(*seed);
-            }
-        }
-    }
-    fn set_reload_scene(&mut self, chirp: &Handle<Chirp>) {
-        let instances = self.instances.iter_mut();
-        for (seed, instance) in instances.filter(|(_, inst)| &inst.handle == chirp) {
-            if instance.state == State::Loading {
-                continue;
-            }
-            instance.state = State::MustReload;
-
-            // Avoid updating twice the same instance in `update_marked`, otherwise we would panic
-            if !self.to_update.contains(seed) {
-                self.to_update.push(*seed);
-            }
-        }
+impl InsertRoot {
+    fn insert(&self, cmds: &mut EntityCommands) {
+        (self.0)(cmds);
+        cmds.insert(ChirpLoaded);
+        cmds.clear_children();
     }
 }
 
@@ -158,7 +96,10 @@ impl ChirpInstances {
 #[uuid = "b954f251-c38a-4ede-a7dd-cbf9856c84c1"]
 pub enum Chirp {
     /// The chirp file loaded successfully and holds the given [`Scene`].
-    Loaded(Handle<Scene>),
+    Loaded {
+        scene: Handle<Scene>,
+        root: InsertRoot,
+    },
     /// The chirp file failed to load with the given [`anyhow::Error`].
     ///
     /// Note: this exists because this enables us to use hot reloading even
@@ -166,136 +107,112 @@ pub enum Chirp {
     Error(interpret::Errors),
 }
 
-#[derive(Debug, Reflect, Component, Clone, Copy)]
-#[reflect(Component)]
-pub struct FromChirp(HandleId);
-impl Default for FromChirp {
-    fn default() -> Self {
-        FromChirp(HandleId::default::<Chirp>())
-    }
-}
-
 #[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
 pub(super) fn update_asset_changed(
     mut asset_events: EventReader<AssetEvent<Chirp>>,
-    mut chirp_instances: ResMut<ChirpInstances>,
+    mut chirp_instances: Query<(&mut ChirpState, &Handle<Chirp>), With<ChirpLoaded>>,
 ) {
+    use AssetEvent::{Modified, Removed};
     for event in asset_events.iter() {
-        match event {
-            AssetEvent::Created { .. } => {}
-            AssetEvent::Modified { handle } => chirp_instances.set_reload_scene(handle),
-            AssetEvent::Removed { handle } => chirp_instances.set_delete_scene(handle),
+        for (mut state, instance_handle) in &mut chirp_instances {
+            match event {
+                AssetEvent::Created { .. } => {}
+                Modified { handle } if handle == instance_handle => *state = ChirpState::MustReload,
+                Removed { handle } if handle == instance_handle => *state = ChirpState::MustDelete,
+                Modified { .. } | Removed { .. } => {}
+            }
         }
     }
 }
 
 #[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
 pub(super) fn consume_seeds(
-    chirp_instances: ResMut<ChirpInstances>,
     mut scene_spawner: ResMut<SceneSpawner>,
     mut cmds: Commands,
     chirps: Res<Assets<Chirp>>,
     no_parents: Query<Without<Parent>>,
-    to_spawn: Query<(
-        Entity,
-        &Handle<Chirp>,
-        Option<&Parent>,
-        Has<ChirpSeedLogged>,
-    )>,
+    mut to_spawn: Query<
+        (
+            Entity,
+            &mut ChirpState,
+            &Handle<Chirp>,
+            Option<&ChirpInstance>,
+            Option<&Parent>,
+            Has<ChirpSeedLogged>,
+        ),
+        Without<ChirpLoaded>,
+    >,
 ) {
-    let mut instances = chirp_instances.map_unchanged(|i| &mut i.instances);
-    for (seed, chirp, parent, already_logged) in &to_spawn {
-        let Some(Chirp::Loaded(scene)) = chirps.get(chirp) else {
+    for (chirp_id, mut state, handle, instance, parent, already_logged) in &mut to_spawn {
+        let Some(Chirp::Loaded { scene, root }) = chirps.get(handle) else {
             if !already_logged {
-                cmds.entity(seed)
+                cmds.entity(chirp_id)
                     .insert((ChirpSeedLogged, Name::new("Loading Chirp Seed")));
-                warn!("Chirp {seed:?} not yet loaded, skipping");
+                warn!("Chirp {chirp_id:?} not yet loaded, skipping");
             }
             continue;
         };
         trace!("Chirp scene loaded, spawning instance…");
-        let instance = instances.entry(seed).or_insert_with(|| {
-            let id = scene_spawner.spawn(scene.clone_weak());
-            // TODO(bug): situations where the parent changes requires updating
-            // this value (manual change after spawning
-            let parent = parent.map(Parent::get);
-            let handle = chirp.clone();
-            ChirpInstance { id, parent, state: State::Loading, handle }
-        });
-        let is_ready = scene_spawner.instance_is_ready(instance.id);
-        match instance.state {
-            State::Loading if is_ready => {
-                trace!("Instace {seed:?} is ready, hooking stuff up");
-                instance.state = State::Hooked;
-                let from_chirp = FromChirp(chirp.id());
-                // FIXME: Upstream bevy bug (actually my fault lol)
-                // causes child to not be removed from
-                if let Some(parent) = parent {
-                    cmds.entity(parent.get()).remove_children(&[seed]);
-                }
-                cmds.entity(seed).despawn();
-
-                let entities = scene_spawner.iter_instance_entities(instance.id);
-                let add_from_chirp = entities
-                    .map(|entity| {
-                        let scene_root = |_: &_| no_parents.contains(entity);
-                        if let Some(parent) = parent.filter(scene_root) {
-                            cmds.entity(entity).set_parent(parent.get());
-                        };
-                        (entity, from_chirp)
-                    })
-                    .collect::<Vec<_>>();
-                cmds.insert_or_spawn_batch(add_from_chirp);
+        let instance_id = instance.map_or_else(
+            || {
+                let id = scene_spawner.spawn_as_child(scene.clone_weak(), chirp_id);
+                cmds.entity(chirp_id).insert(ChirpInstance { id });
+                id
+            },
+            |instance| instance.id,
+        );
+        let is_ready = scene_spawner.instance_is_ready(instance_id);
+        match *state {
+            ChirpState::Loading if is_ready => {
+                trace!("Instace {chirp_id:?} is ready, hooking stuff up");
+                *state = ChirpState::Loaded;
+                root.insert(&mut cmds.entity(chirp_id));
             }
-            State::Loading => {
-                debug!("Instance {seed:?} not yet ready, maybe next frame!");
+            ChirpState::Loading => {
+                debug!("Instance {chirp_id:?} not yet ready, maybe next frame!");
                 continue;
             }
-            State::Hooked | State::MustReload | State::MustDelete => unreachable!(),
+            ChirpState::Loaded | ChirpState::MustReload | ChirpState::MustDelete => unreachable!(),
         }
     }
 }
 
 #[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
 pub(super) fn update_marked(
-    mut chirp_instances: ResMut<ChirpInstances>,
+    mut to_update: Query<
+        (
+            Entity,
+            &mut ChirpState,
+            &Handle<Chirp>,
+            &ChirpInstance,
+            Option<&Parent>,
+        ),
+        Changed<ChirpState>,
+    >,
     mut cmds: Commands,
     scene_spawner: Res<SceneSpawner>,
 ) {
-    let ChirpInstances { instances, to_update } = &mut *chirp_instances;
-    for chirp_id in to_update.drain(..) {
-        let Some(instance) = instances.get_mut(&chirp_id) else {
-            unreachable!("to_update only contains entities present in the instances map");
-        };
-        match instance.state {
-            State::MustReload => {
+    for (chirp_id, mut state, handle, instance, parent) in &mut to_update {
+        match &*state {
+            ChirpState::MustReload => {
                 trace!("Reloading instance {chirp_id:?} marked as MustReload",);
-                instance.state = State::Loading;
+                *state = ChirpState::Loading;
 
-                for entity in scene_spawner.iter_instance_entities(instance.id) {
-                    // FIXME: Upstream bevy bug (actually my fault lol)
-                    // causes child to not be removed from
-                    if let Some(parent) = instance.parent {
-                        cmds.entity(parent).remove_children(&[entity]);
-                    }
-                    cmds.entity(entity).despawn();
+                cmds.entity(chirp_id).despawn();
+                scene_spawner.despawn_instance(instance.id);
+                cmds.insert_or_spawn_batch([(chirp_id, handle.clone())]);
+                if let Some(parent) = parent {
+                    cmds.entity(chirp_id).set_parent(parent.get());
                 }
-                let mut seed = cmds.spawn(instance.handle.clone());
-                if let Some(parent) = instance.parent {
-                    seed.set_parent(parent);
-                }
-                instances.remove(&chirp_id);
             }
-            State::MustDelete => {
+            ChirpState::MustDelete => {
                 trace!("Deleting instance {chirp_id:?} marked as MustDelete",);
-                for entity in scene_spawner.iter_instance_entities(instance.id) {
-                    cmds.entity(entity).despawn();
-                }
-                instances.remove(&chirp_id);
+                cmds.entity(chirp_id).despawn();
+                scene_spawner.despawn_instance(instance.id);
             }
             // This system doesn't need to do anything in this situations, also
             // currently this should never happen.
-            State::Loading | State::Hooked => {}
+            ChirpState::Loading | ChirpState::Loaded => {}
         }
     }
 }
