@@ -5,6 +5,7 @@
     clippy::module_name_repetitions,
     clippy::redundant_pub_crate
 )]
+// TODO(clean): move the parser to an independent crate.
 
 macro_rules! log_miette_error {
     ($err: expr) => {
@@ -33,14 +34,14 @@ pub use anyhow;
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use load_asset::LoadAsset;
-pub use loader::spawn::{Chirp, ChirpInstances};
+pub use loader::spawn::{Chirp, ChirpState};
 pub use parse::ParseDsl;
 pub use reflect::ReflectDsl;
 
 mod grammar;
 mod lex;
 mod load_asset;
-// mod swar;
+mod swar;
 
 pub mod interpret;
 pub mod loader;

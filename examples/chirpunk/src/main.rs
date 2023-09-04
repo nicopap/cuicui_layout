@@ -89,7 +89,7 @@ fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
                 cmds.spawn((NodeBundle::default(), assets.load::<Chirp, _>(file)));
             });
         };
-        spawn_menu("menus/main.chirp");
+        // spawn_menu("menus/main.chirp");
         spawn_menu("menus/settings.chirp");
     });
 }

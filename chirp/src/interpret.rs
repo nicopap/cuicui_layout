@@ -27,8 +27,8 @@ pub enum InterpError {
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
     // TODO(err): better error messages
-    #[error("Bad syntax")]
-    ParseError,
+    #[error("Bad syntax: {0}")]
+    ParseError(#[from] grammar::Error),
     #[error("The method name is invalid UTF8")]
     BadUtf8MethodName,
     #[error("The method arguments is invalid UTF8")]
@@ -46,7 +46,7 @@ impl InterpError {
         match self {
             InterpError::CodeNotPresent(_) => None,
             InterpError::DslError(_) => Some("The error comes from the ParseDsl implementation"),
-            InterpError::ParseError => Some(PARSE_ERROR),
+            InterpError::ParseError(_) => Some(PARSE_ERROR),
             BadUtf8MethodName | BadUtf8Argument => Some(UTF8_ERROR),
         }
     }
@@ -266,7 +266,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         if let Err(err) = parse_error {
             let start = err.offset();
             let end = err.offset();
-            let error = SpannedError::new(InterpError::ParseError, start..end);
+            let error = SpannedError::new(err.into_inner(), start..end);
             errors.push(error);
         }
         if errors.is_empty() {
@@ -306,13 +306,13 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
     fn insert_entity(&self) {
         self.statement_spawn();
     }
-    fn method(&self, span: Range<usize>, method: &[u8], args: Option<&[u8]>) {
+    fn method(&self, span: Range<usize>, method: &[u8], args: &[u8]) {
         let Ok(name) = str::from_utf8(method) else {
             let error = InterpError::BadUtf8MethodName;
             self.mutable.borrow_mut().push_error(span, error);
             return;
         };
-        let Ok(args) = args.map_or(Ok(""), str::from_utf8) else {
+        let Ok(args) = str::from_utf8(args) else {
             let error = InterpError::BadUtf8Argument;
             self.mutable.borrow_mut().push_error(span, error);
             return;
@@ -363,13 +363,11 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
         code(self.ctx.reg, load_ctx, &mut cmds);
     }
 
-    fn set_name(&self, span: Range<usize>, name: Option<&[u8]>) {
-        if let Some(name) = name {
-            self.method(span, b"named", Some(escape_literal(name).as_ref()));
-        }
+    fn set_name(&self, span: Range<usize>, name: &[u8]) {
+        self.method(span, b"named", escape_literal(name).as_ref());
     }
 
-    fn complete_children(self) {
+    fn complete_children(&self) {
         let InnerInterpreter { root_entity, parent_chain, .. } = &mut *self.mutable.borrow_mut();
         trace!("<<< Ended spawning entities within statements block, continuing");
         let pop_msg = "MAJOR cuicui_chirp BUG: please open an issue 🥺 plleaaaaasse\n\

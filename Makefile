@@ -27,7 +27,7 @@ check:
 
 run:
 	# cargo test -p cuicui_chirp  --features 'test_and_doc' # trace_parser'
-	cargo test -p dsl_and_chirp  --features 'cuicui_chirp/test_and_doc' # trace_parser'
+	cargo test -p dsl_and_chirp  --features 'cuicui_chirp/test_and_doc cuicui_chirp/trace_parser'
 	# cargo test -p cuicui_dsl  --features test_and_doc
 	# RUST_BACKTRACE=1 cargo run -p chirpunk --features cuicui_layout/debug
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded

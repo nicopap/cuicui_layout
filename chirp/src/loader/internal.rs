@@ -5,7 +5,7 @@ use bevy::asset::{LoadContext, LoadedAsset};
 use bevy::ecs::{prelude::*, query::QuerySingleError, system::EntityCommand};
 use bevy::hierarchy::Parent;
 use bevy::log::error;
-use bevy::reflect::{Reflect, TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
+use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
 use bevy::scene::Scene;
 use cuicui_dsl::EntityCommands;
 use thiserror::Error;
@@ -27,22 +27,22 @@ pub enum RootInsertError {
     UnregisteredType(Box<str>, &'static str),
 }
 
-pub(super) struct Loader<'a, 'w, 'h, D> {
+pub(super) struct Loader<'a, 'r, 'w, 'h, D> {
     ctx: &'a mut LoadContext<'w>,
-    registry: TypeRegistryArc,
+    registry: &'r TypeRegistry,
     handles: &'h Handles,
     _dsl: PhantomData<fn(D)>,
 }
 
-impl<'a, 'w, 'h, D: ParseDsl + 'static> Loader<'a, 'w, 'h, D> {
-    pub(super) fn new(ctx: &'a mut LoadContext<'w>, reg: TypeRegistryArc, h: &'h Handles) -> Self {
+impl<'a, 'r, 'w, 'h, D: ParseDsl + 'static> Loader<'a, 'r, 'w, 'h, D> {
+    pub(super) fn new(ctx: &'a mut LoadContext<'w>, reg: &'r TypeRegistry, h: &'h Handles) -> Self {
         Self { ctx, registry: reg, handles: h, _dsl: PhantomData }
     }
 
     pub(super) fn load(&mut self, file: &[u8]) {
         let chirp = match self.load_scene(file) {
-            Ok(scene) => {
-                let root_cmd = match root_cmds::<D>(&self.registry.read(), &mut scene.world) {
+            Ok(mut scene) => {
+                let root_cmd = match root_cmds::<D>(self.registry, &mut scene.world) {
                     Ok(cmd) => cmd,
                     Err(err) => {
                         error!("{err}");
@@ -50,8 +50,8 @@ impl<'a, 'w, 'h, D: ParseDsl + 'static> Loader<'a, 'w, 'h, D> {
                     }
                 };
                 let scene = self.ctx.set_labeled_asset("Scene", LoadedAsset::new(scene));
-                let root = Box::new(move |c| insert_root(&root_cmd, c));
-                spawn::Chirp::Loaded { scene, root: InsertRoot(root) }
+                let root = InsertRoot::new(move |c| insert_root(root_cmd.clone(), c));
+                spawn::Chirp::Loaded { scene, root }
             }
             Err(errors) => {
                 log_miette_error!(&errors);
@@ -63,8 +63,7 @@ impl<'a, 'w, 'h, D: ParseDsl + 'static> Loader<'a, 'w, 'h, D> {
     fn load_scene(&mut self, file: &[u8]) -> Result<Scene, interpret::Errors> {
         let mut world = World::new();
         let mut chirp = ChirpReader::new(&mut world);
-        let reg = self.registry.read();
-        let result = chirp.interpret::<D>(self.handles, Some(self.ctx), &reg, file);
+        let result = chirp.interpret::<D>(self.handles, Some(self.ctx), self.registry, file);
         result.map(|_| Scene::new(world))
     }
 }
@@ -85,23 +84,24 @@ impl EntityCommand for InsertReflect {
             let Some(mut entity) = world.get_entity_mut(entity) else {
                 return;
             };
-            let registry = registry.read();
-            for component in self.components.iter() {
+            for component in &*self.components {
                 let type_info = component.type_name();
+                let registry = registry.read();
                 let Some(registration) = registry.get_with_name(type_info) else {
                     return;
                 };
-                let Some(component_data) = registration.data::<ReflectComponent>() else {
+                let Some(component_data) = registration.data::<ReflectComponent>().cloned() else {
                     return;
                 };
+                drop(registry);
                 component_data.insert(&mut entity, &**component);
             }
         });
     }
 }
 
-fn insert_root(insert_cmd: &InsertReflect, cmds: &mut EntityCommands) {
-    cmds.add(insert_cmd.clone());
+fn insert_root(insert_cmd: InsertReflect, cmds: &mut EntityCommands) {
+    cmds.add(insert_cmd);
 }
 
 fn root_cmds<D>(
@@ -111,7 +111,8 @@ fn root_cmds<D>(
     let root = source
         .query_filtered::<Entity, Without<Parent>>()
         .get_single(source)?;
-    let archetype = source.entity(root).archetype();
+    let archetype = source.entity(root);
+    let archetype = archetype.archetype();
     let get_info = |id| source.components().get_info(id);
     let mut components = Vec::new();
     for component_id in archetype.components() {

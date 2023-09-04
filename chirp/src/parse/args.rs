@@ -8,7 +8,7 @@
 //! [`super::split()`] function.
 #![allow(clippy::inline_always)]
 // allow: rust has difficulties inlining functions cross-crate. Since we only
-// use inline(always) on functions that are very small, it won't add significative
+// use inline(never) on functions that are very small, it won't add significative
 // compile overhead in anycase, but may help the optimizer elide some code.
 
 use std::{any, borrow::Cow, convert::Infallible, fs, io, marker::PhantomData, str, str::FromStr};
@@ -115,7 +115,7 @@ pub fn from_reflect<T: Reflect + FromReflect>(
 ///
 /// # Errors
 /// [`FromStr::from_str`] fails, there is a parsing error.
-#[inline(always)]
+#[inline(never)]
 pub fn from_str<T: FromStr>(
     _: &TypeRegistry,
     _: Option<&mut LoadContext>,
@@ -137,7 +137,7 @@ where
 ///
 /// # Errors
 /// See [`HandleDslDeserError`] for possible errors.
-#[inline(always)]
+#[inline(never)]
 pub fn to_handle<T: Asset + LoadAsset>(
     _: &TypeRegistry,
     load_context: Option<&mut LoadContext>,
@@ -165,7 +165,7 @@ pub fn to_handle<T: Asset + LoadAsset>(
 ///
 /// This is always `Ok`. It is safe to unwrap. Rust guarentees that `Infallible`
 /// can't be constructed.
-#[inline(always)]
+#[inline(never)]
 pub fn quoted<'a>(
     _: &TypeRegistry,
     _: Option<&mut LoadContext>,

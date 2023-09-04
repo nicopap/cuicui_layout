@@ -23,8 +23,7 @@
 // 1. `update_asset_changed`: Reacts to asset event and orders reloading of spawned
 //    chirp scenes. Note that it is more powerful than the `Scene` system, as it actually
 //    works with hot reloading.
-// 2. `update_marked`: Reacts to chirp instances changed through the [`ChirpInstances`]
-//    resource. It may create a seed if reloooading is needed.
+// 2. `update_marked`: Reacts to chirp instances changed through the [`ChirpState`] component.
 // 3. `consume_seeds`: Reacts to `Entity` spawned with a `Handle<Chirp>`, request
 //    to `SceneSpawner` that the chirp's scene be loaded into the world, add
 //    the instance's metadata to [`ChirpInstances`], and when loading is completed,
@@ -44,7 +43,7 @@ use bevy::utils::get_short_name;
 use thiserror::Error;
 
 use crate::{Handles, ParseDsl};
-use spawn::Chirp;
+use spawn::{Chirp, ChirpState};
 
 mod internal;
 pub(super) mod spawn;
@@ -172,9 +171,8 @@ impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
             PostUpdate,
             chirp_asset_systems.before(TransformSystem::TransformPropagate),
         );
-        app.init_resource::<ChirpInstances>()
-            .add_asset::<Chirp>()
-            .register_type::<spawn::FromChirp>()
+        app.add_asset::<Chirp>()
+            .register_type::<ChirpState>()
             .init_asset_loader::<ChirpLoader<D>>();
     }
 }

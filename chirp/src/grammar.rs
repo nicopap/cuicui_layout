@@ -27,185 +27,162 @@
 use std::{fmt::Debug, ops::Range};
 
 use anyhow::Result;
-use winnow::ascii::{escaped, multispace1};
-use winnow::combinator::{alt, dispatch, fail};
-use winnow::combinator::{delimited, opt, preceded, repeat, separated0, terminated};
-use winnow::error::{ParseError, ParserError};
-use winnow::token::{any, one_of, take_till0, take_till1};
+use winnow::combinator::{alt, dispatch, opt, repeat, success, terminated};
+use winnow::combinator::{delimited as delim, peek, separated0};
+use winnow::error::ErrMode::Backtrack;
+use winnow::error::{ErrMode, FromExternalError};
+use winnow::error::{ErrorKind, ParseError, ParserError};
+use winnow::token::any;
 use winnow::{stream::Stream, trace::trace, PResult, Parser};
 
-use crate::lex::Stateful;
+use crate::lex::{tokens as t, Stateful, Token, TokenType};
+use Token::{Comma, Equal, Ident, Lbracket, Lcurly, Lparen, String as TStr};
 
-pub(crate) type Input<'i, T> = Stateful<'i, T>;
-
-fn repeat0<I: Stream, O, E: ParserError<I>>(f: impl Parser<I, O, E>) -> impl Parser<I, (), E> {
-    repeat(.., f)
+#[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Error {
+    #[error("Expected '{0}' got '{1}'")]
+    Expected(TokenType, TokenType),
+    #[error("Unbalanced delimiter")]
+    Unbalanced,
+    #[error("Unexpected error")]
+    Unexpected,
+    #[error("Following the statement identifier, expected a '{{' or '(', but got '{0}'")]
+    StatementDelimiter(TokenType),
+    #[error("Expected start of a statement, with an identifer or string literal, but got '{0}'")]
+    StartStatement(TokenType),
+    #[error("Found comma delimited in method arg")]
+    EndComma,
 }
+impl<I: Itrp> ParserError<Input<'_, I>> for Error {
+    fn from_error_kind(_: &Input<I>, _: ErrorKind) -> Self {
+        // eprintln!("from_error_kind: '{_}'");
+        // eprintln!("from_error_kind: {_}");
+        Self::Unexpected
+    }
 
-fn line_comment(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    let parser = preceded(b"//", take_till0(b'\n')).void();
-    trace("line_comment", parser).parse_next(input)
+    fn append(self, _: &Input<I>, _: ErrorKind) -> Self {
+        // eprintln!("from_error_kind: '{_}'");
+        // eprintln!("append: {_}");
+        self
+    }
 }
-/// Whitespace, thing between token, including comments.
-pub(crate) fn whitespace(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    let parser = separated0(multispace1, line_comment);
-    trace("whitespace", parser).parse_next(input)
-}
-
-/// `D` followed by [`whitespace`].
-fn ws<const D: u8>(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    let parser = terminated(D, whitespace);
-    trace("ws", parser).void().parse_next(input)
-}
-
-fn ws_terminated<'i, I: Itrp, O, F>(
-    mut first: F,
-    mut second: u8,
-) -> impl Parser<Input<'i, I>, O, ()>
-where
-    F: Parser<Input<'i, I>, O, ()>,
-{
-    trace("ws_terminated", move |input: &mut _| {
-        let _ = whitespace.parse_next(input);
-        let o1 = first.parse_next(input)?;
-        let _ = second.parse_next(input)?;
-        whitespace.parse_next(input)?;
-        Ok(o1)
-    })
-}
-
-const ESCAPABLES: [u8; 7] = *b"\\\"'ntru";
-
-/// The inside of a `D`-delimited string, does not consume the terminating token.
-fn string_inner<'i, const D: u8>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    let parser = escaped(take_till1(&[b'\\', D]), '\\', one_of(ESCAPABLES));
-    trace("string_inner", parser).recognize().parse_next(input)
-}
-
-/// A string delimited by either `'` or `"`.
-fn string<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    let parser = dispatch! { any;
-        b'"' => terminated(string_inner::<b'"'>, b'"'),
-        b'\'' => terminated(string_inner::<b'\''>, b'\''),
-        _ => fail
-    };
-    trace("string", parser).recognize().parse_next(input)
-}
-
-fn ident<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    let parser = terminated(take_till1(b"=[]{}()'\" \t\n"), whitespace);
-    trace("ident", parser).parse_next(input)
-}
-fn arg_tt_ident<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    trace("arg_tt_ident", take_till1(b",[]{}()'\" \t\n")).parse_next(input)
-}
-
-pub(crate) fn arg_token_tree<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    let delimited = dispatch! { any;
-        b'(' => delimited(whitespace, repeat0(token_tree), b')'),
-        b'[' => delimited(whitespace, repeat0(token_tree), b']'),
-        b'{' => delimited(whitespace, repeat0(token_tree), b'}'),
-        b'"' => terminated(string_inner::<b'"'>, b'"').void(),
-        b'\'' => terminated(string_inner::<b'\''>, b'\'').void(),
-        _ => fail,
-    };
-    let parser = alt((arg_tt_ident.void(), delimited));
-    trace("arg_token_tree", parser)
-        .recognize()
-        .parse_next(input)
-}
-
-fn token_tree<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], ()> {
-    let delimited = dispatch! { any;
-        b'(' => ws_terminated(repeat0(token_tree), b')'),
-        b'[' => ws_terminated(repeat0(token_tree), b']'),
-        b'{' => ws_terminated(repeat0(token_tree), b'}'),
-        b'"' => terminated(string_inner::<b'"'>, ws::<b'"'>).void(),
-        b'\'' => terminated(string_inner::<b'\''>, ws::<b'\''>).void(),
-        _ => fail,
-    };
-    let parser = alt((b'='.void(), ident.void(), delimited));
-    trace("token_tree", parser).recognize().parse_next(input)
-}
-
-fn method(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    let parser = delimited(ws::<b'('>, repeat0(token_tree), b')').recognize();
-    let method_argument = trace("method_argument", terminated(parser, whitespace));
-    let ((name, args), span) = (ident, opt(method_argument))
-        .with_span()
-        .parse_next(input)?;
-    input.state.method(span, name, args);
-    Ok(())
-}
-
-fn statement(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
-    match alt((ident, string)).with_span().parse_next(input)? {
-        (b"code", _) => {
-            let code_ident = delimited(b'(', ident, ws::<b')'>)
-                .with_span()
-                .parse_next(input)?;
-            input.state.code(code_ident);
-            Ok(())
-        }
-        (b"Entity" | b"spawn", span) => {
-            input.state.set_name(span, None);
-            statement_tail(input)
-        }
-        (
-            b"abstract" | b"as" | b"async" | b"await" | b"become" | b"box" | b"break" | b"const"
-            | b"continue" | b"crate" | b"do" | b"dyn" | b"else" | b"enum" | b"extern" | b"false"
-            | b"final" | b"fn" | b"for" | b"if" | b"impl" | b"in" | b"let" | b"loop" | b"macro"
-            | b"match" | b"mod" | b"move" | b"mut" | b"override" | b"priv" | b"pub" | b"ref"
-            | b"return" | b"self" | b"static" | b"struct" | b"super" | b"trait" | b"true" | b"try"
-            | b"type" | b"typeof" | b"unsafe" | b"unsized" | b"use" | b"virtual" | b"where"
-            | b"while" | b"yeet",
-            _,
-        ) => fail.parse_next(input),
-        (str, span) if str.first() == Some(&b'"') => {
-            input.state.set_name(span, Some(&str[1..str.len() - 1]));
-            statement_tail(input)
-        }
-        (identifier, span) => {
-            input.state.set_name(span, Some(identifier));
-            statement_tail(input)
-        }
+impl<I: Itrp> FromExternalError<Input<'_, I>, Error> for Error {
+    fn from_external_error(_: &Input<'_, I>, _: ErrorKind, e: Error) -> Self {
+        // eprintln!("from_external_error: '{_}'");
+        // eprintln!("from_external_error: {_}");
+        e
     }
 }
 
-fn statements(input: &mut Input<impl Itrp>) -> PResult<(), ()> {
+pub(crate) type Input<'i, T> = Stateful<'i, T>;
+type VoidResult = PResult<(), Error>;
+
+fn many<I: Stream, O, E: ParserError<I>>(f: impl Parser<I, O, E>) -> impl Parser<I, (), E> {
+    repeat(0.., f)
+}
+
+fn many1<I: Stream, O, E: ParserError<I>>(f: impl Parser<I, O, E>) -> impl Parser<I, (), E> {
+    repeat(1.., f)
+}
+
+#[inline(always)]
+fn ident<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], Error> {
+    match input.next_token() {
+        Some(Token::Ident(ident)) => Ok(ident),
+        got => Err(Backtrack(Error::Expected(TokenType::Ident, got.into()))),
+    }
+}
+pub(crate) fn arg_token_tree<'i>(
+    mut input: Input<'i, impl Itrp>,
+    mut f: impl FnMut(&'i [u8]),
+) -> Result<(), ErrMode<Error>> {
+    let elem_parser = many1(token_tree_impl::<true>).recognize().try_map(|arg| {
+        f(arg);
+        Ok(())
+    });
+    let list_parser = separated0(elem_parser, t::Comma);
+    match terminated(list_parser, opt(t::Comma)).parse_next(&mut input) {
+        Ok(()) if input.is_empty() => Ok(()),
+        Ok(()) => Err(token_tree_impl::<true>(&mut input).unwrap_err()),
+        Err(err) => Err(err),
+    }
+}
+fn token_tree(input: &mut Input<impl Itrp>) -> VoidResult {
+    token_tree_impl::<false>(input)
+}
+#[inline(always)]
+fn token_tree_impl<const SPLIT_COMMA: bool>(input: &mut Input<impl Itrp>) -> VoidResult {
+    let parser = dispatch! { opt(any);
+        Some(Lparen) => terminated(many(token_tree), t::Rparen),
+        Some(Lbracket) => terminated(many(token_tree), t::Rbracket),
+        Some(Lcurly) => terminated(many(token_tree), t::Rcurly),
+        Some(Comma) if SPLIT_COMMA => |_: &mut _| Err(Backtrack(Error::EndComma)),
+        Some(Ident(_) | TStr(_) | Comma | Equal) => success(()),
+        _ => |_: &mut _| Err(Backtrack(Error::Unbalanced)),
+    };
+    trace("token_tree", parser).parse_next(input)
+}
+#[inline(always)]
+fn method(input: &mut Input<impl Itrp>) -> VoidResult {
+    let state = input.state.clone();
+    let argument = delim(t::Lparen, many(token_tree), t::Rparen);
+    (ident, opt(argument).recognize())
+        .with_span()
+        .map(|i| state.t_method(i))
+        .parse_next(input)
+}
+#[inline(always)]
+fn statement(input: &mut Input<impl Itrp>) -> VoidResult {
+    let state = input.state.clone();
+
+    dispatch! { opt(any).with_span();
+        (Some(Ident(b"code")), _) => delim(t::Lparen, ident, t::Rparen).with_span().map(|i| state.code(i)),
+        (Some(TStr(name) | Ident(name)), span) => {
+            if ![&b"Entity"[..], b"spawn"].contains(&name) {
+                state.set_name(span, name);
+            }
+            trace("statement_tail", statement_tail)
+        },
+        (bad_token, _) => |_: &mut _| Err(Backtrack(Error::StartStatement(bad_token.into()))),
+    }
+    .parse_next(input)
+}
+#[inline(always)]
+fn statements(input: &mut Input<impl Itrp>) -> VoidResult {
     input.state.spawn_with_children();
-    repeat0(statement).parse_next(input)?;
+    many(statement).parse_next(input)?;
     input.state.complete_children();
     Ok(())
 }
-fn statement_tail<I: Itrp>(input: &mut Input<I>) -> PResult<(), ()> {
-    let mut methods = delimited(ws::<b'('>, repeat0(method), ws::<b')'>);
-    let mut statements = delimited(ws::<b'{'>, statements, ws::<b'}'>);
-    let has_methods = methods.parse_next(input).is_ok();
-    if has_methods {
-        let no_children = |i: &mut Input<I>| {
-            i.state.insert_entity();
-            Ok(())
-        };
-        alt((statements, no_children)).void().parse_next(input)
-    } else {
-        statements.parse_next(input)
+#[inline(always)]
+fn statement_tail(input: &mut Input<impl Itrp>) -> VoidResult {
+    let state = input.state.clone();
+
+    let methods = delim(t::Lparen, many(method), t::Rparen);
+    let mut statements = delim(t::Lcurly, statements, t::Rcurly);
+    let spawn_leaf = success(()).map(|_| state.insert_entity());
+    match peek(any::<_, ()>).parse_next(input) {
+        Ok(Lparen) => terminated(methods, alt((statements, spawn_leaf))).parse_next(input),
+        Ok(Lcurly) => statements.parse_next(input),
+        bad_token => Err(Backtrack(Error::StatementDelimiter(bad_token.ok().into()))),
     }
 }
 
-type CResult<'i, T, I> = Result<T, ParseError<Input<'i, I>, ()>>;
-pub(crate) fn chirp_document<I: Itrp>(mut input: Input<I>) -> CResult<(), I> {
+type CResult<'i, T, I> = Result<T, ParseError<Input<'i, I>, Error>>;
+#[inline(never)]
+pub(crate) fn chirp_document<I: Itrp>(input: Input<I>) -> CResult<(), I> {
     // TODO(feat) non-entity statements
-    let _ = line_comment(&mut input);
-    whitespace.parse_next(&mut input).unwrap();
-    statement.parse(input)
+    trace("statement", statement).parse(input)
 }
 
-pub(crate) trait Itrp: Debug + Copy {
+pub(crate) trait Itrp: Debug + Clone {
     fn code(&self, input: (&[u8], Range<usize>));
-    fn set_name(&self, span: Range<usize>, name: Option<&[u8]>);
-    fn complete_children(self);
-    fn method(&self, span: Range<usize>, name: &[u8], args: Option<&[u8]>);
+    fn set_name(&self, span: Range<usize>, name: &[u8]);
+    fn complete_children(&self);
+    fn method(&self, span: Range<usize>, name: &[u8], args: &[u8]);
+    fn t_method(&self, ((method, args), span): ((&[u8], &[u8]), Range<usize>)) {
+        self.method(span, method, args);
+    }
     fn spawn_with_children(&self);
     fn insert_entity(&self) {
         self.spawn_with_children();
@@ -214,8 +191,8 @@ pub(crate) trait Itrp: Debug + Copy {
 }
 impl Itrp for () {
     fn code(&self, _: (&[u8], Range<usize>)) {}
-    fn set_name(&self, _: Range<usize>, _: Option<&[u8]>) {}
-    fn complete_children(self) {}
-    fn method(&self, _: Range<usize>, _: &[u8], _: Option<&[u8]>) {}
+    fn set_name(&self, _: Range<usize>, _: &[u8]) {}
+    fn complete_children(&self) {}
+    fn method(&self, _: Range<usize>, _: &[u8], _: &[u8]) {}
     fn spawn_with_children(&self) {}
 }

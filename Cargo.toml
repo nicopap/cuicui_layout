@@ -35,6 +35,7 @@ ron = "0.8.1"
 syn = { version = "2.0.28", default-features = false, features = ["full", "parsing", "proc-macro", "printing", "clone-impls"] }
 smallvec = { version = "1.11.0", features = ["union", "const_generics"] }
 thiserror = "1.0.44"
+tracing = { version = "0.1.37", features = ["release_max_level_warn"] }
 winnow = "0.5.15"
 
 cuicui_dsl = { version = "0.9.0", path = "./dsl" }
@@ -67,9 +68,9 @@ dependent-version = "upgrade"
 
 # This is only to profile & analyze ASM output of the binary examples
 [profile.release]
-codegen-units = 1
+# codegen-units = 1
 opt-level = 3
-lto = "fat"
+lto = false
 split-debuginfo = "packed"
 debug = 1
 

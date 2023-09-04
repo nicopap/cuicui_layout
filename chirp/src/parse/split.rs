@@ -5,10 +5,9 @@
 use std::str::from_utf8_unchecked;
 
 use thiserror::Error;
-use winnow::combinator::{delimited, opt, repeat, separated0};
-use winnow::{error::ParseError, Parser};
+use winnow::error::ErrMode;
 
-use crate::grammar::{arg_token_tree, whitespace};
+use crate::grammar::{self, arg_token_tree};
 use crate::lex::Stateful;
 
 /// Error returned by one of the `argN` functions.
@@ -18,12 +17,12 @@ pub enum ArgError {
     #[error("Expected {0} arguments, got {}{1}", if .0 == &255 { "more than " } else {""})]
     CountMismatch(u8, u8),
     #[error("Parser error at offset: {0}")]
-    ArgParse(usize),
+    ArgParse(grammar::Error),
 }
-impl<'i> From<ParseError<Stateful<'i, ()>, ()>> for ArgError {
-    fn from(err: ParseError<Stateful<'i, ()>, ()>) -> Self {
+impl<'i> From<ErrMode<grammar::Error>> for ArgError {
+    fn from(err: ErrMode<grammar::Error>) -> Self {
         // TODO(err): Better error reporting
-        ArgError::ArgParse(err.offset())
+        ArgError::ArgParse(err.into_inner().unwrap())
     }
 }
 
@@ -73,10 +72,10 @@ impl<'i> From<ParseError<Stateful<'i, ()>, ()>> for ArgError {
 ///
 /// # Panics
 /// If `N > 255`
-#[allow(clippy::inline_always)] // we'd like to inline, maybe removing some bound checks.
-#[inline(always)]
+#[inline(never)]
 pub fn split<const N: usize>(input: &str) -> Result<[&str; N], ArgError> {
     let mut ret = [""; N];
+    let n = u8::try_from(N).unwrap();
 
     let input = match () {
         () if N == 0 && (input.is_empty() || input == "()") => {
@@ -86,30 +85,19 @@ pub fn split<const N: usize>(input: &str) -> Result<[&str; N], ArgError> {
         () => input,
     };
     let mut arg_count = 0;
-    let elem_parser = |input: &mut _| {
-        let repeat = repeat::<_, _, (), _, _>(1.., (arg_token_tree, whitespace));
-        let arg = repeat.recognize().parse_next(input)?;
+    let input = Stateful::new(input.trim().as_bytes(), ());
+    arg_token_tree(input, |arg| {
+        let str_arg = unsafe { from_utf8_unchecked(arg) };
         if arg_count < N {
-            // SAFETY: `arg_token_tree` always splits on ASCII points & the input
-            // is valid UTF8 by virtue of being `&str`.
-            ret[arg_count] = unsafe { from_utf8_unchecked(arg).trim_end() };
-            // ret[arg_count] = std::str::from_utf8(arg).unwrap().trim_end();
+            ret[arg_count] = str_arg.trim();
         }
         arg_count += 1;
-        Ok(())
-    };
-    let list_parser = separated0(elem_parser, (b',', whitespace));
-    let mut parser = delimited(whitespace, list_parser, opt((b',', whitespace)));
-
-    let input = Stateful::new(input.as_bytes(), ());
-    parser.parse(input)?;
-    drop(parser);
+    })?;
 
     if arg_count == N {
         Ok(ret)
     } else {
         let arg_count = u8::try_from(arg_count).unwrap_or(255);
-        let n = u8::try_from(N).unwrap();
         Err(ArgError::CountMismatch(n, arg_count))
     }
 }

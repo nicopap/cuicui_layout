@@ -13,12 +13,9 @@ use crate::interpret;
 
 pub use super::internal::RootInsertError;
 
+#[allow(missing_docs)] // allow: described by error message.
 #[derive(Debug, Error)]
 pub enum ReloadError {
-    #[error("This isn't a valid chirp seed, no chirp file were spawned for this entity: {0:?}")]
-    NotAvailable(Entity),
-    #[error("Cannot reload a not-yet-loaded chirp")]
-    NotYetLoaded,
     #[error("When inserting the root entity")]
     Root(#[from] RootInsertError),
 }
@@ -64,11 +61,16 @@ pub struct ChirpSeedLogged;
 pub struct ChirpLoaded;
 
 #[derive(Debug, Component)]
-struct ChirpInstance {
+pub(super) struct ChirpInstance {
     id: InstanceId,
 }
 
 pub struct InsertRoot(pub Box<dyn Fn(&mut EntityCommands) + Send + Sync + 'static>);
+impl InsertRoot {
+    pub(super) fn new(f: impl Fn(&mut EntityCommands) + Send + Sync + 'static) -> Self {
+        InsertRoot(Box::new(f))
+    }
+}
 impl fmt::Debug for InsertRoot {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("InsertRoot")
@@ -97,7 +99,10 @@ impl InsertRoot {
 pub enum Chirp {
     /// The chirp file loaded successfully and holds the given [`Scene`].
     Loaded {
+        /// The scene handle, without the root of the chirp scene.
         scene: Handle<Scene>,
+        /// An [`InsertRoot`] to update any pre-existing entity with the
+        /// chirp scene root node's components.
         root: InsertRoot,
     },
     /// The chirp file failed to load with the given [`anyhow::Error`].
@@ -112,14 +117,14 @@ pub(super) fn update_asset_changed(
     mut asset_events: EventReader<AssetEvent<Chirp>>,
     mut chirp_instances: Query<(&mut ChirpState, &Handle<Chirp>), With<ChirpLoaded>>,
 ) {
-    use AssetEvent::{Modified, Removed};
+    use AssetEvent::{Created, Modified, Removed};
+    #[allow(clippy::explicit_iter_loop)]
     for event in asset_events.iter() {
         for (mut state, instance_handle) in &mut chirp_instances {
             match event {
-                AssetEvent::Created { .. } => {}
                 Modified { handle } if handle == instance_handle => *state = ChirpState::MustReload,
                 Removed { handle } if handle == instance_handle => *state = ChirpState::MustDelete,
-                Modified { .. } | Removed { .. } => {}
+                Created { .. } | Modified { .. } | Removed { .. } => {}
             }
         }
     }
@@ -130,20 +135,18 @@ pub(super) fn consume_seeds(
     mut scene_spawner: ResMut<SceneSpawner>,
     mut cmds: Commands,
     chirps: Res<Assets<Chirp>>,
-    no_parents: Query<Without<Parent>>,
     mut to_spawn: Query<
         (
             Entity,
             &mut ChirpState,
             &Handle<Chirp>,
             Option<&ChirpInstance>,
-            Option<&Parent>,
             Has<ChirpSeedLogged>,
         ),
         Without<ChirpLoaded>,
     >,
 ) {
-    for (chirp_id, mut state, handle, instance, parent, already_logged) in &mut to_spawn {
+    for (chirp_id, mut state, handle, instance, already_logged) in &mut to_spawn {
         let Some(Chirp::Loaded { scene, root }) = chirps.get(handle) else {
             if !already_logged {
                 cmds.entity(chirp_id)
@@ -190,7 +193,7 @@ pub(super) fn update_marked(
         Changed<ChirpState>,
     >,
     mut cmds: Commands,
-    scene_spawner: Res<SceneSpawner>,
+    mut scene_spawner: ResMut<SceneSpawner>,
 ) {
     for (chirp_id, mut state, handle, instance, parent) in &mut to_update {
         match &*state {

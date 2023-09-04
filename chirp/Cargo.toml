@@ -16,8 +16,8 @@ default = ["macros", "fancy_errors", "load_font", "load_image"]
 fancy_errors = ["miette/fancy"]
 macros = ["cuicui_chirp_macros"]
 test_and_doc = ["cuicui_dsl/test_and_doc"]
-# For debugging the parser EXTREMELY SLOW COMPILE TIMES
 trace_parser = ["winnow/debug"]
+trace_lexer = []
 load_font = ["bevy/bevy_text"]
 load_image = ["bevy/bevy_render"]
 
