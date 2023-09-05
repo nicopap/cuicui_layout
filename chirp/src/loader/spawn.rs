@@ -20,25 +20,19 @@ pub enum ReloadError {
     Root(#[from] RootInsertError),
 }
 
-/// Controls loading and reloading of scenes with a hook.
+/// Controls loading and reloading of [`Chirp`] scenes within the main bevy [`World`].
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Component, Reflect, Default)]
 #[reflect(Component)]
 pub enum ChirpState {
     /// The scene's entites are not yet added to the `World`.
     #[default]
     Loading,
-    /// The scene's entities are now in the `World` and its entities have the
-    /// components added by the scene's [`Hook::hook`].
+    /// The scene's entities are now in the `World`.
     Loaded,
-    /// The scene's entities, whether they are its direct children or were
-    /// unparented are to be despawned next time [`run_hooks`] runs, to be
-    /// reloaded, running [`Hook::hook`] again.
-    ///
-    /// The spawned scene is loaded using [`Hook::file_path`].
+    /// Reload the scene next time the internal `Chirp` scene management systems run.
     MustReload,
-    /// The scene's entities, whether they are its direct children or were
-    /// unparented are to be despawned next time [`run_hooks`] runs, the scene
-    /// entity itself will also be deleted.
+    /// Remove the scene from the world next time the internal `Chirp` scene
+    /// management systems run.
     MustDelete,
     // TODO(feat): MustSave
     // Would need to iter not only the get_instance_entities, but children
@@ -65,10 +59,24 @@ pub(super) struct ChirpInstance {
     id: InstanceId,
 }
 
-pub struct InsertRoot(pub Box<dyn Fn(&mut EntityCommands) + Send + Sync + 'static>);
+/// Insert components on the root entity of a [`Chirp`] scene.
+///
+/// This is needed in order to insert in-place scenes, so that they are fully
+/// part of the hierarchy without meaningless intermediary entities.
+///
+/// This is an advanced API, as an end-user **you are not meant to use this**.
+/// But it's exposed to help people build on top of `cuicui_chirp` if they
+/// want to.
+pub struct InsertRoot(pub(super) Box<dyn Fn(&mut EntityCommands) + Send + Sync + 'static>);
 impl InsertRoot {
     pub(super) fn new(f: impl Fn(&mut EntityCommands) + Send + Sync + 'static) -> Self {
         InsertRoot(Box::new(f))
+    }
+    /// Insert the components stored in this [`InsertRoot`] on the provided entity.
+    pub fn insert(&self, cmds: &mut EntityCommands) {
+        (self.0)(cmds);
+        cmds.insert(ChirpLoaded);
+        cmds.clear_children();
     }
 }
 impl fmt::Debug for InsertRoot {
@@ -77,23 +85,17 @@ impl fmt::Debug for InsertRoot {
     }
 }
 
-impl InsertRoot {
-    fn insert(&self, cmds: &mut EntityCommands) {
-        (self.0)(cmds);
-        cmds.insert(ChirpLoaded);
-        cmds.clear_children();
-    }
-}
-
-/// A `Chirp` scene. It's just a bevy [`Scene`].
+/// A `Chirp` scene. It's very close to a bevy [`Scene`].
 ///
 /// Unlike `Handle<Scene>`, `Handle<Chirp>` embeds inline the hierarchy of the scene,
-/// so that all root entities become sibbling of the entity with a `Handle<Chirp>`.
-/// Note that the `Handle<Chirp>` entity gets despawned once the scene is spawned.
+/// so that the entity with a `Handle<Chirp>` becomes the single root entity
+/// declared in the scene.
 ///
-/// You may keep around the `Entity` you used to spawn the chirp scene in order to
-/// later refer to it in [`ChirpInstances`] and control reloading/deletion of
-/// individual scene instances.
+/// The root entity, once the `Chirp` spawned — in addition to the scene's root
+/// components — will have a [`ChirpState`] component added.
+///
+/// Modify this component to control the scene state. It can be used to reload
+/// the scene or despawn the scene.
 #[derive(Debug, TypeUuid, TypePath)]
 #[uuid = "b954f251-c38a-4ede-a7dd-cbf9856c84c1"]
 pub enum Chirp {

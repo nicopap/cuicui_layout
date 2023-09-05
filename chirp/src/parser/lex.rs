@@ -1,6 +1,8 @@
+#![allow(clippy::verbose_bit_mask)]
+
 use std::slice;
 
-use crate::lex::Token;
+use super::Token;
 
 // TODO(perf): split the within-method lexer (,) and outside lexer
 const RECOGNIZED_SYMBOL_COUNT: usize = 15;
@@ -21,13 +23,14 @@ enum Recognized {
     Space = 11,
     Ident = 15,
 }
-
+// allow: I manually reviewed the generated code and it is better with the inline.
+#[allow(clippy::inline_always)]
 #[inline(always)]
 fn recognize(x: u8) -> Recognized {
     let mut cmp_table = [x; RECOGNIZED_SYMBOL_COUNT];
 
     for i in 0..RECOGNIZED_SYMBOL_COUNT {
-        cmp_table[i] ^= RECOGNIZED_SYMBOLS[i]
+        cmp_table[i] ^= RECOGNIZED_SYMBOLS[i];
     }
     match cmp_table.iter().position(|x| *x == 0) {
         Some(0) => Recognized::Equal,
@@ -55,9 +58,6 @@ impl<'i> Ident<'i> {
             Apostrophe, Comma, Equal, Lbracket, Lcurly, Lparen, Quote, Rbracket, Rcurly, Rparen,
             Space,
         };
-
-        //     let _t = trace_span!("Ident::next", name = "Ident::next").entered();
-        // This should have been a recursive call, but noooo, no tail call elimination in rust.
         loop {
             let Some(&next) = input.first() else {
                 return self.0;
@@ -91,8 +91,6 @@ pub fn next_token<'i>(input: &mut &'i [u8]) -> Option<Token<'i>> {
 // A potentially simpler alternative is to store the `input` as a `*const u8`
 // before running Quote::next or Ident::next
 fn after_space<'i>(input: &mut &'i [u8]) -> Option<Token<'i>> {
-    // let _t = trace_span!("after_space", name = "after_space").entered();
-
     loop {
         if input.is_empty() {
             return None;
@@ -132,10 +130,11 @@ impl<'i, const Q: u8> Quoted<'i, Q> {
     // TODO(perf): have a "rough" pass checking for Q or backslash. If not, we
     // don't care about the N next u8.
     fn next(&mut self, input: &mut &'i [u8]) -> Option<Token<'i>> {
-        //     let _t = trace_span!("Quoted::next", name = "Quoted::next").entered();
         let mut esc = false;
         loop {
             let Some(last) = self.advance(input) else {
+                // TODO(bug): when the string is not complete,
+                // The file is invalid, we should somehow handle that.
                 return (!esc).then_some(Token::String(self.0));
             };
             match last {
@@ -148,11 +147,6 @@ impl<'i, const Q: u8> Quoted<'i, Q> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum EndComment {
-    LineEnding(usize),
-    None,
-}
 // fn end_comment<const LANES: usize>(xs: [u8; LANES]) -> EndComment {
 //     let mid = usize::MAX / 2;
 //     let pos = xs.iter().fold(usize::MAX, |acc, x| match x {
@@ -172,7 +166,7 @@ impl Swar8 {
         acc[..len].copy_from_slice(&slice[..len]);
         Swar8(u64::from_le_bytes(acc))
     }
-    fn position<const B: u8>(self) -> EndComment {
+    fn position<const B: u8>(self) -> Option<usize> {
         let mask = u64::from_le_bytes([B; 8]);
         let mut masked = self.0 ^ mask;
         let mut pos = 0;
@@ -185,59 +179,125 @@ impl Swar8 {
             masked >>= 8;
         }
         if encountered {
-            EndComment::LineEnding(pos)
+            Some(pos)
         } else {
-            EndComment::None
+            None
         }
     }
 }
 
 fn next_comment<'i>(input: &mut &'i [u8]) -> Option<Token<'i>> {
-    // let _t = trace_span!("next_comment", name = "next_comment").entered();
     loop {
         match Swar8::load_from(input).position::<b'\n'>() {
-            EndComment::LineEnding(offset) => {
+            Some(offset) => {
                 // SAFETY: `Swar8::position` is guarenteed to return either None
                 // or a value between 0 max len of input.
-                *input = unsafe { input.get_unchecked(offset..) };
+                *input = unsafe { input.get_unchecked(offset + 1..) };
                 return after_space(input);
             }
-            EndComment::None => *input = input.get(8..)?,
+            None => *input = input.get(8..)?,
         }
     }
 }
 fn next_maybe_comment<'i>(input: &mut &'i [u8]) -> Option<Token<'i>> {
-    // let _t = trace_span!("next_maybe_comment", name = "next_maybe_comment").entered();
     let (first, remaining) = input.split_first()?;
     *input = remaining;
-    match *first {
-        b'/' => next_comment(input),
-        _ => after_space(input),
+    if *first == b'/' {
+        next_comment(input)
+    } else {
+        // TODO(BUG): single slashes are completely ignored.
+        after_space(input)
+    }
+}
+
+const END_SPACE_COUNT: usize = 4;
+const END_SPACE: [u8; END_SPACE_COUNT] = *b"/ \n\t";
+
+enum EndSpace {
+    Slash,
+    Token,
+    None,
+}
+fn recognize_space(x: u8) -> EndSpace {
+    let mut cmp_table = [x; END_SPACE_COUNT];
+
+    for i in 0..END_SPACE_COUNT {
+        cmp_table[i] ^= END_SPACE[i];
+    }
+    match cmp_table.iter().position(|x| *x == 0) {
+        Some(0) => EndSpace::Slash,
+        Some(1..=3) => EndSpace::None,
+        None => EndSpace::Token,
+        Some(_) => unreachable!("==OPTIMIZEDOUT== match position in const size array"),
+    }
+}
+pub(super) fn consume_spaces(input: &mut &[u8]) {
+    loop {
+        let Some((&x, remaining)) = input.split_first() else {
+            return;
+        };
+        match recognize_space(x) {
+            EndSpace::Slash => {
+                *input = remaining;
+                consume_maybe_comment(input);
+                return;
+            }
+            EndSpace::Token => {
+                return;
+            }
+            EndSpace::None => {
+                *input = remaining;
+            }
+        }
+    }
+}
+fn consume_maybe_comment(input: &mut &[u8]) {
+    let Some((&first, remaining)) = input.split_first() else {
+        return;
+    };
+    if first == b'/' {
+        *input = remaining;
+        consume_comment(input);
+    }
+}
+fn consume_comment(input: &mut &[u8]) {
+    loop {
+        match Swar8::load_from(input).position::<b'\n'>() {
+            Some(offset) => {
+                // SAFETY: `Swar8::position` is guarenteed to return either None
+                // or a value between 0 max len of input.
+                *input = unsafe { input.get_unchecked(offset + 1..) };
+                consume_spaces(input);
+                return;
+            }
+            None => match input.get(8..) {
+                Some(remaining) => *input = remaining,
+                None => return,
+            },
+        }
     }
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]
     fn correct_position() {
-        let some = |x| EndComment::LineEnding(x);
-        let none = EndComment::None;
         let pos = |x| Swar8::load_from(x).position::<b'x'>();
-        assert_eq!(pos(b"x   "), some(0));
-        assert_eq!(pos(b" x  "), some(1));
-        assert_eq!(pos(b"___"), none);
-        assert_eq!(pos(b""), none);
-        assert_eq!(pos(b"x"), some(0));
-        assert_eq!(pos(b"________x"), none);
-        assert_eq!(pos(b"0123456x"), some(7));
-        assert_eq!(pos(b"0123456x8"), some(7));
-        assert_eq!(pos(b"01234567x"), none);
-        assert_eq!(pos(b"0123456x8910"), some(7));
-        assert_eq!(pos(b"   x                  "), some(3));
-        assert_eq!(pos(b"x x x x               "), some(0));
-        assert_eq!(pos(b" xx_"), some(1));
-        assert_eq!(pos(b"__x____x__________"), some(2));
+        assert_eq!(pos(b"x   "), Some(0));
+        assert_eq!(pos(b" x  "), Some(1));
+        assert_eq!(pos(b"___"), None);
+        assert_eq!(pos(b""), None);
+        assert_eq!(pos(b"x"), Some(0));
+        assert_eq!(pos(b"________x"), None);
+        assert_eq!(pos(b"0123456x"), Some(7));
+        assert_eq!(pos(b"0123456x8"), Some(7));
+        assert_eq!(pos(b"01234567x"), None);
+        assert_eq!(pos(b"0123456x8910"), Some(7));
+        assert_eq!(pos(b"   x                  "), Some(3));
+        assert_eq!(pos(b"x x x x               "), Some(0));
+        assert_eq!(pos(b" xx_"), Some(1));
+        assert_eq!(pos(b"__x____x__________"), Some(2));
     }
 }

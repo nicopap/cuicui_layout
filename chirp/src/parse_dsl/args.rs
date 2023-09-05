@@ -19,60 +19,69 @@ use bevy::reflect::serde::TypedReflectDeserializer;
 use bevy::reflect::{FromReflect, Reflect, TypeRegistryInternal as TypeRegistry};
 use thiserror::Error;
 
+use super::escape_literal;
 use crate::load_asset::LoadAsset;
-use crate::parse::escape_literal;
 
+fn tyname<T>() -> &'static str {
+    any::type_name::<T>()
+}
 /// Error occuring in [`to_handle`].
 #[allow(missing_docs)] // Already documented by error message
 #[derive(Debug, Error)]
 pub enum HandleDslDeserError<T> {
     #[error(
         "Didn't provide a LoadContext when deserializing a 'Handle<{}>'. \
-        This is required to enable loading assets.",
-        any::type_name::<T>(),
+        This is required to enable loading assets",
+        tyname::<T>(),
     )]
     NoLoadContext,
-    #[error("Failed to load 'Handle<{}>' from file system: {0}", any::type_name::<T>())]
+    #[error("Failed to load 'Handle<{}>' from file system", tyname::<T>())]
     FileIo(#[from] io::Error),
     #[error("Loading handles is not supported with non-FileSystem IO. It will be available starting bevy 0.12")]
     UnsupportedIo,
-    #[error("Couldn't load 'Handle<{}>': {0}", any::type_name::<T>())]
+    #[error("Couldn't load 'Handle<{}>'", tyname::<T>())]
     BadLoad(anyhow::Error),
     #[doc(hidden)]
-    #[error("This error never occurs")]
+    #[error("==OPTIMIZEDOUT== This error never occurs")]
     _Ignore(PhantomData<fn(T)>, Infallible),
 }
 
+// NOTE: we use `&'static str` instead of storing the type as a generic parameter
+// so that we can downcast to this error type in crate::interpret, in order to
+// pick up the underlying error offset.
 /// Error occuring in [`from_reflect`].
 #[allow(missing_docs)] // Already documented by error message
 #[derive(Debug, Error)]
-pub enum ReflectDslDeserError<T> {
+pub enum ReflectDslDeserError {
+    #[error("Tried to deserialize a DSL argument using reflection, yet '{0}' is not registered.")]
+    NotRegistered(&'static str),
+    #[error("Ron couldn't deserialize the DSL argument of type '{1}': {0}")]
+    RonDeser(#[source] Box<ron::error::SpannedError>, &'static str),
     #[error(
-        "Tried to deserialize a DSL argument using reflection, yet '{}' \
-        is not registered.",
-        any::type_name::<T>(),
+        "The DSL argument of type '{0}' was parsed by bevy in RON, but the \
+        generated reflect proxy type couldn't be converted into '{0}'"
     )]
-    NotRegistered,
-    #[error(
-        "Ron couldn't deserialize the DSL argument of type '{}': {0}",
-        any::type_name::<T>(),
-    )]
-    RonDeser(#[from] ron::error::SpannedError),
-    #[error(
-        "Bevy couldn't deserialize the DSL argument of type '{}': {0}",
-        any::type_name::<T>(),
-    )]
-    BevyRonDeser(#[from] ron::error::Error),
-    #[error(
-        "The DSL argument of type '{}' was parsed by bevy in RON, but the \
-        generated reflect proxy type couldn't be converted into '{}'",
-        any::type_name::<T>(),
-        any::type_name::<T>(),
-    )]
-    BadReflect,
-    #[doc(hidden)]
-    #[error("This error never occurs")]
-    _Ignore(PhantomData<fn(T)>, Infallible),
+    BadReflect(&'static str),
+}
+
+impl ReflectDslDeserError {
+    fn ron_deser<T>(source: ron::error::SpannedError) -> Self {
+        Self::RonDeser(Box::new(source), tyname::<T>())
+    }
+    fn not_registered<T>() -> Self {
+        Self::NotRegistered(tyname::<T>())
+    }
+    fn bad_reflect<T>() -> Self {
+        Self::BadReflect(tyname::<T>())
+    }
+    pub(crate) fn maybe_offset(&self) -> Option<u32> {
+        match self {
+            Self::BadReflect(_) | Self::NotRegistered(_) => None,
+            Self::RonDeser(ron, _) => {
+                (ron.position.line == 0).then(|| u32::try_from(ron.position.col).unwrap())
+            }
+        }
+    }
 }
 
 /// Deserialize a method argument using the [`ron`] file format.
@@ -90,18 +99,19 @@ pub fn from_reflect<T: Reflect + FromReflect>(
     registry: &TypeRegistry,
     _: Option<&mut LoadContext>,
     input: &str,
-) -> Result<T, ReflectDslDeserError<T>> {
+) -> Result<T, ReflectDslDeserError> {
     use ron::de::Deserializer as Ronzer;
     use ReflectDslDeserError as Error;
 
-    let registration = registry
-        .get(any::TypeId::of::<T>())
-        .ok_or(Error::<T>::NotRegistered)?;
-    let mut ron_de = Ronzer::from_str(input).map_err(Error::<T>::RonDeser)?;
-    let de = TypedReflectDeserializer::new(registration, registry)
-        .deserialize(&mut ron_de)
-        .map_err(Error::BevyRonDeser::<T>)?;
-    T::from_reflect(de.as_ref()).ok_or(Error::<T>::BadReflect)
+    let id = any::TypeId::of::<T>();
+    let registration = registry.get(id).ok_or_else(Error::not_registered::<T>)?;
+    let mut ron_de = Ronzer::from_str(input).map_err(Error::ron_deser::<T>)?;
+    let de = TypedReflectDeserializer::new(registration, registry);
+    let deserialized = match de.deserialize(&mut ron_de) {
+        Ok(ok) => ok,
+        Err(err) => return Err(Error::ron_deser::<T>(ron_de.span_error(err))),
+    };
+    T::from_reflect(deserialized.as_ref()).ok_or_else(Error::bad_reflect::<T>)
 }
 
 /// Deserialize a method argument using the [`FromStr`] `std` trait.

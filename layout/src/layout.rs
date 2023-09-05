@@ -438,7 +438,10 @@ pub enum RuleParseError {
     BadPercent(f32),
     #[error("The provided ratio for '*' was out of range. {0:.3} ∉ [0..1] (inclusive)")]
     BadRatio(f32),
-    #[error("Rule format was not recognized: '{0}', available are '99%', '0.34*' and '1234px'")]
+    #[error(
+        "Rule format was not recognized: '{0}', rules end with '%', '*' or 'px'. \
+        Examples: '53%', '0.35*' and '1024px'"
+    )]
     BadFormat(String),
 }
 impl Default for Rule {

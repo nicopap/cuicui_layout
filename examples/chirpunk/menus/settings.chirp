@@ -28,7 +28,7 @@ SettingsMenu(layout("vdSaS") screen_root root wrap scope menu("SETTINGS")
     // triggers the behaviors implemented by show_menus::Plugin
     AllTabs(row swatch_name(SettingsSubmenu) rules(100%, 90%)) {
         DisplayMenu(column menu("DISPLAY") rules(90%, 90%) layout("vdSaC")) {
-            settings_header("Display", row, width 100%, main_margin 40, distrib_start);
+            Display(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
             "Window mode"(settings_row options(Choice(["Windowed","Borderless"])) row rules(100%,1*))
             Spacer(height(20px))
@@ -43,25 +43,26 @@ SettingsMenu(layout("vdSaS") screen_root root wrap scope menu("SETTINGS")
         SoundMenu(column menu("SOUND") rules(90%, 90%) layout("vdSaC")) {
             "Audio Settings"(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
-            // column("SoundItems", rules(100%, 90%), cross_margin 80) {
+            // column("SoundItems", rules(100%, 90%), cross_margin 80)
             // TODO(feat): add Interaction & Focusable to this
-            "Master volume"(settings_row options(Increments(9)) row rules(100%,1*))
+            "Master volume"(settings_row options(Increments(9)) row rules(100%, 1*))
             Spacer(height(20px))
-            "Effects volume"(settings_row options(Increments(9)) row rules(100%,1*))
+
+            "Effects volume"(settings_row options(Increments(9)) row rules(100%, 1*))
             Spacer(height(20px))
-            "Music volume"(settings_row options(Increments(9)) row rules(100%,1*))
+            "Music volume"(settings_row options(Increments(9)) row rules(100%, 1*))
         }
         Tab3Menu(column menu("TAB 3") rules(90%, 90%) layout("vdSaC")) {
             "Tab 3"(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
-            "Sound effect 1"(settings_row options(Click) row rules(100%,1*))
+            "Sound effect 1"(settings_row options(Click) row rules(100%, 1*))
             Spacer(height(20px))
-            "Sound effect 2"(settings_row options(Click) row rules(100%,1*))
+            "Sound effect 2"(settings_row options(Click) row rules(100%, 1*))
         }
         Tab4Menu(column menu("TAB 4") rules(90%, 90%) layout("vdSaC")) {
             "Tab 4"(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
-            "Fine grained clicking"(settings_row options(Increments(30)) row rules(100%,1*))
+            "Fine grained clicking"(settings_row options(Increments(30)) row rules(100%, 1*))
             Spacer(height(20px))
             "UI highlight color"(settings_row row rules(100%,1*) options(Choice([
                 "aliceblue", "antiquewhite", "aqua",           "aquamarine",

@@ -45,6 +45,8 @@ use thiserror::Error;
 use crate::{Handles, ParseDsl};
 use spawn::{Chirp, ChirpState};
 
+pub use spawn::InsertRoot;
+
 mod internal;
 pub(super) mod spawn;
 
@@ -95,6 +97,8 @@ impl<D> WorldHandles<D> {
 }
 
 /// Loads a bevy [`Scene`] declared in a `chirp` file.
+///
+/// [`Scene`]: bevy::scene::Scene
 pub struct ChirpLoader<D> {
     registry: TypeRegistryArc,
     handles: HandlesArc,

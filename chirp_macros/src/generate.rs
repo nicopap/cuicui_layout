@@ -99,7 +99,7 @@ const CONFIG_ATTR_DESCR: &str = "\
         input: &'a str,
     ) -> Result<ArgumentType, anyhow::Error>;
 
-`parse_dsl_impl` uses functions in the `cuicui_chirp::parse::args` module.
+`parse_dsl_impl` uses functions in the `cuicui_chirp::parse_dsl::args` module.
 To parse the argument. The defaults are as follow:
 
 - For `Handle<T>` and `&Handle<T>` arguments, `args::to_handle` is used.
@@ -197,9 +197,9 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
         impl #this_generics #this_crate::ParseDsl for #this_type {
             fn method(
                 &mut self,
-                data: #this_crate::parse::MethodCtx,
+                data: #this_crate::parse_dsl::MethodCtx,
             ) -> Result<(), #this_crate::anyhow::Error> {
-                use #this_crate::parse::{split::split, MethodCtx, DslParseError, args};
+                use #this_crate::parse_dsl::{split, MethodCtx, DslParseError, args};
 
                 let MethodCtx { name, args, mut ctx, registry } = data;
                 match name {
@@ -234,7 +234,7 @@ fn bind_to_parse_dsl(chirp_crate: &syn::Path, generics: &mut syn::Generics) {
         type_param.bounds.push(bound);
     }
 }
-// Note: assumes cuicui_chirp::parse::split::split is in scope and used correctly
+// Note: assumes cuicui_chirp::parse_dsl::split is in scope and used correctly
 fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {
     match FnConfig::parse_list(&fun.attrs) {
         Ok(FnConfig::Ignore) => return TokenStream::new(),

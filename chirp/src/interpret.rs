@@ -1,6 +1,6 @@
 //! Interpret `.chirp` files, spawning entities with a provided [`Commands`].
 
-use std::{borrow::Cow, cell::RefCell, fmt, fmt::Debug, mem, ops::Range, str};
+use std::{any, borrow::Cow, cell::RefCell, fmt, fmt::Debug, mem, str};
 
 use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
@@ -14,8 +14,8 @@ use smallvec::SmallVec;
 use thiserror::Error;
 use winnow::BStr;
 
-use crate::grammar;
-use crate::parse::{escape_literal, MethodCtx, ParseDsl};
+use crate::parse_dsl::{escape_literal, MethodCtx, ParseDsl};
+use crate::parser::{self, Input, Span};
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
@@ -26,44 +26,70 @@ pub enum InterpError {
     CodeNotPresent(String),
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
-    // TODO(err): better error messages
-    #[error("Bad syntax: {0}")]
-    ParseError(#[from] grammar::Error),
+    #[error(transparent)]
+    ParseError(#[from] parser::Error),
     #[error("The method name is invalid UTF8")]
     BadUtf8MethodName,
     #[error("The method arguments is invalid UTF8")]
     BadUtf8Argument,
+    #[error("Method '{0}' is uppercase.")]
+    UppercaseMethod(Box<str>),
 }
 const UTF8_ERROR: &str =
     "Chirp requires UTF8, your file is either corrupted or saved with the wrong encoding.";
-const PARSE_ERROR: &str = "\
-More actionable error messages are coming, until then, check the grammar at:
-
-https://github.com/nicopap/cuicui_layout/blob/712f19d58eea48d50dde6ed4ed4c1b42ac6f2544/design_docs/layout_format.md#grammar";
 impl InterpError {
-    const fn help_message(&self) -> Option<&'static str> {
+    fn help_message<D>(&self) -> Option<Box<str>> {
+        use crate::parse_dsl::DslParseError;
         use InterpError::{BadUtf8Argument, BadUtf8MethodName};
+
         match self {
             InterpError::CodeNotPresent(_) => None,
-            InterpError::DslError(_) => Some("The error comes from the ParseDsl implementation"),
-            InterpError::ParseError(_) => Some(PARSE_ERROR),
-            BadUtf8MethodName | BadUtf8Argument => Some(UTF8_ERROR),
+            InterpError::DslError(err) => Some(if err.downcast_ref::<DslParseError>().is_some() {
+                format!(
+                    "{} doesn't contain a method with this name.",
+                    any::type_name::<D>()
+                )
+                .into()
+            } else {
+                "The error comes from the ParseDsl implementation.".into()
+            }),
+            InterpError::ParseError(err) => Some(err.help().into()),
+            InterpError::UppercaseMethod(_) => {
+                Some("You probably forgot to close a parenthesis in the last method list.".into())
+            }
+            BadUtf8MethodName | BadUtf8Argument => Some(UTF8_ERROR.into()),
         }
+    }
+    fn dsl_offset(&self) -> Option<u32> {
+        use crate::parse_dsl::{args::ReflectDslDeserError as ReflectError, split::ArgError};
+
+        let Self::DslError(err) = self else {
+            return None;
+        };
+        let dsl_offset = err.downcast_ref().and_then(ReflectError::maybe_offset);
+        let arg_offset = err.downcast_ref().and_then(ArgError::maybe_offset);
+        dsl_offset.or(arg_offset)
     }
 }
 #[derive(Debug, Error, Diagnostic)]
-#[error("{error} {}", NiceSpan(self.span))]
+#[error("{error}")]
 struct SpannedError {
     #[label]
     span: SourceSpan,
     error: InterpError,
     #[help]
-    help: Option<&'static str>,
+    help: Option<Box<str>>,
 }
 impl SpannedError {
-    fn new(error: impl Into<InterpError>, span: impl Into<SourceSpan>) -> Self {
-        let (error, span) = (error.into(), span.into());
-        let help = error.help_message();
+    fn new<D>(error: impl Into<InterpError>, (mut start, mut end): Span) -> Self {
+        let as_usize = |x: u32| usize::try_from(x).unwrap();
+        let error: InterpError = error.into();
+        let help = error.help_message::<D>();
+        if let Some(offset) = error.dsl_offset() {
+            start += offset;
+            end = start;
+        }
+        let span = (as_usize(start)..as_usize(end)).into();
         Self { span, error, help }
     }
 }
@@ -99,18 +125,13 @@ impl fmt::Display for NiceErrors<'_> {
     }
 }
 
-// TODO(feat): Consider replacing this with a trait that takes
-// `handle(&str, &mut ChildBuilder)`, so that it is concievable of not relying
-// on dynamic dispatch.
 /// A function called by the `chirp` interpreter when encountering a `code` statement.
 ///
 /// The arguments are as follow:
 /// - `&TypeRegistry`: the main app type registry.
 /// - `Option<&LoadContext>`: The load context, if in the context of asset loading.
 ///   this can be used to get arbitrary `Handle<T>`s.
-/// - `&mut Commands`: Commands to spawn entities.
-/// - `Option<Entity>`: the current parent, if there is one.
-// TODO(0.10): Replace with &mut EntityCommands, since we now require 0-1 entity per statement.
+/// - `&mut EntityCommands`: Entity to use for this `code` function.
 pub type CodeFunctionBox =
     Box<dyn Fn(&TypeRegistry, Option<&LoadContext>, &mut EntityCommands) + Send + Sync>;
 
@@ -217,15 +238,15 @@ impl<D> Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
 
 impl<'w, 's, 'a, 'l, 'll, D> InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     #[cold]
-    fn push_error(&mut self, span: Range<usize>, error: impl Into<InterpError>) {
-        self.errors.push(SpannedError::new(error, span));
+    fn push_error(&mut self, span: Span, error: impl Into<InterpError>) {
+        self.errors.push(SpannedError::new::<D>(error, span));
     }
 }
 pub(crate) struct Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
+    ctx: LoadCtx<'h, 'r>,
     // TODO(perf): Can use an UnsafeCell instead, since we'll never access this
     // concurrently, as the parsing is linear.
     mutable: RefCell<InnerInterpreter<'w, 's, 'a, 'l, 'll, D>>,
-    ctx: LoadCtx<'h, 'r>,
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D> fmt::Debug for Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -246,6 +267,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
         let root_entity = builder.id();
         let cmds = builder.commands();
         Interpreter {
+            ctx: LoadCtx { reg, handles },
             mutable: RefCell::new(InnerInterpreter {
                 cmds: BevyCmds(cmds),
                 parent_chain: SmallVec::new(),
@@ -254,20 +276,16 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
                 load_ctx,
                 root_entity,
             }),
-            ctx: LoadCtx { reg, handles },
         }
     }
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
     pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
-        let stateful_input = crate::lex::Stateful::new(input, &*self);
-        let parse_error = grammar::chirp_document(stateful_input);
+        let stateful_input = Input::new(input, &*self);
+        let parse_error = parser::chirp_document(stateful_input);
         let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
         if let Err(err) = parse_error {
-            let start = err.offset();
-            let end = err.offset();
-            let error = SpannedError::new(err.into_inner(), start..end);
-            errors.push(error);
+            errors.push(SpannedError::new::<D>(err.error, err.span));
         }
         if errors.is_empty() {
             Ok(())
@@ -281,7 +299,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             Err(Errors { source_code, errors })
         }
     }
-    fn statement_spawn(&self) -> Entity {
+    fn statement_spawn(&self) -> Option<Entity> {
         trace!("Inserting DSL");
         let interp = &mut *self.mutable.borrow_mut();
 
@@ -297,24 +315,31 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
             cmds.set_parent(interp.root_entity);
             cmds
         };
-        dsl.insert(&mut cmds)
+        interp.errors.is_empty().then(|| dsl.insert(&mut cmds))
     }
 }
-impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
-    for &'i Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D>
+impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp
+    for &'_ Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D>
 {
     fn insert_entity(&self) {
         self.statement_spawn();
     }
-    fn method(&self, span: Range<usize>, method: &[u8], args: &[u8]) {
-        let Ok(name) = str::from_utf8(method) else {
+    fn method(&self, name: &[u8], name_span: Span, args: &[u8], args_span: Span) {
+        use crate::parse_dsl::DslParseError;
+
+        let Ok(name) = str::from_utf8(name) else {
             let error = InterpError::BadUtf8MethodName;
-            self.mutable.borrow_mut().push_error(span, error);
+            self.mutable.borrow_mut().push_error(name_span, error);
             return;
         };
+        if name.starts_with(char::is_uppercase) {
+            let error = InterpError::UppercaseMethod(name.into());
+            self.mutable.borrow_mut().push_error(name_span, error);
+            return;
+        }
         let Ok(args) = str::from_utf8(args) else {
             let error = InterpError::BadUtf8Argument;
-            self.mutable.borrow_mut().push_error(span, error);
+            self.mutable.borrow_mut().push_error(args_span, error);
             return;
         };
         trace!("Method: {name} '{args}'");
@@ -327,6 +352,8 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
             registry: self.ctx.reg,
         };
         if let Err(err) = dsl.method(ctx) {
+            let is_name_err = err.downcast_ref::<DslParseError>().is_some();
+            let span = if is_name_err { name_span } else { args_span };
             interp.push_error(span, err);
         }
     }
@@ -338,6 +365,7 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
         // - no parent: push inserted, set root_entity to inserted.
         // - parent equal to root_entity: set root_entity to inserted
         // - parent not equal to root_entity: push root_entity, set root_entity to inserted
+        let inserted = inserted.unwrap_or(*root_entity);
         match parent_chain.last() {
             None => {
                 parent_chain.push(inserted);
@@ -347,7 +375,7 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
             Some(_) => parent_chain.push(mem::replace(root_entity, inserted)),
         }
     }
-    fn code(&self, (identifier, span): (&[u8], Range<usize>)) {
+    fn code(&self, (identifier, span): (&[u8], Span)) {
         let b_name = BStr::new(identifier);
         trace!("Calling registered function {b_name}");
         let Some(code) = self.ctx.handles.get_function_u8(identifier) else {
@@ -363,8 +391,11 @@ impl<'i, 'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> grammar::Itrp
         code(self.ctx.reg, load_ctx, &mut cmds);
     }
 
-    fn set_name(&self, span: Range<usize>, name: &[u8]) {
-        self.method(span, b"named", escape_literal(name).as_ref());
+    fn set_name(&self, span: Span, mut name: &[u8]) {
+        if name.len() > 2 && name.starts_with(b"\"") && name.ends_with(b"\"") {
+            name = &name[1..name.len() - 1];
+        }
+        self.method(b"named", span, escape_literal(name).as_ref(), span);
     }
 
     fn complete_children(&self) {

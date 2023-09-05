@@ -11,7 +11,7 @@ use bevy::reflect::{serde::TypedReflectDeserializer, Reflect, Struct};
 use cuicui_dsl::DslBundle;
 use thiserror::Error;
 
-use crate::parse::{MethodCtx, ParseDsl};
+use crate::parse_dsl::{MethodCtx, ParseDsl};
 
 /// Occurs in [`ReflectDsl::typed_method`].
 #[derive(Error)]

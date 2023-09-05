@@ -5,10 +5,9 @@
 use std::str::from_utf8_unchecked;
 
 use thiserror::Error;
-use winnow::error::ErrMode;
+use winnow::error::ErrMode::{Backtrack, Cut, Incomplete};
 
-use crate::grammar::{self, arg_token_tree};
-use crate::lex::Stateful;
+use crate::parser::{self, arg_token_tree, Input};
 
 /// Error returned by one of the `argN` functions.
 #[allow(missing_docs)] // Already documented by error message.
@@ -16,13 +15,20 @@ use crate::lex::Stateful;
 pub enum ArgError {
     #[error("Expected {0} arguments, got {}{1}", if .0 == &255 { "more than " } else {""})]
     CountMismatch(u8, u8),
-    #[error("Parser error at offset: {0}")]
-    ArgParse(grammar::Error),
+    #[error("Parser error [{1}]: {0}")]
+    ArgParse(parser::Error, u32),
 }
-impl<'i> From<ErrMode<grammar::Error>> for ArgError {
-    fn from(err: ErrMode<grammar::Error>) -> Self {
-        // TODO(err): Better error reporting
-        ArgError::ArgParse(err.into_inner().unwrap())
+impl ArgError {
+    #[inline]
+    fn count_mismatch(expected: u8, got: usize) -> Self {
+        let got = u8::try_from(got).unwrap_or(255);
+        ArgError::CountMismatch(expected, got)
+    }
+    pub(crate) const fn maybe_offset(&self) -> Option<u32> {
+        match self {
+            Self::CountMismatch(..) => None,
+            Self::ArgParse(_, offset) => Some(*offset),
+        }
     }
 }
 
@@ -43,7 +49,7 @@ impl<'i> From<ErrMode<grammar::Error>> for ArgError {
 /// # Examples
 ///
 /// ```
-/// use cuicui_chirp::parse::split::{split, ArgError::CountMismatch};
+/// use cuicui_chirp::parse_dsl::{split, ArgError::CountMismatch};
 ///
 /// assert_eq!(split::<2>("(20%, 21px)"), Ok(["20%", "21px"]));
 /// assert_eq!(split::<0>(""), Ok([]));
@@ -72,32 +78,31 @@ impl<'i> From<ErrMode<grammar::Error>> for ArgError {
 ///
 /// # Panics
 /// If `N > 255`
-#[inline(never)]
 pub fn split<const N: usize>(input: &str) -> Result<[&str; N], ArgError> {
     let mut ret = [""; N];
     let n = u8::try_from(N).unwrap();
 
-    let input = match () {
+    // TODO(clean): This "init" is just weird and surprising.
+    let (init, input) = match () {
         () if N == 0 && (input.is_empty() || input == "()") => {
             return Ok(ret);
         }
-        () if input.starts_with('(') && input.ends_with(')') => &input[1..input.len() - 1],
-        () => input,
+        () if input.starts_with('(') && input.ends_with(')') => (1, &input[1..input.len() - 1]),
+        () => (0, input),
     };
     let mut arg_count = 0;
-    let input = Stateful::new(input.trim().as_bytes(), ());
-    arg_token_tree(input, |arg| {
+    let mut input = Input::new(input.trim().as_bytes(), ());
+    let maybe_error = arg_token_tree(&mut input, |arg| {
         let str_arg = unsafe { from_utf8_unchecked(arg) };
         if arg_count < N {
             ret[arg_count] = str_arg.trim();
         }
         arg_count += 1;
-    })?;
-
-    if arg_count == N {
-        Ok(ret)
-    } else {
-        let arg_count = u8::try_from(arg_count).unwrap_or(255);
-        Err(ArgError::CountMismatch(n, arg_count))
+    });
+    match maybe_error {
+        Ok(()) if arg_count == N => Ok(ret),
+        Ok(()) => Err(ArgError::count_mismatch(n, arg_count)),
+        Err(Backtrack(err) | Cut(err)) => Err(ArgError::ArgParse(err, init + input.next_start())),
+        Err(Incomplete(_)) => unreachable!("We created the input, and we know it is not partial"),
     }
 }

@@ -53,11 +53,13 @@ impl Element {
         cmds: &mut EntityCommands,
         options: Option<Box<SettingsOption>>,
     ) {
+        let settings_err = "settings_row element MUST also have a `options` method call included, \
+                            none were given.";
         match self {
             Element::None => {}
             Element::TabButton => tab_button(name, cmds),
             Element::SettingsHeader => settings_header(name, cmds),
-            Element::SettingsRow => settings_row(name, cmds, *options.unwrap()),
+            Element::SettingsRow => settings_row(name, cmds, *options.expect(settings_err)),
             Element::MainMenuItem => main_menu_item(name, cmds),
         }
     }

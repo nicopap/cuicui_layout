@@ -13,13 +13,16 @@ macro_rules! log_miette_error {
         let message = {
             let mut s = String::new();
             miette::GraphicalReportHandler::new()
+                .with_context_lines(2)
+                .with_width(90)
+                .with_footer("\n".into())
                 .render_report(&mut s, $err)
                 .unwrap();
             s
         };
         #[cfg(not(feature = "fancy_errors"))]
         let message = $err;
-        bevy::log::error!("{message}");
+        bevy::log::error!("{message:#}");
     };
 }
 
@@ -35,17 +38,15 @@ pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use load_asset::LoadAsset;
 pub use loader::spawn::{Chirp, ChirpState};
-pub use parse::ParseDsl;
+pub use parse_dsl::ParseDsl;
 pub use reflect::ReflectDsl;
 
-mod grammar;
-mod lex;
 mod load_asset;
-mod swar;
+mod parser;
 
 pub mod interpret;
 pub mod loader;
-pub mod parse;
+pub mod parse_dsl;
 pub mod reflect;
 
 #[doc(hidden)]

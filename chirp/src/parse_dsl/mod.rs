@@ -13,8 +13,6 @@
 //! The way parsed text gets interpreted is implemented in the [`crate::interpret`]
 //! module.
 
-use std::marker::PhantomData;
-
 use anyhow::Result;
 use bevy::asset::LoadContext;
 use bevy::reflect::TypeRegistryInternal as TypeRegistry;
@@ -22,7 +20,7 @@ use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
 pub use escape::escape_literal;
-pub use split::split;
+pub use split::{split, ArgError};
 
 #[cfg(test)]
 mod tests;
@@ -31,22 +29,21 @@ pub mod args;
 mod escape;
 pub mod split;
 
-/// The input specification called a method not implemented in `D`.
+/// The input specification called a method that does not exist.
 ///
 /// Useful as a catchall when parsing a DSL calling an innexisting method.
+///
+/// When encoutering this error, the interpreter uses the name span for error
+/// reporting rather than the arguments span.
 #[derive(Debug, Error)]
-#[error(
-    "Didn't find method '{method}' for parse DSL of type '{}'",
-    std::any::type_name::<D>(),
-)]
-pub struct DslParseError<D> {
-    method: String,
-    _ty: PhantomData<D>,
+#[error("No '{method}' method")]
+pub struct DslParseError {
+    method: Box<str>,
 }
-impl<D> DslParseError<D> {
+impl DslParseError {
     /// Create a [`DslParseError`] for `method` in `parse_type`.
-    pub fn new(method: impl Into<String>) -> Self {
-        Self { method: method.into(), _ty: PhantomData }
+    pub fn new(method: impl Into<Box<str>>) -> Self {
+        Self { method: method.into() }
     }
 }
 
@@ -129,9 +126,7 @@ impl ParseDsl for BaseDsl {
             self.named(args.to_string());
             Ok(())
         } else {
-            // TODO(bug): Since it is the ultimate fallback, this won't help
-            // probably need to add a few methods to ParseDsl.
-            Err(DslParseError::<Self>::new(name).into())
+            Err(DslParseError::new(name).into())
         }
     }
 }
