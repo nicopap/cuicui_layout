@@ -43,7 +43,7 @@ fn bevy_log_plugin() -> LogPlugin {
         level: bevy::log::Level::TRACE,
         filter: "\
           cuicui_layout=info,cuicui_layout_bevy_ui=info,\
-          cuicui_chirp=debug,\
+          cuicui_chirp=trace,\
           gilrs_core=info,gilrs=info,\
           naga=info,wgpu=error,wgpu_hal=error,\
           bevy_app=info,bevy_render::render_resource::pipeline_cache=info,\

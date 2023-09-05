@@ -78,7 +78,7 @@ impl ReflectDslDeserError {
         match self {
             Self::BadReflect(_) | Self::NotRegistered(_) => None,
             Self::RonDeser(ron, _) => {
-                (ron.position.line == 0).then(|| u32::try_from(ron.position.col).unwrap())
+                (ron.position.line <= 1).then(|| u32::try_from(ron.position.col).unwrap())
             }
         }
     }
