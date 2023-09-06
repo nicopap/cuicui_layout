@@ -91,7 +91,7 @@ Colors {
 ## `cuicui_dsl`: Remove the `IntoEntityCommands` trait
 
 Now that dsl declarations MUST spawn a single entity, the `cmds` argument
-should be a `&mut EntityCommands`. The components of the root entity will
+can only be a `&mut EntityCommands`. The components of the root entity will
 be added to the entity of the `EntityCommands`.
 
 ## `cuicui_chirp`: Add `use` and `fn` statements

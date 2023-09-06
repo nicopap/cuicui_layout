@@ -37,7 +37,7 @@ pub use anyhow;
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use load_asset::LoadAsset;
-pub use loader::spawn::{Chirp, ChirpState};
+pub use loader::{Chirp, ChirpBundle, ChirpState};
 pub use parse_dsl::ParseDsl;
 pub use reflect::ReflectDsl;
 
@@ -98,12 +98,13 @@ impl<'a> ChirpReader<'a> {
         load_context: Option<&mut LoadContext>,
         registry: &TypeRegistry,
         input: &[u8],
-    ) -> Result<(), interpret::Errors> {
+    ) -> Result<Entity, interpret::Errors> {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
         let mut cmds = cmds.spawn_empty();
+        let id = cmds.id();
         let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
-        let result = interpreter.interpret(input);
+        let result = interpreter.interpret(input).map(|_| id);
         if result.is_ok() {
             state.apply(self.world);
         }

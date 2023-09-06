@@ -39,15 +39,19 @@ use bevy::log::{error, info};
 use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
 use bevy::scene::scene_spawner_system;
 use bevy::transform::TransformSystem;
+use bevy::ui::UiSystem;
 use bevy::utils::get_short_name;
 use thiserror::Error;
 
 use crate::{Handles, ParseDsl};
-use spawn::{Chirp, ChirpState};
 
-pub use spawn::InsertRoot;
+pub use spawn::{Chirp, ChirpState};
 
 mod internal;
+#[allow(unused)]
+mod print_hierarchy;
+// mod remove_ids;
+mod scene;
 pub(super) mod spawn;
 
 /// Occurs when failing update the global chirp function registry [`WorldHandles`]
@@ -61,6 +65,22 @@ pub enum AddError {
     Poisoned(String),
     #[error("Failed to set function '{0}' in chirp handle registry: Lock already taken")]
     WouldBlock(String),
+}
+
+/// Components necessary to load chirp files.
+#[derive(Bundle)]
+pub struct ChirpBundle {
+    /// The load state of the chirp file.
+    pub state: ChirpState,
+    /// The chirp scene.
+    pub scene: Handle<Chirp>,
+}
+impl ChirpBundle {
+    /// Load a new chirp scene.
+    #[must_use]
+    pub fn new(scene: Handle<Chirp>) -> Self {
+        ChirpBundle { state: ChirpState::Loading, scene }
+    }
 }
 
 /// Global [`ChirpLoader`] handle registry. Used in the `code` statements of the
@@ -163,17 +183,20 @@ impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
         // TODO(perf): Run-condition to avoid useless apply_deferred
         let chirp_asset_systems = (
             spawn::update_asset_changed,
-            spawn::update_marked,
-            apply_deferred,
-            spawn::consume_seeds,
-            apply_deferred,
+            spawn::manage_chirp_state,
+            spawn::spawn_chirps::<D>,
+            // print_hierarchy::show_spawned,
         )
             .chain()
             .after(scene_spawner_system);
 
         app.add_systems(
             PostUpdate,
-            chirp_asset_systems.before(TransformSystem::TransformPropagate),
+            chirp_asset_systems
+                .before(TransformSystem::TransformPropagate)
+                .before(UiSystem::Layout)
+                .before(UiSystem::Focus)
+                .before(UiSystem::Stack),
         );
         app.add_asset::<Chirp>()
             .register_type::<ChirpState>()

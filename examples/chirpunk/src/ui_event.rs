@@ -251,7 +251,7 @@ fn switch_swatch(
     swatch_targets: Query<&SwatchTarget>,
 ) {
     for ev in nav_events.iter() {
-        info!("event: {ev:?}");
+        debug!("event: {ev:?}");
         let NavEvent::FocusChanged { to, .. } = ev else {
             continue;
         };

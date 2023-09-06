@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use bevy::log::LogPlugin;
 use bevy::{asset::ChangeWatcher, prelude::*};
-use cuicui_chirp::Chirp;
+use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 
 use animate::button_shift;
@@ -44,6 +44,7 @@ fn bevy_log_plugin() -> LogPlugin {
         filter: "\
           cuicui_layout=info,cuicui_layout_bevy_ui=info,\
           cuicui_chirp=trace,\
+          cuicui_chirp::interpret=info,\
           gilrs_core=info,gilrs=info,\
           naga=info,wgpu=error,wgpu_hal=error,\
           bevy_app=info,bevy_render::render_resource::pipeline_cache=info,\
@@ -78,18 +79,17 @@ fn main() {
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     use ui_event::SwatchMarker::Root;
 
+    let node = || (Style::default(), Node::default(), SpatialBundle::default());
+    let chirp = ChirpBundle::new;
+    let root_name = Name::new("Root swatch");
+
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
 
     // TODO(feat): This is a workaround not having single-chirp-entity &
     // not being able to refer to other chirp files within chirp files.
     // This is so bad, it makes me angry.
-    cmds.spawn((Root, SwatchBuilder::new(), NodeBundle::default())).with_children(|cmds| {
-        let mut spawn_menu = |file: &str| {
-            cmds.spawn(NodeBundle::default()).with_children(|cmds| {
-                cmds.spawn((NodeBundle::default(), assets.load::<Chirp, _>(file)));
-            });
-        };
-        spawn_menu("menus/main.chirp");
-        spawn_menu("menus/settings.chirp");
+    cmds.spawn((Root, SwatchBuilder::new(), node(), root_name)).with_children(|cmds| {
+        cmds.spawn((node(), chirp(assets.load("menus/main.chirp"))));
+        cmds.spawn((node(), chirp(assets.load("menus/settings.chirp"))));
     });
 }
