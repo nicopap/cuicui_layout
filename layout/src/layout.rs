@@ -10,14 +10,12 @@ use bevy::prelude::{Reflect, ReflectComponent};
 use bevy::utils::FloatOrd;
 use thiserror::Error;
 
+use crate::alignment::{Alignment, Distribution};
+use crate::direction::{Flow, Oriented, Size};
+use crate::error::{self, Computed, Handle, Relative};
+
 const WIDTH: Flow = Flow::Horizontal;
 const HEIGHT: Flow = Flow::Vertical;
-
-use crate::{
-    alignment::{Alignment, CrossAlign, Distribution},
-    direction::{Flow, Oriented, Size},
-    error::{self, Computed, Handle, Relative},
-};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -200,8 +198,8 @@ impl Container {
     #[must_use]
     pub const fn new(flow: Flow, align: Alignment, distrib: Distribution) -> Self {
         let main = match distrib {
-            Distribution::FillMain | Distribution::End => Rule::Parent(1.),
             Distribution::Start => Rule::Children(1.),
+            _ => Rule::Parent(1.),
         };
         let rules = flow.absolute(Oriented::new(main, Rule::Children(1.)));
         let margin = Size::ZERO;
@@ -587,29 +585,25 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         self.this = this_entity;
 
         let size = flow.relative(computed_size).with_children(child_size);
-        self.validate_size(children, flow, child_size, size)?;
-
-        let single_child = children_count == 1;
-        let count = children_count.saturating_sub(1).max(1) as f32;
-        let (main_offset, space_between) = match distrib {
-            Distribution::FillMain if single_child => ((size.main - child_size.main) / 2., 0.),
-            Distribution::FillMain => (0., (size.main - child_size.main) / count),
-            Distribution::Start => (0., 0.),
-            Distribution::End => (size.main - child_size.main, 0.),
-        };
-
-        let margin = flow.relative(margin);
-        let mut offset = Oriented::new(main_offset + margin.main, 0.);
+        // TODO(BUG): Warn on cross max exceeds & children dependence
+        if !distrib.overlaps() {
+            self.validate_size(children, flow, child_size, size)?;
+        }
 
         trace!("Setting offsets of children of {}", Handle::of(self));
-        let cross_align = CrossAlign::new(size, align);
+        let single_child = children_count == 1;
+        let count = children_count.saturating_sub(1).max(1) as f32;
+        let cross_align = align.compute(size);
+        let mut main_align = distrib.compute(size.main, child_size.main, single_child, count);
         let mut iter = self.to_update.iter_many_mut(children);
         while let Some(mut space) = iter.fetch_next() {
             let child_size = flow.relative(space.size);
 
-            offset.cross = cross_align.offset(child_size.cross) + margin.cross;
-            space.pos = flow.absolute(offset);
-            offset.main += child_size.main + space_between;
+            let offset = Oriented::new(
+                main_align.offset(child_size.main),
+                cross_align.offset(child_size.cross),
+            );
+            space.pos = flow.absolute(offset) + margin;
         }
         Ok(flow.absolute(size))
     }

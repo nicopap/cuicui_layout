@@ -1,5 +1,5 @@
 //! Structs to help convert between a relative and absolute direction.
-use std::{fmt, str::FromStr};
+use std::{fmt, ops, str::FromStr};
 
 #[cfg(feature = "reflect")]
 use bevy::prelude::Reflect;
@@ -61,6 +61,15 @@ impl Flow {
 impl Size<f32> {
     /// A `Size<f32>` with 0 width and 0 height.
     pub const ZERO: Self = Size { width: 0., height: 0. };
+}
+impl ops::Add for Size<f32> {
+    type Output = Self;
+    fn add(self, other: Self) -> Self {
+        Self {
+            width: self.width + other.width,
+            height: self.height + other.height,
+        }
+    }
 }
 
 impl<T> Size<T> {
