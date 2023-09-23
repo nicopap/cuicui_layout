@@ -8,7 +8,7 @@ use cuicui_layout::dsl_functions::{child, pct};
 use cuicui_layout_bevy_ui::UiDsl;
 
 use crate::animate::{bloom, main_menu_bg::Animation as BgAnimation};
-use crate::show_menus::SwatchBuilder;
+use crate::show_menus::Swatch;
 use crate::style;
 use crate::ui_event::{QuitGame, SwatchMarker, SwatchTarget};
 use element::{Element as DslElement, SettingsOption};
@@ -147,13 +147,6 @@ impl BevypunkDsl {
         self.style = Some(style);
     }
 
-    /// Set a node to fill entirely its parent. Useful for the main menu
-    /// animation effects.
-    fn full_screen(&mut self) {
-        self.layout(">dSaS");
-        self.rules(pct(100), pct(100));
-    }
-
     //
     // crate::show_menu methods
     //
@@ -213,7 +206,7 @@ impl DslBundle for BevypunkDsl {
             cmds.insert(swatch_target);
         }
         if let Some(swatch_name) = self.swatch_name {
-            cmds.insert((swatch_name, SwatchBuilder::new()));
+            cmds.insert((swatch_name, Swatch::new()));
         }
         if let Some(bloom) = self.bloom.take() {
             cmds.insert(bloom);

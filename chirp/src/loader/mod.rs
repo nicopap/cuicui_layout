@@ -39,7 +39,6 @@ use bevy::log::{error, info};
 use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
 use bevy::scene::scene_spawner_system;
 use bevy::transform::TransformSystem;
-use bevy::ui::UiSystem;
 use bevy::utils::get_short_name;
 use thiserror::Error;
 
@@ -48,8 +47,8 @@ use crate::{Handles, ParseDsl};
 pub use spawn::{Chirp, ChirpState};
 
 mod internal;
-#[allow(unused)]
-mod print_hierarchy;
+#[cfg(feature = "debug")]
+pub mod print_hierarchy;
 // mod remove_ids;
 mod scene;
 pub(super) mod spawn;
@@ -190,14 +189,13 @@ impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
             .chain()
             .after(scene_spawner_system);
 
-        app.add_systems(
-            PostUpdate,
-            chirp_asset_systems
-                .before(TransformSystem::TransformPropagate)
-                .before(UiSystem::Layout)
-                .before(UiSystem::Focus)
-                .before(UiSystem::Stack),
-        );
+        let chirp_asset_systems = chirp_asset_systems.before(TransformSystem::TransformPropagate);
+        #[cfg(feature = "bevy/bevy_ui")]
+        let chirp_asset_systems = chirp_asset_systems
+            .before(bevy::ui::UiSystem::Layout)
+            .before(bevy::ui::UiSystem::Focus)
+            .before(bevy::ui::UiSystem::Stack);
+        app.add_systems(PostUpdate, chirp_asset_systems);
         app.add_asset::<Chirp>()
             .register_type::<ChirpState>()
             .init_asset_loader::<ChirpLoader<D>>();

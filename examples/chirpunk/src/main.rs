@@ -9,7 +9,7 @@ use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 
 use animate::button_shift;
-use show_menus::SwatchBuilder;
+use show_menus::Swatch;
 use ui_offset::UiOffset;
 
 /// Animate stuff.
@@ -88,7 +88,7 @@ fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     // TODO(feat): This is a workaround not having single-chirp-entity &
     // not being able to refer to other chirp files within chirp files.
     // This is so bad, it makes me angry.
-    cmds.spawn((Root, SwatchBuilder::new(), node(), root_name)).with_children(|cmds| {
+    cmds.spawn((Root, Swatch::new(), node(), root_name)).with_children(|cmds| {
         cmds.spawn((node(), chirp(assets.load("menus/main.chirp"))));
         cmds.spawn((node(), chirp(assets.load("menus/settings.chirp"))));
     });

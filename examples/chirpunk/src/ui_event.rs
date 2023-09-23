@@ -202,7 +202,7 @@ fn update_swatches(
 fn enable_swatch(
     target_path: &[Entity],
     swatches: &Swatches,
-    swatches_query: &mut Query<Swatch>,
+    swatches_query: &mut Query<&mut Swatch>,
     swatch_targets: &Query<&SwatchTarget>,
 ) {
     use SwatchTarget::{Display, Root, Settings, Sound, Tab3, Tab4};
@@ -236,7 +236,7 @@ fn quit_game_button(
     quit_buttons: Query<(), With<QuitGame>>,
     mut quit_events: EventWriter<AppExit>,
 ) {
-    for cancel in nav_events.nav_iter().with_request(NavRequest::Cancel) {
+    for cancel in nav_events.nav_iter().with_request(NavRequest::Action) {
         if quit_buttons.contains(cancel) {
             info!("QUIT GAME button has been pressed / GAME WILL BE ENDED");
             quit_events.send(AppExit);
@@ -247,7 +247,7 @@ fn quit_game_button(
 fn switch_swatch(
     mut nav_events: EventReader<NavEvent>,
     swatches: Res<Swatches>,
-    mut swatches_query: Query<Swatch>,
+    mut swatches_query: Query<&mut Swatch>,
     swatch_targets: Query<&SwatchTarget>,
 ) {
     for ev in nav_events.iter() {

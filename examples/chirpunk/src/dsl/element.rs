@@ -96,6 +96,7 @@ fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) 
     };
     let default_choice_text = options.default_text();
     let choice_count = options.choices();
+    let fix_bundle = || (Style::default(), Node::default(), SpatialBundle::default());
 
     dsl! { <BevypunkDsl> cmds,
         SettingsRow(rules(pct(100), child(1.)) row style(OptionRow)) {
@@ -106,7 +107,7 @@ fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) 
                     BoxSelectedText(style(OptionBoxChoice) text(&default_choice_text))
                     BoxTicks(row rules(child(1.3), child(1.))) {
                         code(let cmds) {
-                            cmds.with_children(|cmds| {
+                            cmds.insert(fix_bundle()).with_children(|cmds| {
                             for _ in 0..choice_count {
                                 let max_size = u16::try_from(350 / choice_count).unwrap();
                                 let size = 20_u16.min(max_size);

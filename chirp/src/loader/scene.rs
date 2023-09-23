@@ -2,9 +2,7 @@
 //! a root entity in the target world.
 
 use std::any;
-use std::collections::BTreeSet;
 
-use bevy::ecs::component::ComponentId;
 use bevy::ecs::prelude::*;
 use bevy::ecs::{entity::EntityMap, query::QuerySingleError, reflect::ReflectMapEntities};
 use bevy::log::{info, trace, warn};
@@ -29,7 +27,6 @@ pub enum Error {
 #[component(storage = "SparseSet")]
 pub(super) struct ChirpInstance {
     pub(super) map: EntityMap,
-    pub(super) root_reserved: Box<[ComponentId]>,
 }
 impl ChirpInstance {
     pub(super) fn despawn_scene(&self, root: Entity, cmds: &mut Commands<'_, '_>) {
@@ -37,10 +34,6 @@ impl ChirpInstance {
             cmds.entity(e).despawn();
         }
     }
-}
-
-fn components(entity: Entity, world: &World) -> BTreeSet<ComponentId> {
-    world.entity(entity).archetype().components().collect()
 }
 
 // 1. Track which components the target root has
@@ -112,9 +105,7 @@ pub(super) fn insert_on<D>(
     let source = &mut source_scene.world;
     unstash_components(reg, target, source, target_root, stash);
 
-    // TODO(BUG)
-    let root_reserved = Vec::new().into();
-    Ok(ChirpInstance { map: entity_map, root_reserved })
+    Ok(ChirpInstance { map: entity_map })
 }
 fn copy_components(
     reg: &TypeRegistry,

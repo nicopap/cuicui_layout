@@ -20,6 +20,7 @@ trace_parser = ["winnow/debug"]
 trace_lexer = []
 load_font = ["bevy/bevy_text"]
 load_image = ["bevy/bevy_render"]
+debug = ["bevy/bevy_ui", "bevy/bevy_render"]
 
 [dependencies]
 anyhow.workspace = true
