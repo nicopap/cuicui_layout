@@ -1,6 +1,6 @@
 use bevy::math::Vec2Swizzles;
 use bevy::prelude::{BVec2, Color, Gizmos, GlobalTransform, Vec2};
-use bevy::utils::HashSet;
+use bevy::utils::HashMap;
 
 use super::{CameraQuery, RuleArrow};
 use crate::debug::CHEVRON_RATIO;
@@ -24,34 +24,57 @@ fn rect_border_axis(rect: LayoutRect, margin: Size<f32>) -> (f32, f32, f32, f32)
     (pos.x, offset.x, pos.y, offset.y)
 }
 
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
+enum Dir {
+    Start,
+    End,
+}
+impl Dir {
+    fn increments(self) -> i64 {
+        match self {
+            Dir::Start => 1,
+            Dir::End => -1,
+        }
+    }
+}
+impl From<i64> for Dir {
+    fn from(value: i64) -> Self {
+        if value.is_positive() {
+            Dir::Start
+        } else {
+            Dir::End
+        }
+    }
+}
 /// Collection of axis aligned "lines" (actually just their coordinate on
 /// a given axis).
 #[derive(Debug, Clone)]
 struct DrawnLines {
-    lines: HashSet<i64>,
+    lines: HashMap<i64, Dir>,
     width: f32,
 }
 #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
 impl DrawnLines {
     fn new(width: f32) -> Self {
-        DrawnLines { lines: HashSet::new(), width }
+        DrawnLines { lines: HashMap::new(), width }
     }
     /// Return `value` offset by as many `increment`s as necessary to make it
     /// not overlap with already drawn lines.
-    fn inset(&self, value: f32, increment: i64) -> f32 {
+    fn inset(&self, value: f32) -> f32 {
         let scaled = value / self.width;
         let fract = scaled.fract();
         let mut on_grid = scaled.floor() as i64;
-        loop {
-            if !self.lines.contains(&on_grid) {
-                return ((on_grid as f32) + fract) * self.width;
-            }
+        for _ in 0..10 {
+            let Some(dir) = self.lines.get(&on_grid) else {
+                break;
+            };
             // TODO(clean): This fixes a panic, but I'm not sure how valid this is
-            let Some(added) = on_grid.checked_add(increment) else {
-                return ((on_grid as f32) + fract) * self.width;
+            let Some(added) = on_grid.checked_add(dir.increments()) else {
+                break;
             };
             on_grid = added;
         }
+        ((on_grid as f32) + fract) * self.width
     }
     /// Remove a line from the collection of drawn lines.
     ///
@@ -65,7 +88,7 @@ impl DrawnLines {
             let Some(next_cell) = on_grid.checked_add(increment) else {
                 return;
             };
-            if !self.lines.contains(&next_cell) {
+            if !self.lines.contains_key(&next_cell) {
                 self.lines.remove(&on_grid);
                 return;
             }
@@ -76,8 +99,8 @@ impl DrawnLines {
     fn add(&mut self, value: f32, increment: i64) {
         let mut on_grid = (value / self.width).floor() as i64;
         loop {
-            let did_not_exist = self.lines.insert(on_grid);
-            if did_not_exist {
+            let old_value = self.lines.insert(on_grid, increment.into());
+            if old_value.is_none() {
                 return;
             }
             // TODO(clean): This fixes a panic, but I'm not sure how valid this is
@@ -141,7 +164,14 @@ impl<'w, 's> InsetGizmo<'w, 's> {
         self.arrow(start1, end1, color, start1.distance(end1) * CHEVRON_RATIO);
         self.arrow(start2, end2, color, start2.distance(end2) * CHEVRON_RATIO);
     }
-    fn line_2d(&mut self, start: Vec2, end: Vec2, color: Color) {
+    fn line_2d(&mut self, mut start: Vec2, mut end: Vec2, color: Color) {
+        if start.x == end.x {
+            start.x = self.known_x.inset(start.x);
+            end.x = start.x;
+        } else if start.y == end.y {
+            start.y = self.known_y.inset(start.y);
+            end.y = start.y;
+        }
         let (start, end) = (self.relative(start), self.relative(end));
         self.draw.line_2d(start, end, color);
     }
@@ -163,23 +193,23 @@ impl<'w, 's> InsetGizmo<'w, 's> {
         let (left, right, top, bottom) = rect_border_axis(rect, margin);
         if left.is(right) {
             self.line_2d(Vec2::new(left, top), Vec2::new(left, bottom), color);
-        }
-        if top.is(bottom) {
+        } else if top.is(bottom) {
             self.line_2d(Vec2::new(left, top), Vec2::new(right, top), color);
+        } else {
+            let inset_x = |v| self.known_x.inset(v);
+            let inset_y = |v| self.known_y.inset(v);
+            let (left, right) = (inset_x(left), inset_x(right));
+            let (top, bottom) = (inset_y(top), inset_y(bottom));
+            let strip = [
+                Vec2::new(left, top),
+                Vec2::new(left, bottom),
+                Vec2::new(right, bottom),
+                Vec2::new(right, top),
+                Vec2::new(left, top),
+            ];
+            self.draw
+                .linestrip_2d(strip.map(|v| self.relative(v)), color);
         }
-        let inset_x = |v, incr| self.known_x.inset(v, incr);
-        let inset_y = |v, incr| self.known_y.inset(v, incr);
-        let (left, right) = (inset_x(left, 1), inset_x(right, -1));
-        let (top, bottom) = (inset_y(top, 1), inset_y(bottom, -1));
-        let strip = [
-            Vec2::new(left, top),
-            Vec2::new(left, bottom),
-            Vec2::new(right, bottom),
-            Vec2::new(right, top),
-            Vec2::new(left, top),
-        ];
-        self.draw
-            .linestrip_2d(strip.map(|v| self.relative(v)), color);
     }
     fn arrow(&mut self, start: Vec2, end: Vec2, color: Color, chevron_size: f32) {
         let Some(angle) = (end - start).try_normalize() else {
