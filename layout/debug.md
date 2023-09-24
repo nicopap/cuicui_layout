@@ -51,6 +51,7 @@
   - [ ] Outlines + rules + tooltips + text
 - [ ] Highlight nodes that causes a layouting error, and it's largest child
   - [ ] Use RED or a larger outline.
+- [X] Only show outline of nodes that have `ComputedVisibility::is_visible`.
 
 ```text
 The spec string in the form:

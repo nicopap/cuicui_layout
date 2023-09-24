@@ -103,6 +103,9 @@ pub struct Options {
     ///
     /// This is usually `false` if not using cuicui_layout with bevy_ui.
     pub screen_space: bool,
+    /// Display outline of layouts, even if they don't have a `ComputedVisibility`
+    /// component or are not visible.
+    pub show_hidden: bool,
     layout_gizmos_camera: Option<Entity>,
 }
 
@@ -205,7 +208,12 @@ fn outline_nodes(
     let Ok(to_iter) = outline.children.get(this_entity) else {
         return;
     };
-    for (entity, node, child) in outline.nodes.iter_many(to_iter) {
+    for (entity, node, child, vis) in outline.nodes.iter_many(to_iter) {
+        let show_hidden = outline.options.show_hidden;
+        let is_visible = ComputedVisibility::is_visible;
+        if !(show_hidden || vis.is_some_and(is_visible)) {
+            continue;
+        }
         let rules = node_rules(flow, node);
         let margin = node_margin(node);
         let mut rect = *child;
@@ -221,12 +229,19 @@ fn outline_nodes(
         }
     }
 }
+
+type OutlineParamQuery = (
+    Entity,
+    &'static Node,
+    &'static LayoutRect,
+    Option<&'static ComputedVisibility>,
+);
 #[derive(SystemParam)]
 struct OutlineParam<'w, 's> {
     gizmo_config: Res<'w, GizmoConfig>,
     options: Res<'w, Options>,
     children: Query<'w, 's, &'static Children>,
-    nodes: Query<'w, 's, (Entity, &'static Node, &'static LayoutRect)>,
+    nodes: Query<'w, 's, OutlineParamQuery>,
 }
 impl OutlineParam<'_, '_> {
     fn flags(&self) -> EnumSet<Flag> {

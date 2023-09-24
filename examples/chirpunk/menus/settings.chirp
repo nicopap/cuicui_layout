@@ -14,8 +14,8 @@ SettingsMenu(
     Header(row width(100%) height(10%) main_margin(50)) {
         Entity(column rules(100%, 100%)) {
             TabButtons(row rules(100%, 99%)) {
-                RETURN(cancel text("RETURN") width(20%) style(BackText))
-                TabBar(row width(80%) main_margin(100)) {
+                RETURN(cancel text("RETURN") width(19.9%) style(BackText))
+                TabBar(row width(79.9%) main_margin(100)) {
                     DISPLAY(row swatch_target(Display) prioritized tab_button)
                     "SOUND"(row swatch_target(Sound) tab_button)
                     "TAB 3"(row swatch_target(Tab3) tab_button)
@@ -30,7 +30,7 @@ SettingsMenu(
     // Here, the `swatch_name` method inserts a SwatchBuilder component that
     // triggers the behaviors implemented by show_menus::Plugin
     AllTabs(layout(">oSaS") main_margin(130) cross_margin(50) swatch_name(SettingsSubmenu) rules(100%, 90%)) {
-        DisplayMenu(column menu("DISPLAY") rules(90%, 90%) layout("vdSaC")) {
+        DisplayMenu(column menu("DISPLAY") rules(100%, 100%) layout("vdSaC")) {
             Display(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
             "Window mode"(options(Choice(["Windowed","Borderless"])) row rules(100%,1*) settings_row)
@@ -43,7 +43,7 @@ SettingsMenu(
             Spacer(height(20px))
             "Profiler Overlay"(options(Toggle) row rules(100%,1*) settings_row)
         }
-        SoundMenu(column menu("SOUND") rules(90%, 90%) layout("vdSaC")) {
+        SoundMenu(column menu("SOUND") rules(100%, 100%) layout("vdSaC")) {
             "Audio Settings"(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
             // column("SoundItems", rules(100%, 90%), cross_margin 80)
@@ -55,14 +55,14 @@ SettingsMenu(
             Spacer(height(20px))
             "Music volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
         }
-        Tab3Menu(column menu("TAB 3") rules(90%, 90%) layout("vdSaC")) {
+        Tab3Menu(column menu("TAB 3") rules(100%, 100%) layout("vdSaC")) {
             "Tab 3"(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
             "Sound effect 1"(options(Click) row rules(100%, 1*) settings_row)
             Spacer(height(20px))
             "Sound effect 2"(options(Click) row rules(100%, 1*) settings_row)
         }
-        Tab4Menu(column menu("TAB 4") rules(90%, 90%) layout("vdSaC")) {
+        Tab4Menu(column menu("TAB 4") rules(100%, 100%) layout("vdSaC")) {
             "Tab 4"(settings_header row width(100%) main_margin(40) distrib_start)
             Spacer(height(40px))
             "Fine grained clicking"(options(Increments(30)) row rules(100%, 1*) settings_row)

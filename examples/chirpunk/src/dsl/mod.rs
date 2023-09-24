@@ -90,7 +90,7 @@ impl fmt::Debug for Arbitrary {
 #[derive(Deref, DerefMut, Default, Debug)]
 pub struct BevypunkDsl {
     #[deref]
-    inner: UiDsl,
+    inner: Box<UiDsl>,
     element: DslElement,
     style: Option<style::Element>,
     settings_option: Option<Box<SettingsOption>>,
@@ -193,6 +193,7 @@ impl BevypunkDsl {
         self.nav.set_prioritized();
     }
     #[parse_dsl(ignore)]
+    #[allow(unused)]
     fn arbitrary(&mut self, bundle: impl Bundle) {
         self.arbitrary.0.push(Box::new(move |cmds| {
             cmds.insert(bundle);
