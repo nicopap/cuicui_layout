@@ -29,8 +29,10 @@ use bevy::ecs::prelude::*;
 
 pub use alignment::{Alignment, Distribution};
 pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};
+#[cfg(feature = "dsl")]
 pub use cuicui_dsl::{dsl, DslBundle};
 pub use direction::{Flow, Oriented, Size};
+#[cfg(feature = "dsl")]
 pub use dsl::LayoutDsl;
 pub use error::ComputeLayoutError;
 pub use labels::{
@@ -53,9 +55,11 @@ mod systems;
 pub mod bundles;
 #[cfg(feature = "debug")]
 pub mod debug;
+#[cfg(feature = "dsl")]
 pub mod dsl;
 
 /// Functions to simplify using [`dsl::LayoutDsl`].
+#[cfg(feature = "dsl")]
 pub mod dsl_functions {
     pub use crate::dsl::{child, pct, px};
 }

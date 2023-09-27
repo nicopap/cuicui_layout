@@ -1,15 +1,13 @@
 //! Bundles wrapping [`bevy::sprite`] bundles with additional [`cuicui_layout`]
 //! components.
-use bevy::asset::{Handle, LoadContext};
+use bevy::asset::Handle;
 use bevy::ecs::{prelude::*, system::EntityCommands};
 use bevy::prelude::{Deref, DerefMut};
-use bevy::reflect::TypeRegistryInternal as Registry;
 use bevy::render::prelude::*;
 use bevy::sprite;
 #[cfg(feature = "sprite_text")]
 use bevy::text::prelude::*;
 use bevy::utils::default;
-use css_color::Srgb;
 use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;
 use thiserror::Error;
@@ -109,11 +107,13 @@ impl IntoUiBundle<SpriteDsl> for TextBundle {
 )]
 pub struct ParseColorError(String);
 
+#[cfg(feature = "chirp")]
 fn parse_color(
-    _: &Registry,
-    _: Option<&mut LoadContext>,
+    _: &bevy::reflect::TypeRegistryInternal,
+    _: Option<&mut bevy::asset::LoadContext>,
     input: &str,
 ) -> Result<Color, ParseColorError> {
+    use css_color::Srgb;
     let err = |_| ParseColorError(input.to_string());
     let Srgb { red, green, blue, alpha } = input.parse::<Srgb>().map_err(err)?;
     Ok(Color::rgba(red, green, blue, alpha))
@@ -127,7 +127,10 @@ pub struct SpriteDsl<D = cuicui_layout::dsl::LayoutDsl> {
     bg_color: Option<Color>,
     bg_image: Option<Handle<Image>>,
 }
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color))]
+#[cfg_attr(
+    feature = "chirp",
+    cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color)),
+)]
 impl<D> SpriteDsl<D> {
     /// Set the node's background color.
     pub fn bg(&mut self, color: Color) {

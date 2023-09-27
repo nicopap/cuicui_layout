@@ -294,8 +294,12 @@ This repository contains several crates:
   instead.
 - `cuicui_layout/debug` (**off** by default): An overlay showing layout outlines & the rule type used
   by nodes. See [debug.md] for a detailed feature list.
+- `cuicui_layout/chirp` (on by default): Add `ParseDsl` (chirp file format) implementation for `LayoutDsl`.
+- `cuicui_layout/dsl` (on by default): Add `DslBundle` (`dsl!` macro) implementation for `LayoutDsl`.
 - `cuicui_layout/reflect` (on by default): Derive `bevy_reflect` traits for cuicui_layout
   types & register them.
+- `cuicui_layout_bevy_ui/chirp` (on by default): Add `ParseDsl` (chirp file format) implementation for `UiDsl`.
+- `cuicui_layout_bevy_sprite/chirp` (on by default): Add `ParseDsl` (chirp file format) implementation for `SpriteDsl`.
 - `cuicui_layout_bevy_sprite/sprite_text` (on by default): implement content-sized layout nodes
   for `Text2dBundle`.
 

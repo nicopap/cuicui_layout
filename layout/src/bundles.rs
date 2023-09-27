@@ -2,7 +2,48 @@
 
 use bevy::prelude::{default, Bundle};
 
-use crate::{dsl, Container, LayoutRect, LeafRule, Node, Root, ScreenRoot, Size};
+use crate::{Alignment, Distribution, Oriented, Size};
+use crate::{Container, Flow, LayoutRect, LeafRule, Node, Root, Rule, ScreenRoot};
+
+/// Layout information.
+#[derive(Debug, Clone, Copy)]
+pub struct Layout {
+    /// [`Flow`] direction.
+    pub flow: Flow,
+    /// Default to [`Alignment::Center`].
+    pub align: Alignment,
+    /// Default to [`Distribution::FillMain`].
+    pub distrib: Distribution,
+    /// The [margin](Container::margin) size.
+    pub margin: Oriented<f32>,
+    /// The inner size, defaults to [`Rule::Children(1.5)`].
+    pub size: Size<Option<Rule>>,
+}
+impl Default for Layout {
+    fn default() -> Self {
+        Layout {
+            align: Alignment::Center,
+            distrib: Distribution::FillMain,
+            margin: Oriented::default(),
+            size: Size::all(None),
+            flow: Flow::Horizontal,
+        }
+    }
+}
+
+impl Layout {
+    /// Get the `Layout` as a [`Container`], useful with [`LayoutBundle::node`].
+    #[must_use]
+    pub fn container(&self) -> Container {
+        Container {
+            flow: self.flow,
+            align: self.align,
+            distrib: self.distrib,
+            rules: self.size.map(|r| r.unwrap_or(Rule::Children(1.5))),
+            margin: self.flow.absolute(self.margin),
+        }
+    }
+}
 
 /// A [`Root`] container node, it will always span the entire screen.
 #[derive(Bundle, Default)]
@@ -17,9 +58,9 @@ pub struct RootBundle {
     pub screen_root: ScreenRoot,
 }
 impl RootBundle {
-    /// Create a [`RootBundle`] based on given [`dsl::Layout`].
+    /// Create a [`RootBundle`] based on given [`Layout`].
     #[must_use]
-    pub fn new(dsl::Layout { align, distrib, margin, flow, .. }: dsl::Layout) -> Self {
+    pub fn new(Layout { align, distrib, margin, flow, .. }: Layout) -> Self {
         let size = Size::all(f32::MAX);
         RootBundle {
             pos_rect: default(),

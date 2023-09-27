@@ -476,6 +476,7 @@ impl FromStr for Rule {
 }
 
 impl LeafRule {
+    #[cfg(feature = "dsl")]
     pub(crate) const fn from_rule(rule: Option<Rule>) -> Self {
         match rule {
             // TODO(err)

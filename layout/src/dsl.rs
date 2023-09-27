@@ -6,10 +6,10 @@ use bevy::log::error;
 use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
-use crate::bundles::{LayoutBundle, RootBundle};
-use crate::{Alignment, Container, Distribution, Flow, LeafRule, Node, Oriented, Rule, Size};
+use crate::bundles::{Layout, LayoutBundle, RootBundle};
+use crate::{Alignment, Distribution, Flow, LeafRule, Node, Oriented, Rule};
 #[cfg(doc)]
-use crate::{Root, ScreenRoot};
+use crate::{Container, Root, ScreenRoot};
 
 /// Something that can be converted into a bevy [`Bundle`].
 ///
@@ -69,46 +69,6 @@ impl IntoUiBundle<()> for () {
     fn into_ui_bundle(self) {}
 }
 
-/// Metadata internal to [`LayoutDsl`] to manage the state of things it
-/// should be spawning.
-#[derive(Debug, Clone, Copy)]
-pub struct Layout {
-    /// [`Flow`] direction.
-    pub flow: Flow,
-    /// Default to [`Alignment::Center`].
-    pub align: Alignment,
-    /// Default to [`Distribution::FillMain`].
-    pub distrib: Distribution,
-    /// The [margin](Container::margin) size.
-    pub margin: Oriented<f32>,
-    /// The inner size, defaults to [`Rule::Children(1.5)`].
-    pub size: Size<Option<Rule>>,
-}
-
-impl Default for Layout {
-    fn default() -> Self {
-        Layout {
-            align: Alignment::Center,
-            distrib: Distribution::FillMain,
-            margin: Oriented::default(),
-            size: Size::all(None),
-            flow: Flow::Horizontal,
-        }
-    }
-}
-
-impl Layout {
-    fn container(&self) -> Container {
-        Container {
-            flow: self.flow,
-            align: self.align,
-            distrib: self.distrib,
-            rules: self.size.map(|r| r.unwrap_or(Rule::Children(1.5))),
-            margin: self.flow.absolute(self.margin),
-        }
-    }
-}
-
 #[derive(Default, Debug)]
 enum RootKind {
     ScreenRoot,
@@ -156,10 +116,13 @@ impl<D: fmt::Debug> fmt::Debug for LayoutDsl<D> {
     }
 }
 
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Rule = args::from_str))]
+#[cfg_attr(
+    feature = "chirp",
+    cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Rule = args::from_str))
+)]
 impl<D: DslBundle> LayoutDsl<D> {
     /// Set the flow direction of a container node.
-    #[parse_dsl(ignore)] // TODO(feat): When the reflect feature is disable, this doesn't compile.
+    #[cfg_attr(feature = "chirp", parse_dsl(ignore))]
     pub fn flow(&mut self, flow: Flow) {
         self.set_flow = true;
         self.layout.flow = flow;
@@ -193,7 +156,6 @@ impl<D: DslBundle> LayoutDsl<D> {
         self.layout.distrib = Distribution::FillMain;
     }
 
-    // TODO(feat): be more lean on what we accept.
     /// Set properties based on the given `spec`.
     ///
     /// `spec` specifies the [flow][Self::flow], (d)istribution
@@ -201,8 +163,7 @@ impl<D: DslBundle> LayoutDsl<D> {
     ///
     /// legal values are: `S`tart, `E`nd or `C`enter.
     ///
-    /// # Panics
-    /// If the `spec` format is invalid.
+    /// An error is logged on illegal values.
     pub fn layout(&mut self, spec: &str) {
         let correct_len = spec.len() == 5;
         if !correct_len {
@@ -303,7 +264,7 @@ impl<D: DslBundle> LayoutDsl<D> {
     ///
     /// Note that axis without set rules or [`Rule::Children`]
     /// are considered [content-sized](crate::ComputeContentSize).
-    #[parse_dsl(ignore)] // TODO(feat): We definitively can lean on Reflect deserialization for this.
+    #[cfg_attr(feature = "chirp", parse_dsl(ignore))]
     pub fn ui<M>(&mut self, ui_bundle: impl IntoUiBundle<M>) {
         let ui_bundle = ui_bundle.into_ui_bundle();
         self.ui_bundle = Some(Box::new(move |cmds| {

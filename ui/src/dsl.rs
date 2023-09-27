@@ -3,18 +3,16 @@
 
 use std::num::NonZeroU16;
 
-use bevy::asset::{Handle, LoadContext};
+use bevy::asset::Handle;
 use bevy::ecs::{prelude::*, system::EntityCommands};
 use bevy::hierarchy::BuildChildren;
 use bevy::prelude::{Deref, DerefMut};
-use bevy::reflect::TypeRegistryInternal as Registry;
 use bevy::render::{color::Color, texture::Image};
 use bevy::text::{BreakLineOn, Font, Text, TextAlignment, TextSection, TextStyle};
 use bevy::ui::node_bundles as bevy_ui;
 use bevy::ui::widget::UiImageSize;
 use bevy::ui::{prelude::*, ContentSize};
 use bevy::utils::default;
-use css_color::Srgb;
 use cuicui_dsl::DslBundle;
 use cuicui_layout::dsl::IntoUiBundle;
 #[cfg(doc)]
@@ -131,11 +129,13 @@ impl IntoUiBundle<UiDsl> for TextBundle {
 )]
 pub struct ParseColorError(String);
 
+#[cfg(feature = "chirp")]
 fn parse_color(
-    _: &Registry,
-    _: Option<&mut LoadContext>,
+    _: &bevy::reflect::TypeRegistryInternal,
+    _: Option<&mut bevy::asset::LoadContext>,
     input: &str,
 ) -> Result<Color, ParseColorError> {
+    use css_color::Srgb;
     let err = |_| ParseColorError(input.to_string());
     let Srgb { red, green, blue, alpha } = input.parse::<Srgb>().map_err(err)?;
     Ok(Color::rgba(red, green, blue, alpha))
@@ -182,7 +182,10 @@ impl<D: Default> Default for UiDsl<D> {
         }
     }
 }
-#[cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color))]
+#[cfg_attr(
+    feature = "chirp",
+    cuicui_chirp::parse_dsl_impl(delegate = inner, type_parsers(Color = parse_color)),
+)]
 impl<D> UiDsl<D> {
     /// Set the node's border width, in pixels. Note that this is only visual and has
     /// no effect on the `cuicui_layout` algorithm.

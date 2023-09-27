@@ -11,24 +11,25 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["reflect"]
+default = ["reflect", "chirp", "dsl"]
 ## Enable debug overlay
 debug = ["bevy/bevy_gizmos", "bevy/bevy_render", "bevy/bevy_core_pipeline"]
 ## This is a workaround to NOT depend on bevy_ui for debug, yet
 ## supporting setups to draw on top of UI.
 debug_bevy_ui = ["bevy/bevy_ui"]
 reflect = []
-## Enable chirp ParseDsl implementation
-## Note that currently cuicui_layout doesn't compile without this feature.
-# chirp = ["cuicui_chirp"]
+## Enable chirp ParseDsl implementation for LayoutDsl
+chirp = ["cuicui_chirp"]
+## Enable dsl! DslBundle implementation for LayoutDsl
+dsl = ["cuicui_dsl"]
 
 [dependencies]
 anyhow.workspace = true
 bevy_mod_sysfail.workspace = true
 enumset.workspace = true
 thiserror.workspace = true
-cuicui_chirp = { version = "0.9.0", path = "../chirp" } # , optional = true }
-cuicui_dsl.workspace = true
+cuicui_chirp = { version = "0.9.0", path = "../chirp", optional = true, default-features = false, features = ["macros"]}
+cuicui_dsl = { version = "0.9.0", path = "../dsl", optional = true }
 bevy = { version = "0.11", default-features = false }
 
 [package.metadata.release]
