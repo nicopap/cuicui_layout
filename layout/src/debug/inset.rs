@@ -30,7 +30,7 @@ enum Dir {
     End,
 }
 impl Dir {
-    fn increments(self) -> i64 {
+    const fn increments(self) -> i64 {
         match self {
             Dir::Start => 1,
             Dir::End => -1,
@@ -165,10 +165,10 @@ impl<'w, 's> InsetGizmo<'w, 's> {
         self.arrow(start2, end2, color, start2.distance(end2) * CHEVRON_RATIO);
     }
     fn line_2d(&mut self, mut start: Vec2, mut end: Vec2, color: Color) {
-        if start.x == end.x {
+        if start.x.is(end.x) {
             start.x = self.known_x.inset(start.x);
             end.x = start.x;
-        } else if start.y == end.y {
+        } else if start.y.is(end.y) {
             start.y = self.known_y.inset(start.y);
             end.y = start.y;
         }
