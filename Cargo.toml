@@ -59,34 +59,18 @@ rust-hsluv = "0.1.4"
 #     https://github.com/bevyengine/bevy/pull/9621
 # bevy_sprite should just work. The following line is to quickly generate the lines
 # necessary to patch dependencies with a local version of bevy.
-[patch.crates-io]
-bevy-ui-navigation = { path = "../ui-navigation" }
-bevy = { path = "../../gitimpo/bevy" }
-bevy_app = { path = "../../gitimpo/bevy/crates/bevy_app" }
-bevy_asset = { path = "../../gitimpo/bevy/crates/bevy_asset" }
-bevy_core = { path = "../../gitimpo/bevy/crates/bevy_core" }
-bevy_ecs = { path = "../../gitimpo/bevy/crates/bevy_ecs" }
-bevy_hierarchy = { path = "../../gitimpo/bevy/crates/bevy_hierarchy" }
-bevy_log = { path = "../../gitimpo/bevy/crates/bevy_log" }
-bevy_math = { path = "../../gitimpo/bevy/crates/bevy_math" }
-bevy_reflect = { path = "../../gitimpo/bevy/crates/bevy_reflect" }
-bevy_utils = { path = "../../gitimpo/bevy/crates/bevy_utils" }
-bevy_window = { path = "../../gitimpo/bevy/crates/bevy_window" }
-bevy_mikktspace = { path = "../../gitimpo/bevy/crates/bevy_mikktspace" }
-bevy_transform = { path = "../../gitimpo/bevy/crates/bevy_transform" }
-bevy_render = { path = "../../gitimpo/bevy/crates/bevy_render" }
-bevy_time = { path = "../../gitimpo/bevy/crates/bevy_time" }
-bevy_core_pipeline = { path = "../../gitimpo/bevy/crates/bevy_core_pipeline" }
-bevy_pbr = { path = "../../gitimpo/bevy/crates/bevy_pbr" }
+# [patch.crates-io]
+# bevy = { git = "https://github.com/nicopap/bevy.git", branch = "v0.11.2-no-ui-panic" }
+#app|asset|core|ecs|hierarchy|log|math|reflect|utils|window|mikktspace|transform|render|time|core_pipeline|pbr|
 
 [workspace.metadata.release]
 dependent-version = "upgrade"
 
 # This is only to profile & analyze ASM output of the binary examples
 [profile.release]
-# codegen-units = 1
+codegen-units = 1
 opt-level = 3
-lto = false
+lto = "fat"
 split-debuginfo = "packed"
 debug = 1
 

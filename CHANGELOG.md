@@ -94,12 +94,12 @@ Now that dsl declarations MUST spawn a single entity, the `cmds` argument
 can only be a `&mut EntityCommands`. The components of the root entity will
 be added to the entity of the `EntityCommands`.
 
-## `cuicui_chirp`: Add `use` and `fn` statements
+## `cuicui_chirp`: Add `fn` statements
 
-It is now possible to define templates in `chirp` files. It is also possible
-to load external chirp files and spawn them in-line.
+It is now possible to define templates in `chirp` files.
 
-Use `fn` to define a template, use `use` to use them:
+Use `fn` to define a template. To use them, call them like you would call a
+rust macro (with a trailing `!`):
 
 ```ron
 fn my_template() {
@@ -114,11 +114,9 @@ fn template_with_arguments(fantasy_color) {
 }
 Palette {
     // Use a `fn` template
-    use my_template
-    // Just in-line another scene.
-    use "path/to/scene.chirp"
+    my_template!()
     // Use a `fn` template with arguments
-    use template_with_arguments(Color::PINK)
+    template_with_arguments!(Color::PINK)
 }
 ```
 
@@ -129,11 +127,11 @@ Currently only `fn` defined within the same file are recognized.
 With this distribution mode, all children start at the beginning of
 this container. They are not "distributed", they overlap.
 
-## Add `cuicui_layout::debug::Options::hide_invisible`
+## Add `cuicui_layout::debug::Options::show_hidden`
 
-Now `cuicui_layout`'s debug view do not draw outline of invisibile containers.
-To control this new behavior, toggle the `hide_invisible` field. It is `true`
-by default. Setting it to `false` will show the outline of hidden containers.
+Now `cuicui_layout`'s debug view do not draw outline of invisibile containers by default.
+To control this new behavior, toggle the `show_hidden` field. It is `false`
+by default. Setting it to `true` will show the outline of hidden containers.
 
 # 0.9.0
 

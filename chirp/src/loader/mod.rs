@@ -47,9 +47,6 @@ use crate::{Handles, ParseDsl};
 pub use spawn::{Chirp, ChirpState};
 
 mod internal;
-#[cfg(feature = "debug")]
-pub mod print_hierarchy;
-// mod remove_ids;
 mod scene;
 pub(super) mod spawn;
 

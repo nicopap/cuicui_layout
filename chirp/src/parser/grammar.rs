@@ -93,7 +93,6 @@ fn token_tree_impl<const SPLIT_COMMA: bool>(input: &mut Input<impl Itrp>) -> Voi
 #[inline(always)]
 fn method(input: &mut Input<impl Itrp>) -> VoidResult {
     let state = input.state.clone();
-    // let token_tree = (token_tree);
     let argument = delim(t::Lparen, many(token_tree), cut_err(t::Rparen));
     let ident = |i: &mut _| match opt(any).parse_next(i) {
         Ok(Some(Ident(ident))) => Ok(ident),

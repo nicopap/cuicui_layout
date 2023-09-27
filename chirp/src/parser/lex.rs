@@ -147,16 +147,6 @@ impl<'i, const Q: u8> Quoted<'i, Q> {
     }
 }
 
-// fn end_comment<const LANES: usize>(xs: [u8; LANES]) -> EndComment {
-//     let mid = usize::MAX / 2;
-//     let pos = xs.iter().fold(usize::MAX, |acc, x| match x {
-//         b'\n' if acc > mid => usize::MAX - acc,
-//         _ if acc > mid => acc - 1,
-//         _ => acc,
-//     });
-//     if pos < mid { EndComment::LineEnding(pos) } else { EndComment::None }
-// }
-
 #[derive(Clone, Copy)]
 struct Swar8(u64);
 impl Swar8 {

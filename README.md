@@ -27,7 +27,7 @@ A workaround will probably be provided in cuicui 0.10.
 ```rust
 use bevy::prelude::*;
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
-use cuicui_layout::{LayoutRootCamera, dsl, dsl_functions::{px, pct}};
+use cuicui_layout::{LayoutRootCamera, dsl, dsl_functions::{px, pct, child}};
 
 fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 
@@ -48,20 +48,25 @@ let button = serv.load("button.png");
 
 dsl! {
     &mut cmds.spawn_empty(),
-    Root(row screen_root main_margin(100.) distrib_start align_start image(&bg)) {
+    Root(layout(">dSaS") screen_root main_margin(100.) image(&bg)) {
         Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
             TitleCard(image(&title_card) width(pct(100)))
-            MiniTitleCard(ui(title_card) width(pct(50)))
+            TitleCard2(ui(title_card) width(pct(50)))
             code(let cmds) {
-                for n in &menu_buttons {
-                    let name = format!("{n} button");
-                    dsl!(cmds, Entity(ui(*n) named(name) image(&button) height(px(33))));
-                }
+                dsl!(cmds, Buttons(column height(child(2.)) width(pct(100))));
+                cmds.with_children(|cmds|{
+                    for n in &menu_buttons {
+                        let name = format!("{n} button");
+                        dsl!(
+                            &mut cmds.spawn_empty(),
+                            Entity(ui(*n) named(name) image(&button) height(px(33)))
+                        );
+                    }
+                });
             }
         }
     }
 };
-
 }
 ```
 
