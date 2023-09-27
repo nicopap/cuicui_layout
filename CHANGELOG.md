@@ -1,5 +1,11 @@
 # 0.10.0
 
+## Minor breaking changes:
+
+- `cuicui_chirp`: the `wraparg` module is now `parse_dsl::args`
+- `cuicui_chirp`: Removed `ChirpInstances`, now that the root entity is preserved,
+  you can directly interact with it instead of using a resource. f
+
 ## `cuicui_dsl` & `cuicui_chirp`: Major DSL syntax change
 
 The DSL syntax has gotten a lifting!
@@ -86,6 +92,63 @@ Colors {
     Green(row color(Color::BLUE))
     Blue(row color(Color::RED))
 }
+```
+
+## `cuicui_dsl`: Change in behavior of the `code` statements
+
+Now that statements require to be associated to a single entity, `code` statements
+are now much less powerful.
+
+Previously, you would write:
+
+```rust
+// OLD SYSTEM: does not work anymore
+dsl! {
+  &mut cmds.spawn_empty(),
+  Root(row screen_root main_margin(100.) distrib_start align_start image(&bg)) {
+    Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
+      TitleCard(image(&title_card) width(pct(100)))
+      MiniTitleCard(ui(title_card) width(pct(50)))
+      // This will only create a single button
+      code(let cmds) {
+        for n in &menu_buttons {
+          let name = format!("{n} button");
+          dsl!(cmds, Entity(ui(*n) named(name) image(&button) height(px(33))));
+        }
+      }
+    }
+  }
+};
+```
+
+Now, the `cmds` passed to `code` is always an empty `EntityCommands`, you must
+do with it, there isn't really way to reproduce some of the old behaviors. Here
+is how I solved it for `simple_menu`:
+
+```rust
+dsl! {
+  &mut cmds.spawn_empty(),
+  Root(layout(">dSaS") screen_root main_margin(100.) image(&bg)) {
+    Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
+      TitleCard(image(&title_card) width(pct(100)))
+      TitleCard2(ui(title_card) width(pct(50)))
+      code(let cmds) {
+        // Create a "Buttons" container and add the buttons as individual children
+        dsl!(cmds, Buttons(column height(child(2.)) width(pct(100))));
+        cmds.with_children(|cmds|{
+          for n in &menu_buttons {
+            let name = format!("{n} button");
+            dsl!(
+              // You'll notice this works the exact same way as the root invocation.
+              &mut cmds.spawn_empty(),
+              Entity(ui(*n) named(name) image(&button) height(px(33)))
+            );
+            }
+        });
+      }
+    }
+  }
+};
 ```
 
 ## `cuicui_dsl`: Remove the `IntoEntityCommands` trait
