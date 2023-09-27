@@ -6,7 +6,7 @@ use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
 use bevy::hierarchy::BuildChildren;
 use bevy::log::{error, trace};
-use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
+use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 use bevy::utils::HashMap;
 use cuicui_dsl::EntityCommands;
 use miette::{Diagnostic, NamedSource, SourceSpan};
@@ -143,7 +143,6 @@ pub type CodeFunctionRef<'a> =
 #[derive(Default)]
 pub struct Handles {
     funs: HashMap<Box<[u8]>, CodeFunctionBox>,
-    refs: HashMap<Box<[u8]>, Box<dyn Reflect>>,
 }
 impl Handles {
     /// Create a new empty chirp handle registry.
@@ -168,25 +167,9 @@ impl Handles {
         let name = name.into().into_bytes().into_boxed_slice();
         self.funs.insert(name, Box::new(function))
     }
-    /// Associate `name` with provided `value`.
-    ///
-    /// Note that the name pool for functions and values are distinct.
-    ///
-    /// This is currently unused, you can call [`Self::get_ref`] to get back
-    /// the registered value.
-    ///
-    /// Returns any value already associated with provided name, if present.
-    pub fn add_ref(&mut self, name: String, value: impl Reflect) -> Option<Box<dyn Reflect>> {
-        let name = name.into_bytes().into_boxed_slice();
-        self.refs.insert(name, Box::new(value))
-    }
     /// Get function registered with provided `name`.
     pub fn get_function(&self, name: &impl AsRef<str>) -> Option<CodeFunctionRef> {
         self.funs.get(name.as_ref().as_bytes()).map(Box::as_ref)
-    }
-    /// Get value registered with provided `name`.
-    pub fn get_ref(&self, name: &impl AsRef<str>) -> Option<&dyn Reflect> {
-        self.refs.get(name.as_ref().as_bytes()).map(Box::as_ref)
     }
     fn get_function_u8(&self, name: &[u8]) -> Option<CodeFunctionRef> {
         self.funs.get(name).map(Box::as_ref)
