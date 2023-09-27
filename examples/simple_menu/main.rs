@@ -75,10 +75,18 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
                 TitleCard(image(&title_card) width(pct(100)))
                 TitleCard2(ui(title_card) width(pct(50)))
                 code(let cmds) {
-                    for n in &menu_buttons {
-                        let name = format!("{n} button");
-                        dsl!(cmds, Entity(ui(text!(*n)) named(name) image(&button) height(px(33))));
-                    }
+                    let mut dsl: Dsl = default();
+                    dsl.named("buttons");
+                    dsl.column();
+                    dsl.height(child(2.));
+                    dsl.width(pct(100));
+                    dsl.node(cmds, |cmds|{
+                        for n in &menu_buttons {
+                            let mut cmds = cmds.spawn_empty();
+                            let name = format!("{n} button");
+                            dsl!(&mut cmds, Entity(ui(text!(*n)) named(name) image(&button) height(px(33))));
+                        }
+                    });
                 }
             }
         }
