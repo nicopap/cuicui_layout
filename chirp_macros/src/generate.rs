@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
 use quote::{quote, quote_spanned};
-use syn::{meta::ParseNestedMeta, spanned::Spanned};
+use syn::{meta::ParseNestedMeta, punctuated::Punctuated, spanned::Spanned};
 
 #[derive(Default, Debug, PartialEq)]
 enum FnConfig {
@@ -15,9 +15,36 @@ There is currently no other accepted parse_dsl method attribute config options.\
 
 #[allow(clippy::trivially_copy_pass_by_ref)] // false positive. Type necessary to avoid eta-expension
 fn is_parse_dsl_attr(attr: &&syn::Attribute) -> bool {
-    attr.path().is_ident("parse_dsl")
+    let result = FnConfig::default().parse_attr(attr);
+    result.is_err() || result.is_ok_and(|s| s)
 }
 impl FnConfig {
+    fn parse_attr(&mut self, attr: &syn::Attribute) -> syn::Result<bool> {
+        let mut ret = false;
+        if attr.path().is_ident("parse_dsl") {
+            attr.parse_nested_meta(|m| self.parse(m))?;
+            ret = true;
+        // A workaround the fact that `cfg` attributes are not expanded before
+        // attribute proc macros are ran. Yet we still need to find parse_dsl,
+        // enact them and remove them, otherwise we run in compilation issues.
+        // See <https://github.com/rust-lang/rust/issues/82679>
+        } else if attr.path().is_ident("cfg_attr") {
+            let parser = Punctuated::<syn::Meta, syn::Token![,]>::parse_terminated;
+            let Ok(nested) = attr.parse_args_with(parser) else {
+                return Ok(false);
+            };
+            for meta in nested {
+                match meta {
+                    syn::Meta::List(meta) if meta.path.is_ident("parse_dsl") => {
+                        meta.parse_nested_meta(|m| self.parse(m))?;
+                        ret = true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(ret)
+    }
     #[allow(clippy::needless_pass_by_value)] // false positive. Type necessary for calling it
     fn parse(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
         match () {
@@ -39,7 +66,7 @@ impl FnConfig {
     fn parse_list(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         let mut fn_config = Self::default();
         for attr in attrs.iter().filter(is_parse_dsl_attr) {
-            attr.parse_nested_meta(|meta| fn_config.parse(meta))?;
+            fn_config.parse_attr(attr)?;
         }
         Ok(fn_config)
     }
