@@ -1,0 +1,27 @@
+fn spacer() {
+	Spacer(height(10px))
+}
+fn nested_template($text) {
+    NestedText(text($text))
+}
+fn button($text) {
+    Entity(named($text)) {
+        ButtonText(text($text))
+    }
+}
+fn call_nested(text) {
+    CallNested {
+        nested_template!(text)
+    }
+}
+fn multiple_arguments(name, $text) {
+    Entity(named(name)) {
+        MultipleText(text($text))
+    }
+}
+Menu {
+    spacer!()
+    button!("Hello world")
+    call_nested!("Call Nested")
+    multiple_arguments!("Multiple name", "Multiple text")
+}

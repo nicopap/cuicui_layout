@@ -78,6 +78,11 @@ impl ChirpBundle {
         ChirpBundle { state: ChirpState::Loading, scene }
     }
 }
+impl From<Handle<Chirp>> for ChirpBundle {
+    fn from(value: Handle<Chirp>) -> Self {
+        ChirpBundle::new(value)
+    }
+}
 
 /// Global [`ChirpLoader`] handle registry. Used in the `code` statements of the
 /// chirp language.

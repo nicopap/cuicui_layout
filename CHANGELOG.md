@@ -1,5 +1,21 @@
 # 0.10.0
 
+## All changes
+
+- Complete redesign of the chirp and dsl syntax.
+- Added "templates" to chirp files.
+- Made `cuicui_chirp` optional dependencies of `cuicui_layout`,
+  `cuicui_layout_bevy_ui` and `cuicui_layout_bevy_sprite`.
+- Made `cuicui_dsl` optional dependency of `cuicui_layout`.
+- Rewrote the chirp parser to split into a lexer and parser; Documented more
+  APIs; Better error messages on syntax errors.
+- Add the `Overlap{Start,Center,End}` variants to `Distribution`, for overlapping
+  layouts.
+- debug view: do not show outline of hidden containers (togglable)
+- chirp files and dsl now allow only a single root entity.
+- Rewrote the chirp scene spawner to add components to the seed instead instead of
+  removing it and replacing it with several entities.
+
 ## Minor breaking changes:
 
 - `cuicui_chirp`: the `wraparg` module is now `parse_dsl::args`

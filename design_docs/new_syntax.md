@@ -13,7 +13,7 @@ Method = 'ident' ('(' (TokenTree)* ')')?
 Statement
    = 'code'      '(' 'ident' ')'
    | 'Entity'    StatementTail
-   | 'ident' '!' '(' (TokenTree)* ')'
+   | 'ident' '!' '(' (TokenTree (',' TokenTree)*)? ')' (StatementTail)?
    | 'ident'     StatementTail
    | StringLit   StatementTail
 
@@ -21,8 +21,9 @@ StatementTail
    = '(' (Method)* ')' ('{' (Statement)* '}')?
    | '{' (Statement)* '}'
 
+Path = 'ident' ('/' 'ident')*
 Use = 'use' Path ('as' 'ident')?
-Fn = ('pub')? 'fn' 'ident' '(' ('ident' ',')* ')' '{' Statement '}'
+Fn = ('pub')? 'fn' 'ident' '(' ('ident' (',' 'ident')*)? ')' '{' Statement '}'
 ChirpFile = (Use)* (Fn)* Statement
 ```
 
