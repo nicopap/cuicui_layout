@@ -114,7 +114,7 @@ impl TestInterpreter {
     }
 }
 
-impl Itrp for &'_ TestInterpreter {
+impl<'a> Itrp<'a> for &'_ TestInterpreter {
     fn code(&self, (code, range): (&[u8], Span)) {
         let state = &mut *self.0.borrow_mut();
         let current = state.hierarchy.get_index_mut(&state.current);
@@ -139,6 +139,18 @@ impl Itrp for &'_ TestInterpreter {
 
     fn spawn_with_children(&self) {
         self.0.borrow_mut().current.push(0);
+    }
+
+    fn import(&self, _: &[u8], _: Span, _: Option<&[u8]>) {
+        todo!()
+    }
+
+    fn register_fn(&self, _: &'a [u8], _: StateCheckpoint) {
+        todo!()
+    }
+
+    fn call_template(&self, _: &'a [u8], _: Span) -> Option<StateCheckpoint> {
+        todo!()
     }
 }
 #[track_caller]

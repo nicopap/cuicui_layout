@@ -20,6 +20,7 @@ fn multiple_arguments(name, $text) {
     }
 }
 Menu {
+    TestSpacer(width(30%))
     spacer!()
     button!("Hello world")
     call_nested!("Call Nested")

@@ -43,6 +43,7 @@ pub use reflect::ReflectDsl;
 
 mod load_asset;
 mod parser;
+mod template;
 
 pub mod interpret;
 pub mod loader;
@@ -105,6 +106,7 @@ impl<'a> ChirpReader<'a> {
         let id = cmds.id();
         let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
         let result = interpreter.interpret(input).map(|_| id);
+        drop(interpreter);
         if result.is_ok() {
             state.apply(self.world);
         }
@@ -130,6 +132,7 @@ impl<'a> ChirpReader<'a> {
         let mut cmds = cmds.spawn_empty();
         let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
         let result = interpreter.interpret(input);
+        drop(interpreter);
         if let Err(err) = &result {
             log_miette_error!(err);
         }

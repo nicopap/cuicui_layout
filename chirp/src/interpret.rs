@@ -15,7 +15,8 @@ use thiserror::Error;
 use winnow::BStr;
 
 use crate::parse_dsl::{escape_literal, MethodCtx, ParseDsl};
-use crate::parser::{self, Input, Span};
+use crate::parser::{self, Input, Span, StateCheckpoint};
+use crate::template::Templates;
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
@@ -34,16 +35,20 @@ pub enum InterpError {
     BadUtf8Argument,
     #[error("Method '{0}' is uppercase.")]
     UppercaseMethod(Box<str>),
+    #[error("Imports are not supported as of cuicui 0.10")]
+    Import,
+    #[error("Tried to call {}!, but this template doesn't exist.", BStr::new(&.0))]
+    TemplateNotFound(Box<[u8]>),
 }
 const UTF8_ERROR: &str =
     "Chirp requires UTF8, your file is either corrupted or saved with the wrong encoding.";
 impl InterpError {
     fn help_message<D>(&self) -> Option<Box<str>> {
         use crate::parse_dsl::DslParseError;
-        use InterpError::{BadUtf8Argument, BadUtf8MethodName};
+        use InterpError::{BadUtf8Argument, BadUtf8MethodName, Import, TemplateNotFound};
 
         match self {
-            InterpError::CodeNotPresent(_) => None,
+            InterpError::CodeNotPresent(_) | TemplateNotFound(_) | Import => None,
             InterpError::DslError(err) => Some(if err.downcast_ref::<DslParseError>().is_some() {
                 format!(
                     "{} doesn't contain a method with this name.",
@@ -201,6 +206,7 @@ struct InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
     ///
     /// Or the current parent if we are not on the root entity.
     root_entity: Entity,
+    templates: Templates<'a>,
     errors: Vec<SpannedError>,
     load_ctx: Option<&'l mut LoadContext<'ll>>,
     dsl: D,
@@ -258,12 +264,13 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
                 dsl: D::default(),
                 load_ctx,
                 root_entity,
+                templates: Templates::new(),
             }),
         }
     }
 }
 impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-    pub fn interpret(&mut self, input: &[u8]) -> Result<(), Errors> {
+    pub fn interpret(&mut self, input: &'a [u8]) -> Result<(), Errors> {
         let stateful_input = Input::new(input, &*self);
         let parse_error = parser::chirp_document(stateful_input);
         let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
@@ -301,7 +308,7 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, '
         interp.errors.is_empty().then(|| dsl.insert(&mut cmds))
     }
 }
-impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp
+impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp<'a>
     for &'_ Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D>
 {
     fn insert_entity(&self) {
@@ -394,6 +401,27 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp
             parent_chain.push(entity);
         }
         *root_entity = entity;
+    }
+
+    fn import(&self, _: &[u8], span: Span, _: Option<&[u8]>) {
+        let interp = &mut self.mutable.borrow_mut();
+        interp.push_error(span, InterpError::Import);
+    }
+
+    fn register_fn(&self, name: &'a [u8], parser: StateCheckpoint) {
+        trace!("<- registered '{}!'", BStr::new(name));
+        let interp = &mut self.mutable.borrow_mut();
+        interp.templates.insert(name, parser);
+    }
+    fn call_template(&self, name: &'a [u8], span: Span) -> Option<StateCheckpoint> {
+        trace!("-> calling '{}!'", BStr::new(name));
+        let interp = &mut self.mutable.borrow_mut();
+
+        let chckpt = interp.templates.get(name);
+        if chckpt.is_none() {
+            interp.push_error(span, InterpError::TemplateNotFound(name.into()));
+        }
+        chckpt
     }
 }
 

@@ -3,7 +3,7 @@ use std::fmt;
 
 pub(crate) use grammar::{arg_token_tree, chirp_document};
 use stream::TokenType;
-pub use stream::{Input, Token};
+pub use stream::{Input, StateCheckpoint, Token};
 
 mod grammar;
 mod lex;
@@ -12,7 +12,7 @@ mod stream;
 mod tests;
 
 pub type Span = (u32, u32);
-pub(crate) trait Itrp: fmt::Debug + Clone {
+pub(crate) trait Itrp<'a>: fmt::Debug + Clone {
     fn code(&self, input: (&[u8], Span));
     fn set_name(&self, span: Span, name: &[u8]);
     fn complete_children(&self);
@@ -25,13 +25,21 @@ pub(crate) trait Itrp: fmt::Debug + Clone {
         self.spawn_with_children();
         self.complete_children();
     }
+    fn import(&self, import_source: &[u8], import_span: Span, rename: Option<&[u8]>);
+    fn register_fn(&self, name: &'a [u8], parser: StateCheckpoint);
+    fn call_template(&self, name: &'a [u8], name_span: Span) -> Option<StateCheckpoint>;
 }
-impl Itrp for () {
+impl<'a> Itrp<'a> for () {
     fn code(&self, _: (&[u8], Span)) {}
     fn set_name(&self, _: Span, _: &[u8]) {}
     fn complete_children(&self) {}
     fn method(&self, _: &[u8], _: Span, _: &[u8], _: Span) {}
     fn spawn_with_children(&self) {}
+    fn import(&self, _: &[u8], _: Span, _: Option<&[u8]>) {}
+    fn register_fn(&self, _: &'a [u8], _: StateCheckpoint) {}
+    fn call_template(&self, _: &'a [u8], _: Span) -> Option<StateCheckpoint> {
+        None
+    }
 }
 
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,7 +62,7 @@ impl Error {
         match self {
             Error::Expected(..) => {
                 "Check the other errors in the error output. If they are not \
-                enough, unhelpful error messages are considered, so please \
+                enough, unhelpful error messages are considered a bug, so please \
                 open an issue: \
                 https://github.com/nicopap/cuicui_layout/issues\n"
             }
@@ -97,7 +105,7 @@ impl Error {
         }
     }
 }
-impl<I: Itrp> winnow::error::ParserError<Input<'_, I>> for Error {
+impl<'a, I: Itrp<'a>> winnow::error::ParserError<Input<'_, I>> for Error {
     fn from_error_kind(_: &Input<I>, _: winnow::error::ErrorKind) -> Self {
         Self::Unexpected
     }
@@ -106,7 +114,7 @@ impl<I: Itrp> winnow::error::ParserError<Input<'_, I>> for Error {
         self
     }
 }
-impl<I: Itrp> winnow::error::FromExternalError<Input<'_, I>, Error> for Error {
+impl<'a, I: Itrp<'a>> winnow::error::FromExternalError<Input<'_, I>, Error> for Error {
     fn from_external_error(_: &Input<'_, I>, _: winnow::error::ErrorKind, e: Error) -> Self {
         e
     }

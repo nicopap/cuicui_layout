@@ -48,6 +48,9 @@ pub enum TokenType {
     Ident,
     String,
     Code,
+    As,
+    Use,
+    Fn,
     None,
 }
 impl From<Option<Token<'_>>> for TokenType {
@@ -83,6 +86,9 @@ impl fmt::Display for TokenType {
             TokenType::Reserved => "a reserved keyword",
             TokenType::Ident => "an identifier",
             TokenType::Code => "'code'",
+            TokenType::Fn => "'fn'",
+            TokenType::Use => "'use'",
+            TokenType::As => "'as'",
             TokenType::String => "\"a string literal\"",
             TokenType::None => "nothing, the end of file",
         };
@@ -113,42 +119,68 @@ impl Token<'_> {
 /// happier code.
 macro_rules! grammar {
     ($( $name:ident ),* $(,)?) => {
-        pub mod tokens {
-            use super::*;
-            use super::super::Error;
-            use winnow::{PResult,error::ErrMode::Backtrack};
-
-            $(
-            pub struct $name;
-            impl<'i, S: Clone + fmt::Debug> Parser<Input<'i, S>, Token<'i>, Error> for $name {
-                #[inline(always)]
-                #[cfg(not(feature = "trace_lexer"))]
-                fn parse_next(&mut self, input: &mut Input<'i, S>) -> PResult<Token<'i>, Error> {
-                    match input.next_token() {
-                        Some(token @ Token::$name) => Ok(token),
-                        got => Err(Backtrack(Error::Expected(TokenType::$name, got.into()))),
-                    }
-                }
-                #[cfg(feature = "trace_lexer")]
-                fn parse_next(&mut self, input: &mut Input<'i, S>) -> PResult<Token<'i>, Error> {
-                    let parser = |input: &mut Input<'i, S>| match input.next_token() {
-                        Some(token @ Token::$name) => Ok(token),
-                        got => Err(Backtrack(Error::Expected(TokenType::$name, got.into()))),
-                    };
-                    winnow::trace::trace(TokenType::$name.to_string(), parser).parse_next(input)
+        $(
+        pub struct $name;
+        impl<'i, S: Clone + fmt::Debug> Parser<Input<'i, S>, Token<'i>, Error> for $name {
+            #[inline(always)]
+            #[cfg(not(feature = "trace_lexer"))]
+            fn parse_next(&mut self, input: &mut Input<'i, S>) -> PResult<Token<'i>, Error> {
+                match input.next_token() {
+                    Some(token @ Token::$name) => Ok(token),
+                    got => Err(Backtrack(Error::Expected(TokenType::$name, got.into()))),
                 }
             }
-            )*
+            #[cfg(feature = "trace_lexer")]
+            fn parse_next(&mut self, input: &mut Input<'i, S>) -> PResult<Token<'i>, Error> {
+                let parser = |input: &mut Input<'i, S>| match input.next_token() {
+                    Some(token @ Token::$name) => Ok(token),
+                    got => Err(Backtrack(Error::Expected(TokenType::$name, got.into()))),
+                };
+                winnow::trace::trace(TokenType::$name.to_string(), parser).parse_next(input)
+            }
         }
+        )*
+    }
+}
+macro_rules! grammar_identifiers {
+    ($( $identifier:literal as $name:ident ),* $(,)?) => {
+        $(
+        pub struct $name;
+        impl<'i, S: Clone + fmt::Debug> Parser<Input<'i, S>, Token<'i>, Error> for $name {
+            #[inline(always)]
+            #[cfg(not(feature = "trace_lexer"))]
+            fn parse_next(&mut self, input: &mut Input<'i, S>) -> PResult<Token<'i>, Error> {
+                match input.next_token() {
+                    Some(token @ Token::Ident($identifier)) => Ok(token),
+                    got => Err(Backtrack(Error::Expected(TokenType::$name, got.into()))),
+                }
+            }
+            #[cfg(feature = "trace_lexer")]
+            fn parse_next(&mut self, input: &mut Input<'i, S>) -> PResult<Token<'i>, Error> {
+                let parser = |input: &mut Input<'i, S>| match input.next_token() {
+                    Some(token @ Token::Ident($identifier)) => Ok(token),
+                    got => Err(Backtrack(Error::Expected(TokenType::$name, got.into()))),
+                };
+                winnow::trace::trace(TokenType::$name.to_string(), parser).parse_next(input)
+            }
+        }
+        )*
     }
 }
 
-grammar![Equal, Lparen, Rparen, Lcurly, Rcurly, Lbracket, Rbracket, Comma];
+pub mod tokens {
+    use super::super::Error;
+    use super::*;
+    use winnow::{error::ErrMode::Backtrack, PResult};
+
+    grammar![Equal, Lparen, Rparen, Lcurly, Rcurly, Lbracket, Rbracket, Comma];
+    grammar_identifiers![b"as" as As, b"use" as Use, b"fn" as Fn, b"code" as Code];
+}
 
 pub struct TokenIter<'i, S> {
     stream: Input<'i, S>,
 }
-impl<'i, S: Clone + std::fmt::Debug> Iterator for TokenIter<'i, S> {
+impl<'i, S: Clone + fmt::Debug> Iterator for TokenIter<'i, S> {
     type Item = (usize, Token<'i>);
     fn next(&mut self) -> Option<Self::Item> {
         let token = self.stream.next_token()?;
@@ -236,6 +268,15 @@ impl<'i, S> Input<'i, S> {
         lex::consume_spaces(&mut slice);
         self.end - as_u32(slice.len())
     }
+
+    pub(crate) fn at(&self, checkpoint: StateCheckpoint) -> Self
+    where
+        S: Clone + fmt::Debug,
+    {
+        let mut ret = self.clone();
+        ret.reset(checkpoint);
+        ret
+    }
 }
 
 impl Offset<StateCheckpoint> for StateCheckpoint {
@@ -264,7 +305,7 @@ impl<S> fmt::Display for Input<'_, S> {
     }
 }
 
-impl<'i, S: Clone + std::fmt::Debug> Stream for Input<'i, S> {
+impl<'i, S: Clone + fmt::Debug> Stream for Input<'i, S> {
     type Token = Token<'i>;
     type Slice = &'i [u8];
 
@@ -332,7 +373,7 @@ impl<'i, S: Clone + std::fmt::Debug> Stream for Input<'i, S> {
     }
 
     #[inline(always)]
-    fn raw(&self) -> &dyn std::fmt::Debug {
+    fn raw(&self) -> &dyn fmt::Debug {
         self
     }
 }
@@ -353,32 +394,38 @@ impl<'i, S> Location for Input<'i, S> {
     }
 }
 
+/// Provide the `.checkpoint` method on `Parser`, to get the current input checkpoint.
+pub(super) struct WithCheckpoint<'i, F, S, O, E>
+where
+    F: Parser<Input<'i, S>, O, E>,
+{
+    parser: F,
+    p: PhantomData<(S, O, E, &'i ())>,
+}
+impl<'i, F, S, O, E> Parser<Input<'i, S>, (O, StateCheckpoint), E>
+    for WithCheckpoint<'i, F, S, O, E>
+where
+    F: Parser<Input<'i, S>, O, E>,
+    S: fmt::Debug + Clone,
+{
+    #[inline]
+    fn parse_next(&mut self, input: &mut Input<'i, S>) -> winnow::PResult<(O, StateCheckpoint), E> {
+        let checkpoint = input.checkpoint();
+        self.parser
+            .parse_next(input)
+            .map(move |output| (output, checkpoint))
+    }
+}
+
 /// Provide the `.spanned` method on `Parser`, this has more useful span info.
 pub(super) struct WithSpan<'i, F, S, O, E>
 where
     F: Parser<Input<'i, S>, O, E>,
 {
     parser: F,
-    i: core::marker::PhantomData<S>,
-    o: core::marker::PhantomData<O>,
-    e: core::marker::PhantomData<E>,
-    l: core::marker::PhantomData<&'i ()>,
+    p: PhantomData<(S, O, E, &'i ())>,
 }
 
-impl<'i, F, S, O, E> WithSpan<'i, F, S, O, E>
-where
-    F: Parser<Input<'i, S>, O, E>,
-{
-    pub(super) const fn new(parser: F) -> Self {
-        Self {
-            parser,
-            i: PhantomData,
-            o: PhantomData,
-            e: PhantomData,
-            l: PhantomData,
-        }
-    }
-}
 impl<'i, F, S, O, E> Parser<Input<'i, S>, (O, (u32, u32)), E> for WithSpan<'i, F, S, O, E>
 where
     F: Parser<Input<'i, S>, O, E>,
@@ -393,16 +440,25 @@ where
         })
     }
 }
-pub(super) trait SpannedExt<'i, S, O, E>: Parser<Input<'i, S>, O, E> {
+pub(super) trait ParserExt<'i, S, O, E>: Parser<Input<'i, S>, O, E> {
     fn spanned(self) -> WithSpan<'i, Self, S, O, E>
     where
         Self: Sized;
+    fn checkpoint(self) -> WithCheckpoint<'i, Self, S, O, E>
+    where
+        Self: Sized;
 }
-impl<'i, S, O, E, T: Parser<Input<'i, S>, O, E>> SpannedExt<'i, S, O, E> for T {
+impl<'i, S, O, E, T: Parser<Input<'i, S>, O, E>> ParserExt<'i, S, O, E> for T {
     fn spanned(self) -> WithSpan<'i, Self, S, O, E>
     where
         Self: Sized,
     {
-        WithSpan::new(self)
+        WithSpan { parser: self, p: PhantomData }
+    }
+    fn checkpoint(self) -> WithCheckpoint<'i, Self, S, O, E>
+    where
+        Self: Sized,
+    {
+        WithCheckpoint { parser: self, p: PhantomData }
     }
 }

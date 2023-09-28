@@ -14,14 +14,20 @@
 //! Method = 'ident' ('(' (TokenTree)* ')')?
 //!
 //! Statement
-//!    = 'code'    '(' 'ident' ')'
-//!    | 'Entity'  StatementTail
-//!    | 'ident'   StatementTail
-//!    | StringLit StatementTail
+//!    = 'code'      '(' 'ident' ')'
+//!    | 'Entity'    StatementTail
+//!    | 'ident' '!' '(' (TokenTree (',' TokenTree)*)? ')' (StatementTail)?
+//!    | 'ident'     StatementTail
+//!    | StringLit   StatementTail
 //!
 //! StatementTail
 //!    = '(' (Method)* ')' ('{' (Statement)* '}')?
 //!    | '{' (Statement)* '}'
+//!
+//! Path = 'ident' ('/' 'ident')*
+//! Use = 'use' Path ('as' 'ident')?
+//! Fn = ('pub')? 'fn' 'ident' '(' ('ident' (',' 'ident')*)? ')' '{' Statement '}'
+//! ChirpFile = (Use)* (Fn)* Statement
 //! ```
 #![allow(clippy::inline_always)]
 // allow: The generated code is fine, it's in line with how winnow does things
@@ -30,13 +36,13 @@
 use std::fmt::Debug;
 
 use anyhow::Result;
-use winnow::combinator::{alt, cut_err, dispatch, opt, repeat, success, terminated};
-use winnow::combinator::{delimited as delim, peek, separated0};
+use winnow::combinator::{alt, cut_err, dispatch, preceded, success, terminated};
+use winnow::combinator::{delimited as delim, opt, peek, repeat, separated0};
 use winnow::error::ErrMode::{Backtrack, Cut};
 use winnow::error::ParserError;
 use winnow::{stream::Stream, token::any, trace::trace, PResult, Parser};
 
-use super::stream::{tokens as t, Input, SpannedExt, Token, TokenType};
+use super::stream::{tokens as t, Input, ParserExt, Token, TokenType};
 use super::{Error, Itrp, Span};
 use Token::{
     Comma, Equal, Ident, Lbracket, Lcurly, Lparen, Rbracket, Rcurly, Rparen, String as TStr,
@@ -53,14 +59,14 @@ fn many1<I: Stream, O, E: ParserError<I>>(f: impl Parser<I, O, E>) -> impl Parse
 }
 
 #[inline(always)]
-fn ident<'i>(input: &mut Input<'i, impl Itrp>) -> PResult<&'i [u8], Error> {
+fn ident<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> PResult<&'i [u8], Error> {
     match input.next_token() {
         Some(Token::Ident(ident)) => Ok(ident),
         got => Err(Backtrack(Error::Expected(TokenType::Ident, got.into()))),
     }
 }
 pub(crate) fn arg_token_tree<'i>(
-    input: &mut Input<'i, impl Itrp>,
+    input: &mut Input<'i, impl Itrp<'i>>,
     mut f: impl FnMut(&'i [u8]),
 ) -> PResult<(), Error> {
     let elem_parser = many1(token_tree_impl::<true>).recognize().try_map(|arg| {
@@ -74,11 +80,13 @@ pub(crate) fn arg_token_tree<'i>(
         Err(err) => Err(err),
     }
 }
-fn token_tree(input: &mut Input<impl Itrp>) -> VoidResult {
+fn token_tree<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
     token_tree_impl::<false>(input)
 }
 #[inline(always)]
-fn token_tree_impl<const SPLIT_COMMA: bool>(input: &mut Input<impl Itrp>) -> VoidResult {
+fn token_tree_impl<'i, const SPLIT_COMMA: bool>(
+    input: &mut Input<'i, impl Itrp<'i>>,
+) -> VoidResult {
     let parser = dispatch! { opt(any);
         Some(Lparen) => terminated(many(token_tree), t::Rparen),
         Some(Lbracket) => terminated(many(token_tree), t::Rbracket),
@@ -91,7 +99,7 @@ fn token_tree_impl<const SPLIT_COMMA: bool>(input: &mut Input<impl Itrp>) -> Voi
     trace("token_tree", parser).parse_next(input)
 }
 #[inline(always)]
-fn method(input: &mut Input<impl Itrp>) -> VoidResult {
+fn method<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
     let state = input.state.clone();
     let argument = delim(t::Lparen, many(token_tree), cut_err(t::Rparen));
     let ident = |i: &mut _| match opt(any).parse_next(i) {
@@ -105,16 +113,33 @@ fn method(input: &mut Input<impl Itrp>) -> VoidResult {
         .parse_next(input)
 }
 #[inline(always)]
-fn statement(input: &mut Input<impl Itrp>) -> VoidResult {
+fn statement<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
     let state = input.state.clone();
+    let input_clone = input.clone();
 
     dispatch! { opt(any).spanned();
         (Some(Ident(b"code")), _) => delim(t::Lparen, ident, t::Rparen).spanned().map(|i| state.code(i)),
         (Some(TStr(name) | Ident(name)), span) => {
-            if ![&b"Entity"[..], b"spawn"].contains(&name) {
-                state.set_name(span, name);
+            |input: &mut _| {
+                if name.ends_with(b"!") {
+                    let sep = separated0::<_, _, (), _, _, _, _>;
+                    let many_trees = sep(token_tree_impl::<true>, t::Comma);
+                    delim(t::Lparen, many_trees, t::Rparen).parse_next(input)?;
+
+                    // TODO(perf): At this point it is likely that an AST will be better
+                    if let Some(chckpt) = state.call_template(&name[..name.len() - 1], span) {
+                        let mut parser = trace("template call", statement);
+                        let mut chckpt = input_clone.at(chckpt);
+                        parser.parse_next(&mut chckpt)?;
+                    }
+                    trace("statement_tail", opt(statement_tail::<false>)).void().parse_next(input)
+                } else {
+                    if ![&b"Entity"[..], b"spawn"].contains(&name) {
+                        state.set_name(span, name);
+                    }
+                    trace("statement_tail", statement_tail::<true>).parse_next(input)
+                }
             }
-            trace("statement_tail", statement_tail)
         },
         (Some(Rcurly), _) => |_: &mut _| Err(Backtrack(Error::Unexpected)),
         (bad_token, _) => |_: &mut _| Err(Cut(Error::StartStatement(bad_token.into()))),
@@ -122,14 +147,14 @@ fn statement(input: &mut Input<impl Itrp>) -> VoidResult {
     .parse_next(input)
 }
 #[inline(always)]
-fn statements(input: &mut Input<impl Itrp>) -> VoidResult {
+fn statements<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
     input.state.spawn_with_children();
     many(statement).parse_next(input)?;
     input.state.complete_children();
     Ok(())
 }
 #[inline(always)]
-fn statement_tail(input: &mut Input<impl Itrp>) -> VoidResult {
+fn statement_tail<'i, const CUT: bool>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
     let state = input.state.clone();
 
     let methods = delim(t::Lparen, many(method), t::Rparen);
@@ -138,8 +163,30 @@ fn statement_tail(input: &mut Input<impl Itrp>) -> VoidResult {
     match peek(any::<_, ()>).parse_next(input) {
         Ok(Lparen) => terminated(methods, alt((statements, spawn_leaf))).parse_next(input),
         Ok(Lcurly) => statements.parse_next(input),
-        bad_token => Err(Cut(Error::StatementDelimiter(bad_token.ok().into()))),
+        bad_token if CUT => Err(Cut(Error::StatementDelimiter(bad_token.ok().into()))),
+        bad_token => Err(Backtrack(Error::StatementDelimiter(bad_token.ok().into()))),
     }
+}
+
+#[inline(always)]
+fn import<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
+    let state = input.state.clone();
+    let alias = opt(preceded(t::As, ident));
+    preceded(t::Use, (ident.spanned(), alias))
+        .map(|((import, span), name)| state.import(import, span, name))
+        .parse_next(input)
+}
+
+#[inline(always)]
+fn function<'i>(input: &mut Input<'i, impl Itrp<'i>>) -> VoidResult {
+    let state = input.state.clone();
+    let sep = separated0::<_, _, (), _, _, _, _>;
+    let arguments = delim(t::Lparen, sep(ident, t::Comma), t::Rparen);
+    let many_trees = many1(token_tree_impl::<false>);
+    let body = delim(t::Lcurly, many_trees.checkpoint(), t::Rcurly);
+    preceded(t::Fn, (ident, arguments, body))
+        .map(|(fn_name, _, (_, body))| state.register_fn(fn_name, body))
+        .parse_next(input)
 }
 
 #[derive(Debug)]
@@ -147,7 +194,11 @@ pub(crate) struct SpanError {
     pub(crate) span: Span,
     pub(crate) error: Error,
 }
-pub(crate) fn chirp_document<I: Itrp>(mut input: Input<I>) -> Result<(), SpanError> {
+pub(crate) fn chirp_document<'i, I: Itrp<'i>>(mut input: Input<'i, I>) -> Result<(), SpanError> {
+    let mut meta_statements = (many(import), many(function));
+    if let Err(e) = meta_statements.parse_next(&mut input) {
+        bevy::log::error!("pre-error: {e}");
+    }
     // TODO(feat) non-entity statements
     match statement(&mut input) {
         Ok(()) if input.is_empty() => Ok(()),
