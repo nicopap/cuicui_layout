@@ -116,7 +116,7 @@ const CONFIG_ATTR_DESCR: &str = "\
   in this `impl` block. This should be the field you mark with `#[deref_mut]`
 - `set_params <D: ParseDsl>`: Instead of re-using the `impl` block's generics \
   with `+ ParseDsl`, in the `impl<XXX> ParseDsl for Type` use the expression \
-  within parenthesis.
+  within cheveron.
 - `type_parsers(<arg_type1> = <parser1>, <arg_type2> = <parser2>, …)`: \
   For arguments of type `arg_type1`, use `parser1` a function of the following type:
 
@@ -216,7 +216,7 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
     let funs = funs.map(|f| method_branch(f, &config.type_parsers));
     let catchall = config.delegate.as_ref().map_or_else(
         || quote!(Err(DslParseError::<Self>::new(name))),
-        |ident| quote!(self.#ident.method(MethodCtx { name, args, ctx, registry })),
+        |ident| quote!(self.#ident.method(MethodCtx { name, arguments, ctx, registry })),
     );
     let parse_dsl_block = quote! {
         #[automatically_derived]
@@ -226,9 +226,9 @@ pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl)
                 &mut self,
                 data: #this_crate::parse_dsl::MethodCtx,
             ) -> Result<(), #this_crate::anyhow::Error> {
-                use #this_crate::parse_dsl::{split, MethodCtx, DslParseError, args};
+                use #this_crate::parse_dsl::{MethodCtx, DslParseError, args};
 
-                let MethodCtx { name, args, mut ctx, registry } = data;
+                let MethodCtx { name, arguments, mut ctx, registry } = data;
                 match name {
                     #(#funs)*
                     _name => { #catchall }
@@ -279,13 +279,17 @@ fn method_branch(fun: &syn::ImplItemFn, parsers: &[TypeParser]) -> TokenStream {
 
     let arg_count = arg_parsers.len();
     let index = syn::Index::from;
-    let fun_args = (0..arg_count).map(index).map(|i| quote!(args[#i]));
+    let fun_args = (0..arg_count)
+        .map(index)
+        .map(|i| quote!(arguments.get_str(#i).unwrap().as_ref()));
 
     let ident = &fun.sig.ident;
 
     quote_spanned! { fun.sig.inputs.span() =>
         stringify!(#ident) => {
-            let args = split::<#arg_count>(args)?;
+            if arguments.len() != #arg_count {
+                return Err(args::ArgumentError { expected: #arg_count, got: arguments.len() }.into());
+            }
             self.#ident(#(#arg_parsers(registry, ctx.as_deref_mut(), #fun_args)?),*);
             Ok(())
         }

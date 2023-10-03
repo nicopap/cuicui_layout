@@ -1,6 +1,7 @@
 //! Interpret `.chirp` files, spawning entities with a provided [`Commands`].
 
-use std::{any, borrow::Cow, cell::RefCell, fmt, fmt::Debug, mem, str};
+use std::borrow::Cow;
+use std::{any, fmt, fmt::Debug, mem, str};
 
 use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
@@ -14,9 +15,10 @@ use smallvec::SmallVec;
 use thiserror::Error;
 use winnow::BStr;
 
-use crate::parse_dsl::{escape_literal, MethodCtx, ParseDsl};
-use crate::parser::{self, Input, Span, StateCheckpoint};
-use crate::template::Templates;
+use crate::parse_dsl::{self, MethodCtx, ParseDsl};
+use crate::parser::{self, chirp_file, Arguments, ChirpFile, FnIndex, Input, Name};
+
+type Span = (u32, u32);
 
 /// An error occuring when adding a [`crate::Chirp`] to the world.
 #[allow(missing_docs)] // Already documented by error message.
@@ -24,7 +26,7 @@ use crate::template::Templates;
 pub enum InterpError {
     // TODO(err): show available handles suggest close ones.
     #[error("Didn't find the code handle '{0}' in provided code handles")]
-    CodeNotPresent(String),
+    CodeNotPresent(Box<str>),
     #[error(transparent)]
     DslError(#[from] anyhow::Error),
     #[error(transparent)]
@@ -66,16 +68,15 @@ impl InterpError {
         }
     }
     fn dsl_offset(&self) -> Option<u32> {
-        use crate::parse_dsl::{args::ReflectDslDeserError as ReflectError, split::ArgError};
+        use crate::parse_dsl::args::ReflectDslDeserError as ReflectError;
 
         let Self::DslError(err) = self else {
             return None;
         };
-        let dsl_offset = err.downcast_ref().and_then(ReflectError::maybe_offset);
-        let arg_offset = err.downcast_ref().and_then(ArgError::maybe_offset);
-        dsl_offset.or(arg_offset)
+        err.downcast_ref().and_then(ReflectError::maybe_offset)
     }
 }
+// TODO(feat): print call stack.
 #[derive(Debug, Error, Diagnostic)]
 #[error("{error}")]
 struct SpannedError {
@@ -107,6 +108,15 @@ pub struct Errors {
     source_code: NamedSource,
     #[related]
     errors: Vec<SpannedError>,
+}
+impl Errors {
+    fn new(errors: Vec<SpannedError>, input: &[u8], load_ctx: Option<&LoadContext>) -> Self {
+        let str = Cow::Borrowed("Static str");
+        let file_name = load_ctx.map_or(str, |l| l.path().to_string_lossy());
+        let input = String::from(String::from_utf8_lossy(input));
+        let source_code = NamedSource::new(file_name, input);
+        Self { source_code, errors }
+    }
 }
 struct NiceSpan(SourceSpan);
 impl fmt::Display for NiceSpan {
@@ -181,12 +191,6 @@ impl Handles {
     }
 }
 
-struct BevyCmds<'w, 's, 'a>(&'a mut Commands<'w, 's>);
-impl Debug for BevyCmds<'_, '_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "BevyCmds(Commands)")
-    }
-}
 struct LoadCtx<'h, 'r> {
     reg: &'r TypeRegistry,
     handles: &'h Handles,
@@ -195,162 +199,140 @@ impl Debug for LoadCtx<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("LoadCtx")
             .field("reg", &"&TypeRegistry")
-            .field("handles", &"&Handles")
             .finish()
     }
 }
-struct InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
-    cmds: BevyCmds<'w, 's, 'a>,
+pub(crate) struct Interpreter<'w, 's, 'a, 'l, D> {
+    ctx: LoadCtx<'a, 'a>,
+    cmds: &'a mut Commands<'w, 's>,
     parent_chain: SmallVec<[Entity; 2]>,
     /// The entity on which we are spawning the chirp scene.
     ///
     /// Or the current parent if we are not on the root entity.
     root_entity: Entity,
-    templates: Templates<'a>,
+    templates: HashMap<&'a [u8], FnIndex>,
     errors: Vec<SpannedError>,
-    load_ctx: Option<&'l mut LoadContext<'ll>>,
+    load_ctx: Option<&'a mut LoadContext<'l>>,
     dsl: D,
 }
-impl<D> Debug for InnerInterpreter<'_, '_, '_, '_, '_, D> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let is_load_ctx = self.load_ctx.is_some();
-        let load_ctx = if is_load_ctx { "Some(&mut LoadContext)" } else { "None" };
-        f.debug_struct("InnerInterpreter")
-            .field("cmds", &self.cmds)
-            .field("current", &self.parent_chain)
-            .field("errors", &self.errors)
-            .field("load_ctx", &load_ctx)
-            .field("dsl", &std::any::type_name::<D>())
-            .finish()
-    }
-}
-
-impl<'w, 's, 'a, 'l, 'll, D> InnerInterpreter<'w, 's, 'a, 'l, 'll, D> {
-    #[cold]
-    fn push_error(&mut self, span: Span, error: impl Into<InterpError>) {
-        self.errors.push(SpannedError::new::<D>(error, span));
-    }
-}
-pub(crate) struct Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-    ctx: LoadCtx<'h, 'r>,
-    // TODO(perf): Can use an UnsafeCell instead, since we'll never access this
-    // concurrently, as the parsing is linear.
-    mutable: RefCell<InnerInterpreter<'w, 's, 'a, 'l, 'll, D>>,
-}
-impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D> fmt::Debug for Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
+impl<'w, 's, 'a, 'l, D> fmt::Debug for Interpreter<'w, 's, 'a, 'l, D> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Interpreter")
-            .field("mutable", &self.mutable)
+            .field("cmds", &"BevyCmds(Commands)")
+            .field("current", &self.parent_chain)
+            .field("errors", &self.errors)
+            .field("dsl", &std::any::type_name::<D>())
             .field("ctx", &self.ctx)
             .finish()
     }
 }
 
-impl<'w, 's, 'a, 'h, 'l, 'll, 'r> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, ()> {
-    pub fn new<D: ParseDsl>(
+impl<'w, 's, 'a, 'l> Interpreter<'w, 's, 'a, 'l, ()> {
+    pub(crate) fn interpret<D: ParseDsl>(
+        input_u8: &[u8],
         builder: &'a mut EntityCommands<'w, 's, 'a>,
-        load_ctx: Option<&'l mut LoadContext<'ll>>,
-        reg: &'r TypeRegistry,
-        handles: &'h Handles,
-    ) -> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
+        load_ctx: Option<&'a mut LoadContext<'l>>,
+        reg: &'a TypeRegistry,
+        handles: &'a Handles,
+    ) -> Result<(), Errors> {
+        let input = Input::new(input_u8, ());
+        let ast = match chirp_file(input) {
+            Ok(v) => v,
+            Err((err, span)) => {
+                let error = SpannedError::new::<D>(err, span);
+                return Err(Errors::new(vec![error], input_u8, load_ctx.as_deref()));
+            }
+        };
+        let chirp_file = ChirpFile::new(input, &ast);
+        let mut interpreter = Interpreter::<D>::new(builder, load_ctx, reg, handles);
+        chirp_file.interpret(&mut interpreter);
+        if interpreter.errors.is_empty() {
+            Ok(())
+        } else {
+            let ctx = interpreter.load_ctx.as_deref();
+            Err(Errors::new(interpreter.errors, input_u8, ctx))
+        }
+    }
+}
+impl<'w, 's, 'a, 'l, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, D> {
+    fn new(
+        builder: &'a mut EntityCommands<'w, 's, 'a>,
+        load_ctx: Option<&'a mut LoadContext<'l>>,
+        reg: &'a TypeRegistry,
+        handles: &'a Handles,
+    ) -> Self {
         let root_entity = builder.id();
         let cmds = builder.commands();
         Interpreter {
             ctx: LoadCtx { reg, handles },
-            mutable: RefCell::new(InnerInterpreter {
-                cmds: BevyCmds(cmds),
-                parent_chain: SmallVec::new(),
-                errors: Vec::new(),
-                dsl: D::default(),
-                load_ctx,
-                root_entity,
-                templates: Templates::new(),
-            }),
+            cmds,
+            parent_chain: SmallVec::new(),
+            templates: HashMap::new(),
+            errors: Vec::new(),
+            dsl: D::default(),
+            load_ctx,
+            root_entity,
         }
     }
-}
-impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D> {
-    pub fn interpret(&mut self, input: &'a [u8]) -> Result<(), Errors> {
-        let stateful_input = Input::new(input, &*self);
-        let parse_error = parser::chirp_document(stateful_input);
-        let mut errors = mem::take(&mut self.mutable.borrow_mut().errors);
-        if let Err(err) = parse_error {
-            errors.push(SpannedError::new::<D>(err.error, err.span));
-        }
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            let str = Cow::Borrowed("Static str");
-            let interp = self.mutable.borrow();
-            let load_ctx = interp.load_ctx.as_ref();
-            let file_name = load_ctx.map_or(str, |l| l.path().to_string_lossy());
-            let source_code = String::from_utf8_lossy(input).to_string();
-            let source_code = NamedSource::new(file_name, source_code);
-            Err(Errors { source_code, errors })
-        }
+    #[cold]
+    fn push_error(&mut self, span: Span, error: impl Into<InterpError>) {
+        self.errors.push(SpannedError::new::<D>(error, span));
     }
-    fn statement_spawn(&self) -> Option<Entity> {
-        trace!("Inserting DSL");
-        let interp = &mut *self.mutable.borrow_mut();
 
-        let mut dsl = mem::take(&mut interp.dsl); // we set to the default D
+    fn statement_spawn(&mut self) -> Option<Entity> {
+        trace!("Inserting DSL");
+
+        let mut dsl = mem::take(&mut self.dsl); // we set to the default D
 
         // - no parent: we are root, use root_entity
         // - parent, but equal to root_entity: means we have a single parent use any
         // - parent, different to root_entity: use root_entity
-        let mut cmds = if interp.parent_chain.last().is_none() {
-            interp.cmds.0.entity(interp.root_entity)
+        let mut cmds = if self.parent_chain.last().is_none() {
+            self.cmds.entity(self.root_entity)
         } else {
-            let mut cmds = interp.cmds.0.spawn_empty();
-            cmds.set_parent(interp.root_entity);
+            let mut cmds = self.cmds.spawn_empty();
+            cmds.set_parent(self.root_entity);
             cmds
         };
-        interp.errors.is_empty().then(|| dsl.insert(&mut cmds))
+        self.errors.is_empty().then(|| dsl.insert(&mut cmds))
     }
 }
-impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp<'a>
-    for &'_ Interpreter<'w, 's, 'a, 'h, 'l, 'll, 'r, D>
-{
-    fn insert_entity(&self) {
+impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a> for Interpreter<'w, 's, 'a, 'l, D> {
+    fn spawn_leaf(&mut self) {
         self.statement_spawn();
     }
-    fn method(&self, name: &[u8], name_span: Span, args: &[u8], args_span: Span) {
+    fn method(&mut self, (name, name_span): Name<'a>, arguments: &Arguments) {
         use crate::parse_dsl::DslParseError;
 
         let Ok(name) = str::from_utf8(name) else {
             let error = InterpError::BadUtf8MethodName;
-            self.mutable.borrow_mut().push_error(name_span, error);
+            self.push_error(name_span, error);
             return;
         };
         if name.starts_with(char::is_uppercase) {
             let error = InterpError::UppercaseMethod(name.into());
-            self.mutable.borrow_mut().push_error(name_span, error);
+            self.push_error(name_span, error);
             return;
         }
-        let Ok(args) = str::from_utf8(args) else {
-            let error = InterpError::BadUtf8Argument;
-            self.mutable.borrow_mut().push_error(args_span, error);
-            return;
-        };
-        trace!("Method: {name} '{args}'");
-        let interp = &mut *self.mutable.borrow_mut();
-        let InnerInterpreter { load_ctx, dsl, .. } = interp;
+        trace!("Method: {name}{arguments}");
+        let Self { load_ctx, dsl, .. } = self;
+        let args_span = arguments.span().unwrap_or(name_span);
         let ctx = MethodCtx {
             name,
-            args,
+            arguments: arguments.into(),
             ctx: load_ctx.as_deref_mut(),
             registry: self.ctx.reg,
         };
         if let Err(err) = dsl.method(ctx) {
             let is_name_err = err.downcast_ref::<DslParseError>().is_some();
             let span = if is_name_err { name_span } else { args_span };
-            interp.push_error(span, err);
+            self.push_error(span, err);
         }
     }
-    fn spawn_with_children(&self) {
+    fn start_children(&mut self) {
         let inserted = self.statement_spawn();
         trace!(">>> Going deeper now…");
-        let InnerInterpreter { root_entity, parent_chain, .. } = &mut *self.mutable.borrow_mut();
+        let Self { root_entity, parent_chain, .. } = self;
         // for the `statement_spawn` to correctly pick a parent:
         // - no parent: push inserted, set root_entity to inserted.
         // - parent equal to root_entity: set root_entity to inserted
@@ -365,31 +347,34 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp<'a>
             Some(_) => parent_chain.push(mem::replace(root_entity, inserted)),
         }
     }
-    fn code(&self, (identifier, span): (&[u8], Span)) {
+    fn code(&mut self, (identifier, span): Name<'a>) {
         let b_name = BStr::new(identifier);
         trace!("Calling registered function {b_name}");
         let Some(code) = self.ctx.handles.get_function_u8(identifier) else {
-            let name = String::from_utf8_lossy(identifier).to_string();
-            let interp = &mut self.mutable.borrow_mut();
-            interp.push_error(span, InterpError::CodeNotPresent(name));
+            let name = String::from_utf8_lossy(identifier);
+            self.push_error(span, InterpError::CodeNotPresent(name.into()));
             return;
         };
-        let interp = &mut *self.mutable.borrow_mut();
-        let load_ctx = interp.load_ctx.as_deref();
-        let mut cmds = interp.cmds.0.spawn_empty();
-        cmds.set_parent(interp.root_entity);
+        let load_ctx = self.load_ctx.as_deref();
+        let mut cmds = self.cmds.spawn_empty();
+        cmds.set_parent(self.root_entity);
         code(self.ctx.reg, load_ctx, &mut cmds);
     }
 
-    fn set_name(&self, span: Span, mut name: &[u8]) {
-        if name.len() > 2 && name.starts_with(b"\"") && name.ends_with(b"\"") {
-            name = &name[1..name.len() - 1];
+    fn set_name(&mut self, (name, span): Name) {
+        trace!("= node {} =", BStr::new(name));
+        let ctx = MethodCtx {
+            name: "named",
+            arguments: parse_dsl::Arguments::for_name(name),
+            ctx: self.load_ctx.as_deref_mut(),
+            registry: self.ctx.reg,
+        };
+        if let Err(err) = self.dsl.method(ctx) {
+            self.push_error(span, err);
         }
-        self.method(b"named", span, escape_literal(name).as_ref(), span);
     }
-
-    fn complete_children(&self) {
-        let InnerInterpreter { root_entity, parent_chain, .. } = &mut *self.mutable.borrow_mut();
+    fn complete_children(&mut self) {
+        let Self { root_entity, parent_chain, .. } = self;
         trace!("<<< Ended spawning entities within statements block, continuing");
         let pop_msg = "MAJOR cuicui_chirp BUG: please open an issue 🥺 plleaaaaasse\n\
             The parser called the interpreter's pop function more times than it \
@@ -403,25 +388,21 @@ impl<'w, 's, 'a, 'h, 'l, 'll, 'r, D: ParseDsl> parser::Itrp<'a>
         *root_entity = entity;
     }
 
-    fn import(&self, _: &[u8], span: Span, _: Option<&[u8]>) {
-        let interp = &mut self.mutable.borrow_mut();
-        interp.push_error(span, InterpError::Import);
+    fn import(&mut self, (_name, span): Name<'a>, _alias: Option<Name>) {
+        self.push_error(span, InterpError::Import);
     }
 
-    fn register_fn(&self, name: &'a [u8], parser: StateCheckpoint) {
-        trace!("<- registered '{}!'", BStr::new(name));
-        let interp = &mut self.mutable.borrow_mut();
-        interp.templates.insert(name, parser);
+    fn register_fn(&mut self, (name, _): Name<'a>, index: FnIndex) {
+        self.templates.insert(name, index);
     }
-    fn call_template(&self, name: &'a [u8], span: Span) -> Option<StateCheckpoint> {
-        trace!("-> calling '{}!'", BStr::new(name));
-        let interp = &mut self.mutable.borrow_mut();
 
-        let chckpt = interp.templates.get(name);
-        if chckpt.is_none() {
-            interp.push_error(span, InterpError::TemplateNotFound(name.into()));
+    fn get_template(&mut self, (name, span): Name<'a>) -> Option<FnIndex> {
+        if let Some(key) = self.templates.get(name) {
+            trace!("<<--- {}", BStr::new(name));
+            return Some(*key);
         }
-        chckpt
+        self.push_error(span, InterpError::TemplateNotFound(name.into()));
+        None
     }
 }
 

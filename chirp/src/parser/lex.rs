@@ -4,7 +4,6 @@ use std::slice;
 
 use super::Token;
 
-// TODO(perf): split the within-method lexer (,) and outside lexer
 const RECOGNIZED_SYMBOL_COUNT: usize = 15;
 const RECOGNIZED_SYMBOLS: [u8; RECOGNIZED_SYMBOL_COUNT] = *b"=(){}[],\"'/ \n\t\r";
 
@@ -141,7 +140,7 @@ impl<'i, const Q: u8> Quoted<'i, Q> {
                 b'\\' => esc = !esc,
                 q if q == Q && esc => esc = !esc,
                 q if q == Q => return Some(Token::String(self.0)),
-                _ => {}
+                _ => esc = false,
             }
         }
     }
@@ -273,7 +272,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn correct_position() {
+    fn valid_position() {
         let pos = |x| Swar8::load_from(x).position::<b'x'>();
         assert_eq!(pos(b"x   "), Some(0));
         assert_eq!(pos(b" x  "), Some(1));
@@ -289,5 +288,29 @@ mod tests {
         assert_eq!(pos(b"x x x x               "), Some(0));
         assert_eq!(pos(b" xx_"), Some(1));
         assert_eq!(pos(b"__x____x__________"), Some(2));
+    }
+
+    #[test]
+    fn valid_string() {
+        #[track_caller]
+        fn full_valid(input: &[u8]) {
+            valid(input, input, b"");
+        }
+        #[track_caller]
+        fn valid(input: &[u8], expected: &[u8], remaining: &[u8]) {
+            let (first, mut input) = input.split_at(1);
+            let token = Quoted::<b'"'>(first).next(&mut input);
+            assert_eq!(Some(Token::String(expected)), token);
+            assert_eq!(remaining, input);
+        }
+        full_valid(br#""hello""#);
+        full_valid(br#""hello world""#);
+        full_valid(br#""hello\"world""#);
+        full_valid(br#""hello\\world""#);
+
+        full_valid(br#""hello\\\\\"world""#); // hello\\"world
+        full_valid(br#""\\hello world\\""#); // \hello world\
+        full_valid(br#""  hello world\"""#); // |  hello world"|
+        full_valid(br#""\'hello world\"""#); // 'hello world"
     }
 }

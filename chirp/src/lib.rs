@@ -43,7 +43,6 @@ pub use reflect::ReflectDsl;
 
 mod load_asset;
 mod parser;
-mod template;
 
 pub mod interpret;
 pub mod loader;
@@ -104,13 +103,12 @@ impl<'a> ChirpReader<'a> {
         let mut cmds = state.get_mut(self.world);
         let mut cmds = cmds.spawn_empty();
         let id = cmds.id();
-        let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
-        let result = interpreter.interpret(input).map(|_| id);
-        drop(interpreter);
+        let result = Interpreter::interpret::<D>(input, &mut cmds, load_context, registry, handles);
+
         if result.is_ok() {
             state.apply(self.world);
         }
-        result
+        result.map(|_| id)
     }
     /// Same as [`Self::interpret`], but directly logs error message instead
     /// of returning the result.
@@ -130,16 +128,14 @@ impl<'a> ChirpReader<'a> {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
         let mut cmds = cmds.spawn_empty();
-        let mut interpreter = Interpreter::new::<D>(&mut cmds, load_context, registry, handles);
-        let result = interpreter.interpret(input);
-        drop(interpreter);
+        let result = Interpreter::interpret::<D>(input, &mut cmds, load_context, registry, handles);
+
         if let Err(err) = &result {
             log_miette_error!(err);
-        }
-        let ok = result.is_ok();
-        if ok {
+            false
+        } else {
             state.apply(self.world);
+            true
         }
-        ok
     }
 }

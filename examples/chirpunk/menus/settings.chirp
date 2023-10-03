@@ -1,7 +1,29 @@
 // The settings menu
-// fn tab_button(text) {
-//     focusable(named text) {
-//         spawn(text text, style TabButton);
+fn tab_button(name, target) {
+    Entity(named(name) focusable rules(2*, 2*) style(TabButton) row swatch_target(target)) {
+        Entity(text(name) style(TabText))
+    }
+}
+fn settings_header(name) {
+    Entity(named(name) main_margin(40.) width(100%) style(SettingsHeader) distrib_start row) {
+        Entity(text(name) style(SettingsHeaderText))
+    }
+}
+// fn settings_row(name default_choice_text options_sizes) {
+//     SettingsRow(rules(100%, 1*) row style(OptionRow)) {
+//         SettingsText(text(name) style(OptionEntry) width(50%))
+//         SettingsBox(row rules(45%, 1.5*) style(OptionBox) main_margin(10)) {
+//             LArrow(style(OptionBoxLArrow) height(25px))
+//             BoxContent(column rules(1*, 1.2*)) {
+//                 BoxSelectedText(style(OptionBoxChoice) text(default_choice_text))
+//                 BoxTicks(row rules(1.3*, 1*)) {
+//                     for [size, content] in options_sizes {
+//                         Tick(rules(size, 3px) option_tick(content))
+//                     }
+//                 }
+//             }
+//             RArrow(style(OptionBoxRArrow) height(25px))
+//         }
 //     }
 // }
 SettingsMenu(
@@ -16,10 +38,10 @@ SettingsMenu(
             TabButtons(row rules(100%, 99%)) {
                 RETURN(cancel text("RETURN") width(19.9%) style(BackText))
                 TabBar(row width(79.9%) main_margin(100)) {
-                    DISPLAY(row swatch_target(Display) prioritized tab_button)
-                    "SOUND"(row swatch_target(Sound) tab_button)
-                    "TAB 3"(row swatch_target(Tab3) tab_button)
-                    "TAB 4"(row swatch_target(Tab4) tab_button)
+                    tab_button!("DISPLAY", Display)
+                    tab_button!("SOUND", Sound)
+                    tab_button!("TAB 3", Tab3)
+                    tab_button!("TAB 4", Tab4)
                 }
             }
             TabLineSeparator(bg(rgb(255, 98, 81)) rules(100%, 0.99%))
@@ -30,43 +52,29 @@ SettingsMenu(
     // Here, the `swatch_name` method inserts a SwatchBuilder component that
     // triggers the behaviors implemented by show_menus::Plugin
     AllTabs(layout(">oSaS") main_margin(130) cross_margin(50) swatch_name(SettingsSubmenu) rules(100%, 90%)) {
-        DisplayMenu(column menu("DISPLAY") rules(100%, 100%) layout("vdSaC")) {
-            Display(settings_header row width(100%) main_margin(40) distrib_start)
-            Spacer(height(40px))
+        DisplayMenu(column menu("DISPLAY") rules(100%, 1.5*) layout("vdSaC")) {
+            settings_header!("Display")
             "Window mode"(options(Choice(["Windowed","Borderless"])) row rules(100%,1*) settings_row)
-            Spacer(height(20px))
             "Mouse lock"(options(Toggle) row rules(100%, 1*) settings_row)
-            Spacer(height(20px))
             "Resizable window"(options(Toggle) row rules(100%, 1*) settings_row)
-            Spacer(height(20px))
             "Resolution"(options(Choice(["1920x1080","1280x720","720x720"])) row rules(100%,1*) settings_row)
-            Spacer(height(20px))
             "Profiler Overlay"(options(Toggle) row rules(100%,1*) settings_row)
         }
-        SoundMenu(column menu("SOUND") rules(100%, 100%) layout("vdSaC")) {
-            "Audio Settings"(settings_header row width(100%) main_margin(40) distrib_start)
-            Spacer(height(40px))
-            // column("SoundItems", rules(100%, 90%), cross_margin 80)
+        SoundMenu(column menu("SOUND") rules(100%, 1.5*) layout("vdSaC")) {
+            settings_header!("Audio Settings")
             // TODO(feat): add Interaction & Focusable to this
             "Master volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
-            Spacer(height(20px))
-
             "Effects volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
-            Spacer(height(20px))
             "Music volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
         }
-        Tab3Menu(column menu("TAB 3") rules(100%, 100%) layout("vdSaC")) {
-            "Tab 3"(settings_header row width(100%) main_margin(40) distrib_start)
-            Spacer(height(40px))
+        Tab3Menu(column menu("TAB 3") rules(100%, 1.5*) layout("vdSaC")) {
+            settings_header!("Tab 3")
             "Sound effect 1"(options(Click) row rules(100%, 1*) settings_row)
-            Spacer(height(20px))
             "Sound effect 2"(options(Click) row rules(100%, 1*) settings_row)
         }
-        Tab4Menu(column menu("TAB 4") rules(100%, 100%) layout("vdSaC")) {
-            "Tab 4"(settings_header row width(100%) main_margin(40) distrib_start)
-            Spacer(height(40px))
+        Tab4Menu(column menu("TAB 4") rules(100%, 1.5*) layout("vdSaC")) {
+            settings_header!("Tab 4")
             "Fine grained clicking"(options(Increments(30)) row rules(100%, 1*) settings_row)
-            Spacer(height(20px))
             "UI highlight color"(settings_row row rules(100%,1*) options(Choice([
                 "aliceblue", "antiquewhite", "aqua",           "aquamarine",
                 "chocolate", "coral",        "cornflowerblue", "cornsilk",

@@ -3,12 +3,17 @@
 //! The [`args`] module is used by the `parse_dsl_impl` macro when generating
 //! [`ParseDsl`] implementation based on methods in an `impl` block.
 //!
-//! The [`split()`] function is used by the macro to separate arguments to a method.
+//! The arguments as declared in the chirp file are passed to the methods as
+//! the [`MethodCtx::arguments`] field. Check the [`MethodCtx`] docs for details.
 //!
 //! # Internal architecture
 //!
 //! The actual parser implementation for the `chirp` file format is private
 //! and available in the `crate::grammar` module.
+//!
+//! This is the classic interpreter architecture of:
+//!
+//! > lexer → parser → AST → interpreter
 //!
 //! The way parsed text gets interpreted is implemented in the [`crate::interpret`]
 //! module.
@@ -19,15 +24,12 @@ use bevy::reflect::TypeRegistryInternal as TypeRegistry;
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 
+pub use args::Arguments;
 pub use escape::escape_literal;
-pub use split::{split, ArgError};
 
-#[cfg(test)]
-mod tests;
+mod escape;
 
 pub mod args;
-mod escape;
-pub mod split;
 
 /// The input specification called a method that does not exist.
 ///
@@ -47,56 +49,24 @@ impl DslParseError {
     }
 }
 
-/// Argument to [`ParseDsl::method`].
+/// Context to run a method on [`ParseDsl::method`].
 ///
 /// # Call format
 ///
-/// When the method is called in the "bare" format, without arguments, such as:
-/// ```text
-/// Entity (bare_method)
-/// ```
-/// `args` will be the empty string.
+/// `arguments` contain the arguments as parsed by `cuicui_chirp`. Parsing
+/// removes comments and surounding spaces.
 ///
-/// Otherwise, `args` will include the surrouding parenthesis of the method call.
-/// For example:
-/// ```text
-/// Entity (bare_method method1() method2(foobar) method3("foobar") method4(foo, bar))
-/// ```
-/// Will call [`ParseDsl::method`] with a `MethodCtx` with the following fields set:
-///
-/// |`name`|`bare_method`|`method1`| `method2`  | `method3`    | `method4`    |
-/// |------|-------------|---------|------------|--------------|--------------|
-/// |`args`|`''`         |`'()'`   |`'(foobar)'`|`'("foobar")'`|`'(foo, bar)'`|
-///
-///
-/// # How to handle argument parsing
-///
-/// `cuicui_chirp` expects end-users to use the `parse_dsl_impl` macro or
-/// [`ReflectDsl`] struct to take care of parsing for them.
-///
-/// A set of "blessed" parsers is predefined in the [`args`]
-/// module. Those are the parsers used by default by `parse_dsl_impl`.
-///
-/// `ReflectDsl` uses the [`args::from_reflect`] and [`args::to_handle`]
-/// parsers.
-///
-/// If you want to implement your own parsers, it is recommended that you follow
-/// a similar syntax as the "native" syntax, and re-using the publicly-provided
-/// parsers already used in `cuicui_chirp` is the best way to accomplish this.
-///
-/// To split arguments to methods between individual parameters, `parse_dsl_impl`
-/// uses the [`split::split`] function. consider re-using it.
-///
-/// [`ReflectDsl`]: crate::ReflectDsl
-pub struct MethodCtx<'a, 'l, 'll, 'r> {
+/// See the [`Arguments`] documentation for details.
+pub struct MethodCtx<'i, 'c, 'cc> {
+    // TODO(perf): Most likey could be a `[u8]` instead.
     /// The method name.
-    pub name: &'a str,
-    /// The method arguments (notice **plural**).
-    pub args: &'a str,
+    pub name: &'i str,
+    /// The method arguments.
+    pub arguments: Arguments<'i, 'c>,
     /// The [`LoadContext`] used to load assets referenced in `chirp` files.
-    pub ctx: Option<&'l mut LoadContext<'ll>>,
+    pub ctx: Option<&'c mut LoadContext<'cc>>,
     /// The [`TypeRegistry`] the interpreter was initialized with.
-    pub registry: &'r TypeRegistry,
+    pub registry: &'c TypeRegistry,
     // TODO(perf): Consider re-using cuicui_fab::Binding
     // TODO(feat): bindings/references
 }
@@ -121,9 +91,11 @@ pub trait ParseDsl: DslBundle {
 }
 impl ParseDsl for BaseDsl {
     fn method(&mut self, data: MethodCtx) -> Result<()> {
-        let MethodCtx { name, args, .. } = data;
+        let MethodCtx { name, arguments: args, .. } = data;
         if name == "named" {
-            self.named(args.to_string());
+            let name = args.get(0).unwrap();
+            let str = String::from(String::from_utf8_lossy(name.as_ref()));
+            self.named(str);
             Ok(())
         } else {
             Err(DslParseError::new(name).into())

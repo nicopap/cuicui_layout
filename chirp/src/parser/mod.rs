@@ -1,46 +1,20 @@
 //! The actual parser for `chirp` files.
-use std::fmt;
 
-pub(crate) use grammar::{arg_token_tree, chirp_document};
 use stream::TokenType;
+
+pub(crate) use grammar::chirp_file;
+pub use interpret::{ChirpFile, FnIndex, Interpreter, Name, Span};
+pub use scope::Arguments;
 pub use stream::{Input, StateCheckpoint, Token};
 
+mod ast;
 mod grammar;
+mod interpret;
 mod lex;
+mod scope;
 mod stream;
 #[cfg(test)]
 mod tests;
-
-pub type Span = (u32, u32);
-pub(crate) trait Itrp<'a>: fmt::Debug + Clone {
-    fn code(&self, input: (&[u8], Span));
-    fn set_name(&self, span: Span, name: &[u8]);
-    fn complete_children(&self);
-    fn method(&self, name: &[u8], name_span: Span, args: &[u8], args_span: Span);
-    fn t_method(&self, ((name, name_span), (args, args_span)): ((&[u8], Span), (&[u8], Span))) {
-        self.method(name, name_span, args, args_span);
-    }
-    fn spawn_with_children(&self);
-    fn insert_entity(&self) {
-        self.spawn_with_children();
-        self.complete_children();
-    }
-    fn import(&self, import_source: &[u8], import_span: Span, rename: Option<&[u8]>);
-    fn register_fn(&self, name: &'a [u8], parser: StateCheckpoint);
-    fn call_template(&self, name: &'a [u8], name_span: Span) -> Option<StateCheckpoint>;
-}
-impl<'a> Itrp<'a> for () {
-    fn code(&self, _: (&[u8], Span)) {}
-    fn set_name(&self, _: Span, _: &[u8]) {}
-    fn complete_children(&self) {}
-    fn method(&self, _: &[u8], _: Span, _: &[u8], _: Span) {}
-    fn spawn_with_children(&self) {}
-    fn import(&self, _: &[u8], _: Span, _: Option<&[u8]>) {}
-    fn register_fn(&self, _: &'a [u8], _: StateCheckpoint) {}
-    fn call_template(&self, _: &'a [u8], _: Span) -> Option<StateCheckpoint> {
-        None
-    }
-}
 
 #[derive(thiserror::Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {
@@ -56,6 +30,8 @@ pub enum Error {
     StartStatement(TokenType),
     #[error("Expected a method name (ident). Instead got {0}")]
     BadMethod(TokenType),
+    #[error("The chirp file is invalid: got additional text after the root statement")]
+    TrailingText,
 }
 impl Error {
     pub(crate) const fn help(self) -> &'static str {
@@ -102,20 +78,25 @@ impl Error {
                 You might be getting this error because of an unbalanced \
                 parenthesis in a method list.\n"
             }
+            Error::TrailingText => {
+                "Chirp files define a single entity. This means that there can \
+                only be a single root statement. Try wrapping your statements \
+                inside a single root statement."
+            }
         }
     }
 }
-impl<'a, I: Itrp<'a>> winnow::error::ParserError<Input<'_, I>> for Error {
-    fn from_error_kind(_: &Input<I>, _: winnow::error::ErrorKind) -> Self {
+impl winnow::error::ParserError<Input<'_>> for Error {
+    fn from_error_kind(_: &Input, _: winnow::error::ErrorKind) -> Self {
         Self::Unexpected
     }
 
-    fn append(self, _: &Input<I>, _: winnow::error::ErrorKind) -> Self {
+    fn append(self, _: &Input, _: winnow::error::ErrorKind) -> Self {
         self
     }
 }
-impl<'a, I: Itrp<'a>> winnow::error::FromExternalError<Input<'_, I>, Error> for Error {
-    fn from_external_error(_: &Input<'_, I>, _: winnow::error::ErrorKind, e: Error) -> Self {
+impl winnow::error::FromExternalError<Input<'_>, Error> for Error {
+    fn from_external_error(_: &Input<'_>, _: winnow::error::ErrorKind, e: Error) -> Self {
         e
     }
 }

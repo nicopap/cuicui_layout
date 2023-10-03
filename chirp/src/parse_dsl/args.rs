@@ -1,11 +1,8 @@
 //! Parse individual method arguments.
 //!
-//! The functions in this module are available in the `parse_dsl_impl` macro's
-//! `type_parsers` argument. It is however possible to define and substitute your
-//! own.
-//!
-//! If a method accepts several arguments, the string is first split using the
-//! [`super::split()`] function.
+//! `parse_dsl_impl` uses this modules functions to parse individual arguments passed
+//! to methods in a chirp file. It is however possible to define and substitute your
+//! own with the `type_parsers` `parse_dsl_impl` meta-attribute.
 #![allow(clippy::inline_always)]
 // allow: rust has difficulties inlining functions cross-crate. Since we only
 // use inline(always) on functions that are very small, it won't add significative
@@ -21,6 +18,7 @@ use thiserror::Error;
 
 use super::escape_literal;
 use crate::load_asset::LoadAsset;
+use crate::parser;
 
 fn tyname<T>() -> &'static str {
     any::type_name::<T>()
@@ -82,6 +80,16 @@ impl ReflectDslDeserError {
             }
         }
     }
+}
+
+/// Error caused by an invalid number of arguments passed to a method.
+#[derive(Debug, Error)]
+#[error("Expected {expected} arguments, got {got} arguments")]
+pub struct ArgumentError {
+    /// Number of arguments that _should_ be passed to the method.
+    pub expected: usize,
+    /// Number of arguments that _actually got_ passed to the method.
+    pub got: usize,
 }
 
 /// Deserialize a method argument using the [`ron`] file format.
@@ -194,5 +202,131 @@ fn interpret_str(mut input: &str) -> Cow<str> {
             Cow::Borrowed(bytes) => Cow::Borrowed(str::from_utf8_unchecked(bytes)),
             Cow::Owned(bytes_vec) => Cow::Owned(String::from_utf8_unchecked(bytes_vec)),
         }
+    }
+}
+
+enum ArgumentsInner<'i, 'a> {
+    Parser(&'a parser::Arguments<'i, 'a>),
+    Named(Cow<'i, [u8]>),
+}
+
+/// Arguments passed to a method.
+///
+/// In the `chirp` file, this corresponds to the text within parenthesis following
+/// a method name:
+///
+/// ```text
+/// //                 vvvv  vvvvvvvvv     vvvvvv
+/// Entity(method_name(arg1, arg2(Foo)   , 10 + 3) other_method))
+/// ```
+///
+/// Arguments will be **stripped of comments and surrouding spaces**,
+/// and **[parameter substitution]** will be applied within templates.
+///
+/// # Call format
+///
+/// You can use [`Arguments::len`] to check how many arguments were passed to
+/// the method and [`Arguments::get`] to access an argument at a provided index.
+///
+/// A bare method (without following parenthesis) will have zero arguments,
+/// a method with following parenthesis with no arguments will **also** have zero
+/// arguments.
+///
+/// For example:
+///
+/// ```text
+/// Entity(bare_method method1() method2(foobar) method3("foobar") method4(  10 + 3 , bar))
+/// ```
+///
+/// |`name`|`bare_method`|`method1`|`method2`|`method3`|`method4`|
+/// |------|-------------|---------|---------|---------|---------|
+/// |`ctx.arguments.len()`|`0`|`0` | `1`     | `1`     | `2`     |
+/// |`ctx.arguments.get(0)`|`None`|`None`| `foobar` | `"foobar"` | `10 + 3`|
+///
+///
+/// # How to handle argument parsing
+///
+/// `cuicui_chirp` expects end-users to use the `parse_dsl_impl` macro or
+/// [`ReflectDsl`] struct to take care of parsing for them.
+///
+/// A set of "blessed" parsers is predefined in the [`args`](self)
+/// module. Those are the parsers used by default by `parse_dsl_impl`.
+///
+/// You can call them with the output of [`Arguments::get_str`].
+///
+/// `ReflectDsl` uses the [`from_reflect`] and [`to_handle`]
+/// parsers.
+///
+/// [`ReflectDsl`]: crate::ReflectDsl
+///
+///
+/// [parameter substitution]: crate#parameter-substitution
+pub struct Arguments<'i, 'a>(ArgumentsInner<'i, 'a>);
+
+impl<'i, 'a> Arguments<'i, 'a> {
+    pub(crate) fn for_name(name: &'i [u8]) -> Self {
+        let surrounded_by = |quote| name.starts_with(quote) && name.ends_with(quote);
+        let name = if name.len() >= 2 && (surrounded_by(b"\"") || surrounded_by(b"'")) {
+            escape_literal(&name[1..name.len() - 1])
+        } else {
+            Cow::Borrowed(name)
+        };
+        Self(ArgumentsInner::Named(name))
+    }
+    /// Whether arguments were passed to the method.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+    /// How many arguments were passed to the method.
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        match &self.0 {
+            ArgumentsInner::Parser(p) => p.len(),
+            ArgumentsInner::Named(_) => 1,
+        }
+    }
+    /// Get the `index`th argument passed to the method.
+    ///
+    /// `None` if `index > self.len()`.
+    ///
+    /// Template [parameter substitution] is applied. This allocates if there
+    /// is one or more substitutions for the queryed argument, that is not the
+    /// whole argument.
+    ///
+    /// Note that trailing and leading whitespaces are trimmed from arguments.
+    ///
+    /// [parameter substitution]: crate#parameter-substitution
+    #[must_use]
+    pub fn get(&self, index: usize) -> Option<Cow<'_, [u8]>> {
+        match &self.0 {
+            ArgumentsInner::Parser(p) => p.get(index),
+            ArgumentsInner::Named(n) if index == 0 => Some(Cow::Borrowed(n.as_ref())),
+            ArgumentsInner::Named(_) => None,
+        }
+    }
+    /// Get the `index`th argument passed to the method as a `str`.
+    ///
+    /// See [`Self::get`] for more details.
+    ///
+    /// May allocate on invalid UTF8 (uses [`String::from_utf8_lossy`] internally).
+    ///
+    /// # Panics
+    /// Will panics on invalid UTF8, if the argument was substitued.
+    #[must_use]
+    pub fn get_str(&self, index: usize) -> Option<Cow<str>> {
+        match &self.0 {
+            ArgumentsInner::Parser(p) => p.get(index).map(|p| match p {
+                Cow::Borrowed(p) => String::from_utf8_lossy(p),
+                Cow::Owned(p) => Cow::Owned(String::from_utf8(p).unwrap()),
+            }),
+            ArgumentsInner::Named(n) if index == 0 => Some(String::from_utf8_lossy(n)),
+            ArgumentsInner::Named(_) => None,
+        }
+    }
+}
+impl<'i, 'a> From<&'a parser::Arguments<'i, 'a>> for Arguments<'i, 'a> {
+    fn from(value: &'a parser::Arguments<'i, 'a>) -> Self {
+        Self(ArgumentsInner::Parser(value))
     }
 }

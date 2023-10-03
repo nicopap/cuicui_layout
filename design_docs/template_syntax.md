@@ -135,7 +135,7 @@ previous understanding of languages.
 Also, we'd like to be able to substitute individual names with several token
 (TokenTree rule), so splitting on comma would be good.
 
-Also, with the `|` syntax, it becomes a bit. strange that two sides of the pipe
+Also, with the `|` syntax, it becomes a bit strange that two sides of the pipe
 inside parenthesis has different ways of splitting arguments (commas on the
 left and spaces on the right)
 

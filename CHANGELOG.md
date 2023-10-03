@@ -2,6 +2,7 @@
 
 ## All changes
 
+- Documentation hoverall and addition of The Cuicui Book.
 - Complete redesign of the chirp and dsl syntax.
 - Added "templates" to chirp files.
 - Made `cuicui_chirp` optional dependencies of `cuicui_layout`,

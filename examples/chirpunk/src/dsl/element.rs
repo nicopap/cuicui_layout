@@ -41,10 +41,7 @@ impl SettingsOption {
 pub enum Element {
     #[default]
     None,
-    TabButton,
-    SettingsHeader,
     SettingsRow,
-    MainMenuItem,
 }
 impl Element {
     pub(super) fn spawn(
@@ -57,33 +54,9 @@ impl Element {
                             none were given.";
         match self {
             Element::None => {}
-            Element::TabButton => tab_button(name, cmds),
-            Element::SettingsHeader => settings_header(name, cmds),
             Element::SettingsRow => settings_row(name, cmds, *options.expect(settings_err)),
-            Element::MainMenuItem => main_menu_item(name, cmds),
         }
     }
-}
-fn tab_button(name: &str, cmds: &mut EntityCommands) {
-    dsl! { <BevypunkDsl> cmds,
-        Entity(named(name) focusable rules(child(2.), child(2.)) style(style::Element::TabButton)) {
-            Entity(text(name) style(style::Element::TabText))
-        }
-    };
-}
-fn settings_header(name: &str, cmds: &mut EntityCommands) {
-    dsl! { <BevypunkDsl> cmds,
-        Entity(
-            named(name)
-            main_margin(40.)
-            width(pct(100))
-            style(style::Element::SettingsHeader)
-            distrib_start
-            row
-        ) {
-            Entity(text(name) style(style::Element::SettingsHeaderText))
-        }
-    };
 }
 fn box_mark(size: u16, cmds: &mut EntityCommands) {
     dsl! { <BevypunkDsl> cmds,
@@ -120,17 +93,6 @@ fn settings_row(name: &str, cmds: &mut EntityCommands, options: SettingsOption) 
                 }
                 RArrow(style(OptionBoxRArrow) height(px(25)))
             }
-        }
-    };
-}
-fn main_menu_item(name: &str, cmds: &mut EntityCommands) {
-    dsl! { <BevypunkDsl> cmds,
-        Entity(
-            named(name)
-            style(style::Element::MainMenuItemButton)
-            image(&Handle::default())
-        ) {
-            Entity(text(name) style(style::Element::MainMenuItemText))
         }
     };
 }

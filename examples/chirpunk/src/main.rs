@@ -44,7 +44,7 @@ fn bevy_log_plugin() -> LogPlugin {
         filter: "\
           cuicui_layout=info,cuicui_layout_bevy_ui=info,\
           cuicui_chirp=trace,\
-          cuicui_chirp::interpret=info,\
+          cuicui_chirp::interpret=trace,\
           gilrs_core=info,gilrs=info,\
           naga=info,wgpu=error,wgpu_hal=error,\
           bevy_app=info,bevy_render::render_resource::pipeline_cache=info,\

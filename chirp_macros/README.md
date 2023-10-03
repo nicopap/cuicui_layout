@@ -1,11 +1,11 @@
-# cuicui format `ParseDslImpl` macro
+# Chirp `ParseDsl` impl block macro
 
 Generate `ParseDsl` implementations to parse chirp files from an `impl` block.
 
 ## Behavior
 
-```text
-use cuicui_chirp::{ParseDslImpl, ParseDsl};
+```rust,ignore
+use cuicui_chirp::{parse_dsl_impl, ParseDsl};
 
 #[parse_dsl_impl(set_params <D: ParseDsl>, delegate = inner)]
 impl<D: DslBundle> LayoutDsl<D> {
@@ -33,15 +33,12 @@ will automatically be added to the `ParseDsl::method` implementation.
 
 To ignore completely a function in the impl block, use `#[parse_dsl(ignore)]`.
 
-This relies on the `FromStr` trait, each non-self argument to a `method`
-should implement `FromStr`, so that it is possible to parse it from a string.
-
 For the snippet of code shown earlier, the macro output will be:
 
 1. The block as-is, without modifications
 2. A `impl ParseDsl for LayoutDsl` as follow:
 
-```text
+```rust,ignore
 impl<D: ParseDsl> ParseDsl for LayoutDsl<D> {
     fn method(
         &mut self,

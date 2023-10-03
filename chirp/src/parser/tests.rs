@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use bevy::utils::HashMap;
 
 use super::*;
@@ -99,66 +97,65 @@ impl TestState {
         let hier = self.hierarchy.get_index_mut(&self.current);
         hier.name = String::from_utf8_lossy(name).to_string();
     }
-    fn set_method(&mut self, name: &[u8], args: &[u8]) {
+    fn set_method(&mut self, name: &[u8], args: &Arguments) {
         let hier = self.hierarchy.get_index_mut(&self.current);
         let name = String::from_utf8_lossy(name).to_string();
-        let args = String::from_utf8_lossy(args).to_string();
+        let args = args.to_string();
         hier.methods.insert(name, args);
     }
 }
 #[derive(Debug)]
-struct TestInterpreter(RefCell<TestState>);
+struct TestInterpreter(TestState);
 impl TestInterpreter {
     fn new() -> Self {
-        TestInterpreter(RefCell::new(TestState::new()))
+        TestInterpreter(TestState::new())
     }
 }
 
-impl<'a> Itrp<'a> for &'_ TestInterpreter {
-    fn code(&self, (code, range): (&[u8], Span)) {
-        let state = &mut *self.0.borrow_mut();
-        let current = state.hierarchy.get_index_mut(&state.current);
+impl<'a> Interpreter<'a> for TestInterpreter {
+    fn code(&mut self, (code, range): (&[u8], Span)) {
+        let current = self.0.hierarchy.get_index_mut(&self.0.current);
         current.insert_code(code, range);
     }
 
-    fn set_name(&self, _span: Span, name: &[u8]) {
-        self.0.borrow_mut().set_name(name);
+    fn set_name(&mut self, (name, _): Name) {
+        self.0.set_name(name);
     }
 
-    fn complete_children(&self) {
-        let state = &mut *self.0.borrow_mut();
-        state.current.pop();
-        if let Some(last) = state.current.last_mut() {
+    fn complete_children(&mut self) {
+        if let Some(last) = self.0.current.last_mut() {
             *last += 1;
         }
     }
 
-    fn method(&self, name: &[u8], _: Span, args: &[u8], _: Span) {
-        self.0.borrow_mut().set_method(name, args);
+    fn method(&mut self, (name, _): Name, args: &Arguments) {
+        self.0.set_method(name, args);
     }
 
-    fn spawn_with_children(&self) {
-        self.0.borrow_mut().current.push(0);
+    fn start_children(&mut self) {
+        self.0.current.push(0);
     }
 
-    fn import(&self, _: &[u8], _: Span, _: Option<&[u8]>) {
+    fn get_template(&mut self, _name: Name<'a>) -> Option<FnIndex> {
         todo!()
     }
 
-    fn register_fn(&self, _: &'a [u8], _: StateCheckpoint) {
+    fn import(&mut self, _name: Name<'a>, _alias: Option<Name<'a>>) {
         todo!()
     }
 
-    fn call_template(&self, _: &'a [u8], _: Span) -> Option<StateCheckpoint> {
+    fn register_fn(&mut self, _name: Name<'a>, _index: FnIndex) {
         todo!()
     }
 }
 #[track_caller]
 fn interpret(input: &str) -> Hier {
-    let state = TestInterpreter::new();
-    let stateful_input = Input::new(input.as_bytes(), &state);
-    super::chirp_document(stateful_input).unwrap();
-    state.0.into_inner().hierarchy
+    let input = Input::new(input.as_bytes(), ());
+    let chirp_file = super::chirp_file(input).unwrap();
+    let mut state = TestInterpreter::new();
+    let file = ChirpFile::new(input, &chirp_file);
+    file.interpret(&mut state);
+    state.0.hierarchy
 }
 
 #[test]

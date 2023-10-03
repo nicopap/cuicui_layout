@@ -17,6 +17,11 @@ use crate::parse_dsl::{MethodCtx, ParseDsl};
 #[derive(Error)]
 enum ReflectDslError<T> {
     #[error(
+        "Method on `ReflectDsl` was called with not exactly one argument. \
+        Try having double parenthesis around the method argument"
+    )]
+    NotExactlyOneArgument,
+    #[error(
         "Tried to set the field '{0}' of ReflectDsl<{ty}>, but {ty} \
         doesn't have such a field",
         ty=type_name::<T>()
@@ -44,6 +49,7 @@ impl<T> fmt::Debug for ReflectDslError<T> {
                 .field("missing", missing)
                 .finish(),
             BadDeser(error) => f.debug_tuple("BadDeser").field(error).finish(),
+            ReflectDslError::NotExactlyOneArgument => write!(f, "NotExactlyOneArgument"),
             _Ignonre(..) => unreachable!(),
         }
     }
@@ -56,15 +62,15 @@ impl<T> fmt::Debug for ReflectDslError<T> {
 pub trait Format {
     /// Deserialize into a `Box<dyn Reflect>`, any error is propagated by [`ReflectDsl::method`].
     #[allow(clippy::missing_errors_doc)] // false+: We can't say what our users will fail with.
-    fn deserialize(input: &str, de: TypedReflectDeserializer) -> Result<Box<dyn Reflect>>;
+    fn deserialize(input: &[u8], de: TypedReflectDeserializer) -> Result<Box<dyn Reflect>>;
 }
 /// Deserialize method arguments as `ron` strings.
 ///
 /// This is the default deserialization method for [`ReflectDsl`].
 pub struct RonFormat;
 impl Format for RonFormat {
-    fn deserialize(input: &str, de: TypedReflectDeserializer) -> Result<Box<dyn Reflect>> {
-        Ok(de.deserialize(&mut ron::de::Deserializer::from_str(input)?)?)
+    fn deserialize(input: &[u8], de: TypedReflectDeserializer) -> Result<Box<dyn Reflect>> {
+        Ok(de.deserialize(&mut ron::de::Deserializer::from_bytes(input)?)?)
     }
 }
 
@@ -174,6 +180,10 @@ where
         use ReflectDslError::{BadDeser, BadField};
         // unwrap: Same logic as in `DslBundle::insert`
         let inner = self.inner.as_mut().unwrap();
+        if ctx.arguments.len() != 1 {
+            return Err(ReflectDslError::NotExactlyOneArgument);
+        }
+        let argument = ctx.arguments.get(0).unwrap();
         let Some(field_to_update) = inner.field_mut(ctx.name) else {
             return Err(BadField(ctx.name.to_string()));
         };
@@ -184,7 +194,7 @@ where
         };
         let registration = ctx.registry.get(id).ok_or_else(not_registered)?;
         let de = TypedReflectDeserializer::new(registration, ctx.registry);
-        let field_value = F::deserialize(ctx.args, de).map_err(BadDeser)?;
+        let field_value = F::deserialize(&argument, de).map_err(BadDeser)?;
         // unwrap: Error should never happen, since we get the registration for field.
         field_to_update.set(field_value).unwrap();
         Ok(())

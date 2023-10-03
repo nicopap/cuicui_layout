@@ -4,7 +4,6 @@ use bevy::prelude::{Plugin as BevyPlugin, *};
 use bevy_ui_navigation::prelude::{Focusable, MenuBuilder, MenuSetting};
 use cuicui_chirp::parse_dsl_impl;
 use cuicui_dsl::{DslBundle, EntityCommands};
-use cuicui_layout::dsl_functions::{child, pct};
 use cuicui_layout_bevy_ui::UiDsl;
 
 use crate::animate::{bloom, main_menu_bg::Animation as BgAnimation};
@@ -15,8 +14,7 @@ use element::{Element as DslElement, SettingsOption};
 
 /// Elements (hierarchy of entities) used in [`BevypunkDsl`].
 ///
-/// This allows dsl methods such as [`BevypunkDsl::settings_header`] and
-/// [`BevypunkDsl::settings_row`].
+/// This allows dsl methods such as [`BevypunkDsl::settings_row`].
 ///
 /// Currently, the only way to achieve re-usability in through rust code, but
 /// the aim is to completely replace this with the `use` statement.
@@ -110,28 +108,9 @@ impl BevypunkDsl {
     fn bloom(&mut self, intensity: f32) {
         self.bloom = Some(bloom::Animation { intensity });
     }
-    fn main_menu_item(&mut self) {
-        self.element = DslElement::MainMenuItem;
-        // Note: instead of repeating (focusable, row, main_margin 10., rules(70%, 1.5*), distrib_start)
-        // for each button, we do this here.
-        // This is a limitation of cuicui_chirp that may be lifted in the future.
-        self.bloom(2.3);
-        self.focusable();
-        self.row();
-        self.main_margin(10.);
-        self.rules(pct(60), child(1.5));
-        self.distrib_start();
-    }
-    fn tab_button(&mut self) {
-        self.element = DslElement::TabButton;
-        self.focusable();
-    }
     fn settings_row(&mut self) {
         self.element = DslElement::SettingsRow;
         self.focusable();
-    }
-    fn settings_header(&mut self) {
-        self.element = DslElement::SettingsHeader;
     }
     // Note that `parse_dsl_impl` automatically uses the RON deserializer
     // for `SettingsOption`, based on `Reflect`.
@@ -139,8 +118,10 @@ impl BevypunkDsl {
         self.settings_option = Some(Box::new(options));
     }
     // Similarly, we piggyback on reflect deserialization here.
-    fn gyro(&mut self, animation: BgAnimation) {
-        self.animation = Some(animation);
+    // We could accept a `BgAnimation` instead of the three `f64` but templates
+    // currently only supports parameter inlining when passed as "full" arguments.
+    fn gyro(&mut self, offset: f64, period: f64, active_period: f64) {
+        self.animation = Some(BgAnimation { offset, period, active_period });
     }
 
     fn style(&mut self, style: style::Element) {

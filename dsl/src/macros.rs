@@ -140,7 +140,7 @@
 ///    By default, it will use the identifier `Dsl` in scope.
 ///    This will be referred as **`Dsl`** in the rest of this documentation.
 /// 2. An expression of type `&mut EntityCommands`.
-/// 3. A series of [**DSL statements**](#dsl-statements).
+/// 3. A single [**DSL statement**](#dsl-statements).
 ///    * DSL statements contain themselves series of [**DSL methods**](#dsl-methods).
 ///
 /// ## DSL statements

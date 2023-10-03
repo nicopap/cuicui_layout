@@ -6,9 +6,9 @@ use crate::colormix::color_lerp;
 #[derive(Component, Reflect, Debug, Default)]
 #[reflect(Component)]
 pub struct Animation {
-    offset: f64,
-    period: f64,
-    active_period: f64,
+    pub offset: f64,
+    pub period: f64,
+    pub active_period: f64,
 }
 
 // run_if:

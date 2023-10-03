@@ -20,7 +20,7 @@ fn as_u32(usize: usize) -> u32 {
     unsafe { u32::try_from(usize).unwrap_unchecked() }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Token<'i> {
     Equal,
     Lparen,
@@ -33,6 +33,23 @@ pub enum Token<'i> {
     Reserved(&'i [u8]),
     Ident(&'i [u8]),
     String(&'i [u8]),
+}
+impl fmt::Debug for Token<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Token::Equal => TokenType::from(Some(Token::Equal)).fmt(f),
+            Token::Lparen => TokenType::from(Some(Token::Lparen)).fmt(f),
+            Token::Rparen => TokenType::from(Some(Token::Rparen)).fmt(f),
+            Token::Lcurly => TokenType::from(Some(Token::Lcurly)).fmt(f),
+            Token::Rcurly => TokenType::from(Some(Token::Rcurly)).fmt(f),
+            Token::Lbracket => TokenType::from(Some(Token::Lbracket)).fmt(f),
+            Token::Rbracket => TokenType::from(Some(Token::Rbracket)).fmt(f),
+            Token::Comma => TokenType::from(Some(Token::Comma)).fmt(f),
+            Token::Reserved(bytes) => f.debug_tuple("Reserved").field(&BStr::new(bytes)).finish(),
+            Token::Ident(bytes) => f.debug_tuple("Ident").field(&BStr::new(bytes)).finish(),
+            Token::String(bytes) => f.debug_tuple("String").field(&BStr::new(bytes)).finish(),
+        }
+    }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenType {
@@ -96,14 +113,11 @@ impl fmt::Display for TokenType {
     }
 }
 impl Token<'_> {
-    fn len(&self) -> u32 {
-        use Token::{
-            Comma, Equal, Ident, Lbracket, Lcurly, Lparen, Rbracket, Rcurly, Reserved, Rparen,
-            String as TStr,
-        };
+    pub(crate) fn len(&self) -> u32 {
+        use Token::{Comma, Equal, Lbracket, Lcurly, Lparen, Rbracket, Rcurly, Rparen};
         match self {
             Comma | Equal | Lparen | Rparen | Lcurly | Rcurly | Lbracket | Rbracket => 1,
-            Reserved(s) | Ident(s) | TStr(s) => as_u32(s.len()),
+            Token::Reserved(s) | Token::Ident(s) | Token::String(s) => as_u32(s.len()),
         }
     }
 }
@@ -168,6 +182,7 @@ macro_rules! grammar_identifiers {
     }
 }
 
+#[allow(clippy::wildcard_imports)]
 pub mod tokens {
     use super::super::Error;
     use super::*;
@@ -196,10 +211,15 @@ pub struct StateCheckpoint {
     end: u32,
     start: u32,
 }
+impl StateCheckpoint {
+    pub const fn start(self) -> u32 {
+        self.start
+    }
+}
 
 /// Custom stream impl.
 #[derive(Clone, Copy, Eq, PartialEq)]
-pub struct Input<'i, S> {
+pub struct Input<'i, S = ()> {
     // TODO(clean): replace with &'i BStr when new lexer is validated.
     /// pointer address of the initial stream position.
     initial: *const u8,
@@ -243,7 +263,7 @@ impl<'i, S> Input<'i, S> {
         unsafe { slice::from_raw_parts::<'i, u8>(self.initial.add(offset), subslice_len) }
     }
     #[inline(always)]
-    fn input_u8(&self) -> &'i [u8] {
+    pub fn input_u8(&self) -> &'i [u8] {
         let len = as_usize(self.end - self.start);
         let offset = as_usize(self.start);
         // SAFETY:
@@ -268,7 +288,17 @@ impl<'i, S> Input<'i, S> {
         lex::consume_spaces(&mut slice);
         self.end - as_u32(slice.len())
     }
+    #[inline(always)]
+    pub fn starting_at(&self, start: u32) -> Self
+    where
+        S: Clone + fmt::Debug,
+    {
+        let mut ret = self.clone();
+        ret.start = start;
+        ret
+    }
 
+    #[inline(always)]
     pub(crate) fn at(&self, checkpoint: StateCheckpoint) -> Self
     where
         S: Clone + fmt::Debug,
