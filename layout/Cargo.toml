@@ -32,11 +32,5 @@ cuicui_chirp = { version = "0.9.0", path = "../chirp", optional = true, default-
 cuicui_dsl = { version = "0.9.0", path = "../dsl", optional = true }
 bevy = { version = "0.11", default-features = false }
 
-[package.metadata.release]
-pre-release-replacements = [
-  {file="../README.md", search="cuicui_layout = .*", replace="cuicui_layout = \"{{version}}\""},
-  {file="../README.md", search="\\| 0.11 \\| [0-9.]* \\|", replace="| 0.11 | {{version}} |"},
-]
-
 [package.metadata.docs.rs]
 features = ["debug", "debug_bevy_ui"]

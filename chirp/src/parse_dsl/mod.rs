@@ -1,7 +1,7 @@
 //! Parse and split arguments provided from a [`ParseDsl`].
 //!
-//! The [`args`] module is used by the `parse_dsl_impl` macro when generating
-//! [`ParseDsl`] implementation based on methods in an `impl` block.
+//! The [`args`] module is used by the [`parse_dsl_impl`] macro when generating
+//! the [`ParseDsl`] implementation based on methods in the `impl` block.
 //!
 //! The arguments as declared in the chirp file are passed to the methods as
 //! the [`MethodCtx::arguments`] field. Check the [`MethodCtx`] docs for details.
@@ -11,12 +11,14 @@
 //! The actual parser implementation for the `chirp` file format is private
 //! and available in the `crate::grammar` module.
 //!
-//! This is the classic interpreter architecture of:
+//! This is the classic interpreter architecture:
 //!
 //! > lexer → parser → AST → interpreter
 //!
 //! The way parsed text gets interpreted is implemented in the [`crate::interpret`]
 //! module.
+//!
+//! [`parse_dsl_impl`]: mod@crate::parse_dsl_impl
 
 use anyhow::Result;
 use bevy::asset::LoadContext;

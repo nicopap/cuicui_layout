@@ -384,7 +384,7 @@ pub enum LeafRule {
     /// The `f32` is populated by a system added by [`add_content_sized`].
     /// This will otherwise act pretty much like [`Self::Fixed`].
     ///
-    /// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
+    /// [`add_content_sized`]: crate::content_sized::AppContentSizeExt::add_content_sized
     Content(f32),
 }
 impl Default for LeafRule {

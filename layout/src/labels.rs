@@ -18,14 +18,14 @@ pub struct ComputeLayout;
 /// This first runs the systems updating the size of content-dependent nodes
 /// then run the global layouting system.
 ///
-/// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
+/// [`add_content_sized`]: crate::content_sized::AppContentSizeExt::add_content_sized
 /// [`compute_layout`]: crate::compute_layout
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub struct ComputeLayoutSet;
 
 /// All systems added by [`add_content_sized`].
 ///
-/// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
+/// [`add_content_sized`]: crate::content_sized::AppContentSizeExt::add_content_sized
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug, SystemSet)]
 pub struct ContentSizedComputeSystemSet;
 
@@ -35,9 +35,9 @@ pub struct ContentSizedComputeSystemSet;
 /// before [`compute_layout`], setting the content-sized
 /// informations.
 ///
-/// [`add_content_sized`]: crate::AppContentSizeExt::add_content_sized
+/// [`add_content_sized`]: crate::content_sized::AppContentSizeExt::add_content_sized
 /// [`compute_layout`]: crate::compute_layout
-/// [`ComputeContentSize::compute_content`]: crate::ComputeContentSize::compute_content
+/// [`ComputeContentSize::compute_content`]: crate::content_sized::ComputeContentSize::compute_content
 #[derive(SystemSet)]
 pub struct ContentSizedComputeSystem<S>(PhantomData<fn(S)>);
 impl<S> PartialEq for ContentSizedComputeSystem<S> {

@@ -1,6 +1,8 @@
 /*!
-[`dsl!`]: dsl
+[`dsl!`]: dsl!
 [`DslBundle`]: DslBundle
+[`DslBundle::insert`]: DslBundle::insert
+[`EntityCommands`]: EntityCommands
 */
 #![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
@@ -36,19 +38,6 @@ impl BaseDsl {
 /// the entity tree.
 ///
 /// [`Default`] is used as the initial value for each entity.
-///
-/// # Notes on panicking
-///
-/// Avoid panicking in DSL methods, even if your DSL state is incoherent.
-///
-/// This doesn't matter in `cuicui_dsl`, but in `cuicui_chirp`, your
-/// DSL methods are called unconditionally, and for hot-reloading to work, we
-/// need to not terminate the program when encoutering an error.
-///
-/// Consider logging an error or storing the error in a field.
-///
-/// You may panic in `insert` if the DSL state is incoherent. So you may read
-/// the error you stored in a field for a more useful panic message.
 pub trait DslBundle: Default {
     /// Add given [`Bundle`](bevy::prelude::Bundle) to the entity.
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity;

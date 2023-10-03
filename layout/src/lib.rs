@@ -1,20 +1,24 @@
-//! Layouting system for bevy cuicui.
-//!
-//! The layouting system is very dumb. It is based on [`Container`]s.
-//! A [`Container`] layouts its content in either a column or a row.
-//!     
-//! The individual items are positioned according to:
-//! - [`Container::align`]: The container's children [`Alignment`].
-//! - [`Container::distrib`]: The container's children [`Distribution`].
-//! - [`Container::flow`]: The direction in which the container's children [`Flow`].
-//!
-//! By default, items are aligned at the center of the container, distributed
-//! on the flow direction evenly within the container.
-//!
-//! All things in a cuicui layout has a known size. This is why
-//! everything needs to live in a root container of a fixed size.
-//!
-//! That's it! Now make a nice UI using bevy.
+/*!
+[`Alignment`]: Alignment
+[`bevy-inspector-egui`]: bevy-inspector-egui
+[`Children`]: bevy::prelude::Children
+[`Component`]: Component
+[`Container`]: Container
+[`cuicui_chirp`]: cuicui_chirp
+[`cuicui_dsl`]: cuicui_dsl
+[`Distribution`]: Distribution
+[`dsl!`]: dsl!
+[`DslBundle`]: DslBundle
+[`Flow`]: Flow
+[`LayoutDsl`]: LayoutDsl
+[`LayoutRootCamera`]: LayoutRootCamera
+[`Node`]: Node
+[`ParseDsl`]: cuicui_chirp::ParseDsl
+[`Root`]: Root
+[`Rule`]: Rule
+[`ScreenRoot`]: ScreenRoot
+*/
+#![doc = include_str!("../README.md")]
 #![warn(clippy::pedantic, clippy::nursery, missing_docs)]
 #![allow(
     clippy::match_bool,
@@ -28,16 +32,13 @@ use bevy::app::{App, Plugin as BevyPlugin, Update};
 use bevy::ecs::prelude::*;
 
 pub use alignment::{Alignment, Distribution};
-pub use content_sized::{AppContentSizeExt, ComputeContentParam, ComputeContentSize};
 #[cfg(feature = "dsl")]
 pub use cuicui_dsl::{dsl, DslBundle};
 pub use direction::{Flow, Oriented, Size};
 #[cfg(feature = "dsl")]
 pub use dsl::LayoutDsl;
 pub use error::ComputeLayoutError;
-pub use labels::{
-    ComputeLayout, ComputeLayoutSet, ContentSizedComputeSystem, ContentSizedComputeSystemSet,
-};
+pub use labels::{ComputeLayout, ComputeLayoutSet};
 pub use layout::{Container, LayoutRect, LeafRule, Node, Root, Rule};
 pub use systems::{
     compute_layout, require_layout_recompute, update_leaf_nodes, LastLayoutChange,
@@ -45,7 +46,6 @@ pub use systems::{
 };
 
 mod alignment;
-mod content_sized;
 mod direction;
 mod error;
 mod labels;
@@ -53,6 +53,7 @@ mod layout;
 mod systems;
 
 pub mod bundles;
+pub mod content_sized;
 #[cfg(feature = "debug")]
 pub mod debug;
 #[cfg(feature = "dsl")]
@@ -71,7 +72,7 @@ pub mod dsl_functions {
 ///   [`ComputeLayoutSet`].
 /// - [`ComputeLayout`]: this set only contains `compute_layout`.
 /// - [`ComputeLayoutSet`]: contains `compute_layout` and
-///   [content-sized](ComputeContentSize) systems.
+///   [content-sized](content_sized::ComputeContentSize) systems.
 ///
 /// ## Features
 ///
@@ -97,7 +98,7 @@ impl BevyPlugin for Plugin {
                 )
                     .chain()
                     .in_set(ComputeLayoutSet)
-                    .before(ContentSizedComputeSystemSet),
+                    .before(content_sized::ContentSizedComputeSystemSet),
             ),
         );
         #[cfg(feature = "debug")]

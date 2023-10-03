@@ -5,11 +5,13 @@
 - Documentation hoverall and addition of The Cuicui Book.
 - Complete redesign of the chirp and dsl syntax.
 - Added "templates" to chirp files.
-- Made `cuicui_chirp` optional dependencies of `cuicui_layout`,
+- Made `cuicui_chirp` an optional dependency of `cuicui_layout`,
   `cuicui_layout_bevy_ui` and `cuicui_layout_bevy_sprite`.
-- Made `cuicui_dsl` optional dependency of `cuicui_layout`.
-- Rewrote the chirp parser to split into a lexer and parser; Documented more
-  APIs; Better error messages on syntax errors.
+- Made `cuicui_dsl` an optional dependency of `cuicui_layout`.
+- Rewrote the chirp parser:
+  - Split into a lexer and parser
+  - Document more APIs
+  - Better error messages on syntax errors.
 - Add the `Overlap{Start,Center,End}` variants to `Distribution`, for overlapping
   layouts.
 - debug view: do not show outline of hidden containers (togglable)
@@ -21,7 +23,7 @@
 
 - `cuicui_chirp`: the `wraparg` module is now `parse_dsl::args`
 - `cuicui_chirp`: Removed `ChirpInstances`, now that the root entity is preserved,
-  you can directly interact with it instead of using a resource. f
+  you can directly interact with it instead of using a resource.
 
 ## `cuicui_dsl` & `cuicui_chirp`: Major DSL syntax change
 
@@ -37,7 +39,7 @@ The DSL syntax has gotten a lifting!
 
 Let's take a look at the old syntax:
 
-```ron
+```rust
 // OLD SYNTAX, not valid anymore
 row(screen_root, "root", main_margin 100., align_start, image "images/background.png") {
     spawn(button "Button text 1", color Color::BLUE, width px(40), height pct(100));
@@ -50,7 +52,7 @@ row(screen_root, "root", main_margin 100., align_start, image "images/background
 
 This should be translated to:
 
-```ron
+```rust
 // new syntax
 // `root` also works, but we now recommend entity names to be uppercased
 // Notice that `row` is moved at the very end of the method list.
@@ -93,7 +95,7 @@ Less concepts should make it easier to learn and pick up.
 
 Files with several root entities won't work anymore:
 
-```ron
+```rust
 // This will fail:
 Red(row color(Color::GREEN))
 Green(row color(Color::BLUE))
@@ -102,7 +104,7 @@ Blue(row color(Color::RED))
 
 To fix this, wrap them in a single root entity:
 
-```ron
+```rust
 // Now interprets correctly:
 Colors {
     Red(row color(Color::GREEN))
@@ -181,7 +183,7 @@ It is now possible to define templates in `chirp` files.
 Use `fn` to define a template. To use them, call them like you would call a
 rust macro (with a trailing `!`):
 
-```ron
+```rust
 fn my_template() {
     Colors {
         Red(row color(Color::GREEN))

@@ -1,3 +1,16 @@
+/*!
+[`AnyOf`]: AnyOf
+[`AppContentSizeExt::add_content_sized`]: AppContentSizeExt::add_content_sized
+[`ComputeContentParam`]: ComputeContentParam
+[`ComputeContentParam::Components`]: ComputeContentParam::Components
+[`ComputeContentParam::condition`]: ComputeContentParam::condition
+[`ComputeContentSize::compute_content`]: ComputeContentSize::compute_content
+[`Entity`]: Entity
+[`SystemParam`]: bevy::ecs::system::SystemParam
+*/
+//! Define how leaf nodes should size based on arbitrary components.
+//!
+#![doc = include_str!("../content_sized.md")]
 use std::{any::type_name, convert::Infallible, marker::PhantomData};
 
 use bevy::app::{App, Update};
@@ -10,11 +23,13 @@ use bevy::prelude::{Name, Parent};
 use bevy_mod_sysfail::{sysfail, FailureMode, LogLevel};
 use thiserror::Error;
 
+use crate::direction::Axis;
+use crate::error::Handle;
 use crate::{
-    direction::Axis, error::Handle, ComputeLayout, ComputeLayoutSet, Container,
-    ContentSizedComputeSystem, ContentSizedComputeSystemSet, LeafNode, LeafRule, Node, Root, Rule,
-    Size,
+    ComputeLayout, ComputeLayoutSet, Container, LeafNode, LeafRule, Node, Root, Rule, Size,
 };
+
+pub use crate::labels::{ContentSizedComputeSystem, ContentSizedComputeSystemSet};
 
 type Result<T> = std::result::Result<T, BadRule>;
 
@@ -56,6 +71,8 @@ pub trait AppContentSizeExt {
     ///
     /// The [`ComputeContentParam::Components`] and [`ComputeContentSize::Components`]
     /// types should be identical.
+    ///
+    /// [`SystemParam`]: bevy::ecs::system::SystemParam
     fn add_content_sized<S: ComputeContentParam>(&mut self) -> &mut Self
     where
         for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>;
@@ -105,6 +122,8 @@ where
 /// In order to compute the size of content-sized nodes,
 /// you should also define a [`ComputeContentParam`] and add it to the app
 /// using [`AppContentSizeExt::add_content_sized`].
+///
+/// [`SystemParam`]: bevy::ecs::system::SystemParam
 pub trait ComputeContentSize: SystemParam {
     /// Components of the thing which content affect the node's size.
     ///

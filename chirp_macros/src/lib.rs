@@ -12,7 +12,9 @@ use syn::{parse_macro_input, ItemImpl};
 
 mod generate;
 
-#[doc = include_str!("../README.md")]
+/// See the [module documentation in the `cuicui_chirp`][doc] crate documentation.
+///
+/// [doc]: <https://docs.rs/cuicui_chirp/latest/cuicui_chirp/parse_dsl_impl/index.html>
 #[proc_macro_attribute]
 pub fn parse_dsl_impl(attrs: TokenStream1, input: TokenStream1) -> TokenStream1 {
     let mut config = ImplConfig::default();

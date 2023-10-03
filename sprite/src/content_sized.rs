@@ -27,8 +27,10 @@ use bevy::prelude::{Assets, Handle, Image, Mesh, Vec2};
 use bevy::sprite::Mesh2dHandle;
 #[cfg(feature = "sprite_text")]
 use bevy::text::{Font, Text, Text2dBounds, TextPipeline};
+use cuicui_layout::content_sized::{
+    ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
+};
 use cuicui_layout::{require_layout_recompute, Node, Size};
-use cuicui_layout::{ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem};
 
 #[derive(SystemParam)]
 pub(crate) struct SpriteContentSize<'w> {

@@ -407,8 +407,14 @@ macro_rules! dsl {
     (@statement [$d_ty:ty, $cmds:expr] $entity_name:literal ($($args:tt)*) $($t:tt)*) => {
         dsl!(@statement [$d_ty, $cmds] Entity (named($entity_name.to_string()) $($args)*) $($t)*)
     };
+    (@statement [$d_ty:ty, $cmds:expr] $entity_name:literal $($t:tt)*) => {
+        dsl!(@statement [$d_ty, $cmds] Entity (named($entity_name.to_string())) $($t)*)
+    };
     (@statement [$d_ty:ty, $cmds:expr] $entity_name:ident ($($args:tt)*) $($t:tt)*) => {
         dsl!(@statement [$d_ty, $cmds] Entity (named(stringify!($entity_name)) $($args)*) $($t)*)
+    };
+    (@statement [$d_ty:ty, $cmds:expr] $entity_name:ident $($t:tt)*) => {
+        dsl!(@statement [$d_ty, $cmds] Entity (named(stringify!($entity_name))) $($t)*)
     };
     (<$builder:ty> $cmds:expr, $($t:tt)*) => {{
         use $crate::{DslBundle, EntityCommands};
@@ -433,13 +439,27 @@ pub mod __doc_helpers {
     pub use bevy::ecs::system::EntityCommands;
     pub use bevy::prelude::{
         default, AssetServer, Bundle, Commands, Component, Deref, DerefMut, Entity, Handle, Image,
-        Name, Res,
+        Name, Res, Transform,
     };
     use bevy::{ecs::system::CommandQueue, prelude::World};
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
+    #[derive(Component, Default, Clone)]
+    pub struct Style {
+        pub height: Val,
+        pub flex_direction: FlexDirection,
+    }
+    #[derive(Default, Clone)]
+    pub enum FlexDirection {
+        #[default]
+        Column,
+    }
+    #[derive(Component, Default)]
+    pub struct BackgroundColor(pub Color);
+
+    #[derive(Debug, Clone, Copy, PartialEq, Default)]
     pub struct Color;
     impl Color {
+        pub const WHITE: Self = Self;
         pub const RED: Self = Self;
         pub const GREEN: Self = Self;
         pub const BLUE: Self = Self;
@@ -508,7 +528,9 @@ pub mod __doc_helpers {
     }
     pub type Dsl = DocDsl;
     pub type LayoutDsl = DocDsl;
+    pub type BlinkDsl = DocDsl;
 
+    #[derive(Default, Clone, Copy)]
     pub struct Val;
     impl FromStr for Val {
         type Err = ParseIntError;

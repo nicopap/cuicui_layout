@@ -1,68 +1,86 @@
-# Debug overlay
+# `cuicui_layout` debug view
 
-## Features
+`cuicui_layout` has a "debug" mode. It gives a visual representation of container
+and node sizes.
 
-- [ ] Display node info at top left of container
-  - [ ] If node has `Name`, then show it. Use entity debug value if not
-  - [ ] `LayoutRect.size`
-  - [ ] for `Container`: flow, distribution & alignment as a `FdDaA` string
-     - [ ] `Flow::Vertical`: `v`
-     - [ ] `Flow::Horizontal`: `>`
-     - [ ] `Distribution::Start`, `Alignment::Start`: `S`
-     - [ ] `Distribution::End`, `Alignment::End`: `E`
-     - [ ] `Distribution::FillMain`, `Alignment::Center`: `C`
-  - [ ] Tooltip hover for even more details!
-    - [ ] `LayoutRect.pos`
-    - [ ] margin
-    - [ ] rules
-    - [ ] fully-named distrib/align/flow
-    - [ ] explanation of the short string
-    - [ ] explanaiton of rule arrows
-  - [ ] Text MUST NOT overlap with other node's info
-    - [ ] For smaller containers, replace text with hoverable icon
-    - [ ] For containers dispalce text bellow existing text.
-    - [ ] If the displacement is more than 50% of the container's height
-      bellow the container it is supposed to describe, it should be elided.
-    - [ ] Try to avoid overlaping with rule arrows (maybe by
-      placing the arrows after text, so that it doesn't overlap)
-  - [ ] May need to give a semi-transparent darker background for
-    readability
-- [X] Distinct (quasi-random sequence) color for each node
-  - [ ] The text should have the same color as the one chosen for the
-    node
-  - [X] Container size is outlined (inset) with a gizmo box
-  - [X] margins are highlight with a color of same hue, but higher
-    luminance
-  - [X] different containers with exact same position should still be
-    visible by insetting even more the inner container
-- [X] Visualize rules as follow:
-  - [X] An arrow centered on the box, with a size equals to the smallest
-    of either 100px or 25% of container's size
-  - [X] Arrow points outward on `Rule::Parent` axis
-  - [X] Arrow points inward on `Rule::Children` axis
-  - [X] Arrow points inward on `Rule::Fixed` content-dependent, no text.
-  - [X] No arrows on fixed-size axis.
-  - [ ] relevant percentages displayed on top/right-of arrows
-- [ ] Toggle between different display modes:
-  - [X] No debug overlay
-  - [X] Only outlines (including margins)
-  - [X] Outlines + rules
-  - [ ] Outlines + rules + tooltips (shift only)
-  - [ ] Outlines + rules + tooltips + text
-- [ ] Highlight nodes that causes a layouting error, and it's largest child
-  - [ ] Use RED or a larger outline.
-- [X] Only show outline of nodes that have `ComputedVisibility::is_visible`.
+![A screenshot of the cyberpunk menu with container outlines](https://user-images.githubusercontent.com/26321040/272255534-4cb44a1f-09c9-414e-870c-f5ebc3a468f6.jpg)
 
-```text
-The spec string in the form:
+## Limitations
 
-`vdSaS` or `FdDaA`
+- While the debug overlay is up, gizmos cannot be used by other plugins
+- This is only tested with `cuicui_layout_bevy_ui` and `cuicui_layout_bevy_sprite`
+  (I can't implement a debug view for your personal custom UI :P)
+- The debug overlay use the bevy [`RenderLayers`] nº16 and camera order 255 to draw gizmos
 
-tells the containers' properties:
+## How to use the debug view?
 
-- `F in [v>]`: The `Flow`, `v = Vertical; > = Horizontal`
-- `D in [SEC]`: The `Distribution`, `S = Start; E = End; C = FillMain`
-- `A in [SEC]`: The `Alignment`, `S = Start; E = End; C = Center`
+Enable the `cuicui_layout/debug` cargo feature.
 
-so that `vdSaS` has the following properties: `Flow::Vertical`, `Distribution::Start` and `Alignment::Start`.
+```sh
+cargo run --features cuicui_layout/debug
 ```
+
+### Debug view mode
+
+There are several view modes, you cycle through them by pressing the space bar:
+
+- **nothing** (default): There is no additional informations displayed
+- **outlines**: Displays the outline of each [`Container`] and [`Node`] visible
+  on screen, with a different color
+- **outlines and rules**: In addition to the outline, display each node's vertical
+  and horizontal [`Rule`]s.
+  - Arrows pointing outwards left and right mean the horizontal size (width) depends on
+    the size of the parent of the node.
+  - Arrows pointing inwards left and right mean the horizontal size (width) depends on
+    the size of the children of the node.
+  - The absence of arrows indicate the node has a fixed size.
+  - Arrows going up and down indicate the rules for the vertical size (height).
+
+### Debug view configuration
+
+The debug view can be programmatically manipulated using the [`Options`] [`Resource`].
+
+#### Display invisible layouts
+
+The debug view does not display information about `Container`s with
+a `ComputedVisibility` component returning `vis.is_visible() == false`.
+
+Set the [`Options.show_hidden`] field to `true` to display outlines even if the
+`ComputedVisibility` is `false`.
+
+#### Change/Remove the cycling key
+
+Maybe your game makes heavy use of the space key (I've heard that some plateformers use
+the space key for a common action, would you belive it?) and you don't want to cycle
+through the debug views each time space is pressed.
+
+You can set the [`Options.input_map`] value to something else:
+
+```rust
+#[cfg(feature = "cuicui_layout/debug")]
+fn debug_toggle(mut opts: ResMut<cuicui_layout::debug::Options>) {
+  opts.input_map.cycle_debug_flag = KeyCode::X;
+}
+```
+
+#### Invert Y axis direction
+
+Confusingly, `bevy_ui` has a downward Y axis, while `bevy_sprite` has an upward
+Y axis.
+
+You can configure what Y axis direction the debug overlay uses by setting the
+[`Options.screen_space`] field.
+
+If you are using `cuicui_layout_bevy_ui`, this should be automatically set to
+`true` for you.
+
+
+[`Container`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/struct.Container.html
+[`Node`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/enum.Node.html
+[`Options`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/debug/struct.Options.html
+[`Options.input_map`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/debug/struct.Options.html#structfield.input_map
+[`Options.screen_space`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/debug/struct.Options.html#structfield.screen_space
+[`Options.show_hidden`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/debug/struct.Options.html#structfield.show_hidden
+[`RenderLayers`]: https://docs.rs/bevy/0.11/bevy/render/view/struct.RenderLayers.html
+[`Resource`]: https://docs.rs/bevy/0.11/bevy/ecs/prelude/trait.Resource.html
+[`Rule`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/enum.Rule.html

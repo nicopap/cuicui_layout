@@ -1,0 +1,5 @@
+[book]
+title = "The Cuicui Book"
+authors = ["Nicola Papale"]
+description = "The user guide and reference of the cuicui framework"
+src = "."

@@ -1,0 +1,19 @@
+// file used in <examples/chirp_menu/main.rs>
+fn menu_button(txt) {
+    Entity(text(txt) font_size(30) named(txt) image("button.png") height(33px))
+}
+Root(layout(">dSaS") screen_root main_margin(100) image("background.jpg")) {
+    Menu(rules(310px, 100%) main_margin(40) image("board.png") column) {
+        TitleCard(image("logo.png") width(100%))
+        TitleCard2(image("logo.png") width(50%))
+        Buttons(column rules(100%, 2*)) {
+            Entity(text("CONTINUE") font_size(30) named("CONTINUE") image("button.png") height(33px))
+            menu_button!("NEW GAME")
+            menu_button!("LOAD GAME")
+            menu_button!("SETTINGS")
+            menu_button!("ADDITIONAL CONTENT")
+            menu_button!("CREDITS")
+            menu_button!("QUIT GAME")
+        }
+    }
+}

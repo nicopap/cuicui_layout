@@ -1,9 +1,4 @@
-//! Debug overlay for `cuicui_layout`.
-//!
-//! See [`Plugin`].
-//!
-//! > **IMPORTANT**: If you are using `cuicui_layout` but not `cuicui_layout_bevy_ui`,
-//! > and the outlines are drawn behind the UI, enable the `cuicui_layout/debug_bevy_ui`!
+//! A visual representation of container and node sizes.
 //!
 #![doc = include_str!("../../debug.md")]
 #![allow(clippy::needless_pass_by_value)]
@@ -32,7 +27,6 @@ pub const LAYOUT_DEBUG_CAMERA_ORDER: isize = 255;
 /// The [`RenderLayers`] used by the debug gizmos and the debug camera.
 pub const LAYOUT_DEBUG_LAYERS: RenderLayers = RenderLayers::none().with(16);
 
-/// For some reasons, gizmo lines' size is divided by 1.5, absolutely no idea why.
 const MARGIN_LIGHTNESS: f32 = 0.85;
 const NODE_LIGHTNESS: f32 = 0.7;
 const NODE_SATURATION: f32 = 0.8;
@@ -69,7 +63,7 @@ pub enum Flag {
 }
 
 /// The inputs used by the `cuicui_layout` debug overlay.
-#[derive(Resource, Clone)]
+#[derive(Clone)]
 pub struct InputMap {
     /// The key used for swapping between overlays, default is [`KeyCode::Space`].
     pub cycle_debug_flag: KeyCode,
@@ -159,8 +153,9 @@ fn update_debug_camera(
     }
 }
 
-fn cycle_flags(input: Res<Input<KeyCode>>, mut options: ResMut<Options>, map: Res<InputMap>) {
+fn cycle_flags(input: Res<Input<KeyCode>>, mut options: ResMut<Options>) {
     use Flag::{Outlines, Rules};
+    let map = &options.input_map;
     let cycle: [EnumSet<Flag>; 3] = [EnumSet::EMPTY, Outlines.into(), Outlines | Rules];
     if input.just_pressed(map.cycle_debug_flag) {
         let current = cycle.iter().position(|f| *f == options.flags).unwrap_or(0);
@@ -363,7 +358,7 @@ impl From<Rule> for RuleArrow {
 pub struct Plugin;
 impl BevyPlugin for Plugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.init_resource::<InputMap>().add_systems(
+        app.add_systems(
             Update,
             (
                 cycle_flags,

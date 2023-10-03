@@ -8,8 +8,10 @@ use bevy::log::trace;
 use bevy::prelude::Vec2;
 use bevy::text::{Font, Text, TextPipeline};
 use bevy::ui::widget::UiImageSize;
+use cuicui_layout::content_sized::{
+    ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
+};
 use cuicui_layout::{require_layout_recompute, Node, Size};
-use cuicui_layout::{ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem};
 
 #[derive(SystemParam)]
 pub(crate) struct UiContentSize<'w> {

@@ -1,60 +1,46 @@
 //! Demonstrates how one could build a menu using `cuicui_layout` in
 //! combination with `bevy_ui`.
 #![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
-use std::time::Duration;
 
-use bevy::{asset::ChangeWatcher, prelude::*};
+// ANCHOR: imports
+use bevy::prelude::*;
 use cuicui_dsl::dsl;
 use cuicui_layout::{dsl_functions::*, LayoutRootCamera};
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
+// ANCHOR_END: imports
 
-macro_rules! text {
-    ($value:expr) => {
-        Text::from_section($value, TextStyle {
-            font_size: 30.0,
+struct DefaultPlugins;
+impl PluginGroup for DefaultPlugins {
+    fn build(self) -> bevy::app::PluginGroupBuilder {
+        DefaultPlugins.set(AssetPlugin {
+            asset_folder: "../../assets".to_owned(),
             ..default()
         })
-    };
-    ($($tail:tt)*) => {
-        Text::from_section(format!($($tail)*), TextStyle {
-            font_size: 30.0,
-            ..default()
-        })
-    };
+    }
 }
 
+// ANCHOR: main
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins
-                .set(AssetPlugin {
-                    asset_folder: "../../assets".to_owned(),
-                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                })
-                .set(bevy::log::LogPlugin {
-                    level: bevy::log::Level::INFO,
-                    filter: "\
-                    cuicui_layout=info,\
-                    cuicui_layout_bevy_ui=info,\
-                    gilrs_core=info,\
-                    gilrs=info,\
-                    naga=info,\
-                    wgpu=error,\
-                    wgpu_hal=error\
-                    "
-                    .to_string(),
-                }),
+            DefaultPlugins,
+            // Notice that we add the plugin here.
             cuicui_layout_bevy_ui::Plugin,
             bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
         .run();
 }
+// ANCHOR_END: main
 
 #[allow(clippy::needless_pass_by_value)]
+// ANCHOR: setup_signature
 fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
+    // ANCHOR_END: setup_signature
+    // ANCHOR: setup_camera
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
-    let title_card = serv.load::<Image, _>("logo.png");
+    // ANCHOR_END: setup_camera
+    // ANCHOR: dsl
     let menu_buttons = [
         "CONTINUE",
         "NEW GAME",
@@ -64,6 +50,9 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
         "CREDITS",
         "QUIT GAME",
     ];
+    let text = |value| Text::from_section(value, TextStyle { font_size: 30.0, ..default() });
+    // ANCHOR: dsl_start
+    let title_card = serv.load("logo.png");
     let bg = serv.load("background.jpg");
     let board = serv.load("board.png");
     let button = serv.load("button.png");
@@ -74,6 +63,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
             Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
                 TitleCard(image(&title_card) width(pct(100)))
                 TitleCard2(ui(title_card) width(pct(50)))
+    // ANCHOR_END: dsl_start
                 code(let cmds) {
                     dsl!(cmds, Buttons(column height(child(2.)) width(pct(100))));
                     cmds.with_children(|cmds|{
@@ -81,7 +71,7 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
                             let name = format!("{n} button");
                             dsl!(
                                 &mut cmds.spawn_empty(),
-                                Entity(ui(text!(*n)) named(name) image(&button) height(px(33)))
+                                Entity(ui(text(*n)) named(name) image(&button) height(px(33)))
                             );
                         }
                     });
@@ -89,4 +79,5 @@ fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
             }
         }
     };
+    // ANCHOR_END: dsl
 }

@@ -1,8 +1,11 @@
 //! Parse individual method arguments.
 //!
-//! `parse_dsl_impl` uses this modules functions to parse individual arguments passed
+//! [`parse_dsl_impl`] uses this module's functions to parse individual arguments passed
 //! to methods in a chirp file. It is however possible to define and substitute your
-//! own with the `type_parsers` `parse_dsl_impl` meta-attribute.
+//! own with the [`type_parsers`] meta-attribute.
+//!
+//! [`parse_dsl_impl`]: mod@crate::parse_dsl_impl
+//! [`type_parsers`]: crate::parse_dsl_impl::type_parsers
 #![allow(clippy::inline_always)]
 // allow: rust has difficulties inlining functions cross-crate. Since we only
 // use inline(always) on functions that are very small, it won't add significative
@@ -23,7 +26,7 @@ use crate::parser;
 fn tyname<T>() -> &'static str {
     any::type_name::<T>()
 }
-/// Error occuring in [`to_handle`].
+/// Errors from [`to_handle`].
 #[allow(missing_docs)] // Already documented by error message
 #[derive(Debug, Error)]
 pub enum HandleDslDeserError<T> {
@@ -98,8 +101,8 @@ pub struct ArgumentError {
 /// the other parsers.
 ///
 /// # Other parsers
-/// - [`from_str`]
-/// - [`to_handle`]
+///
+/// [self#functions]
 ///
 /// # Errors
 /// See [`ReflectDslDeserError`] for possible errors.
@@ -128,8 +131,8 @@ pub fn from_reflect<T: Reflect + FromReflect>(
 /// rather than depend on `ron`.
 ///
 /// # Other parsers
-/// - [`from_reflect`]
-/// - [`to_handle`]
+///
+/// [self#functions]
 ///
 /// # Errors
 /// [`FromStr::from_str`] fails, there is a parsing error.
@@ -150,8 +153,8 @@ where
 /// This argument parser only works on `Handle<T>`.
 ///
 /// # Other parsers
-/// - [`from_str`]
-/// - [`from_reflect`]
+///
+/// [self#functions]
 ///
 /// # Errors
 /// See [`HandleDslDeserError`] for possible errors.
@@ -178,6 +181,10 @@ pub fn to_handle<T: Asset + LoadAsset>(
 /// Returns the input as a `&str`, removing quotes applying backslash escapes.
 ///
 /// This allocates whenever a backslash is used in the input string.
+///
+/// # Other parsers
+///
+/// [self#functions]
 ///
 /// # Errors
 ///
@@ -240,13 +247,13 @@ enum ArgumentsInner<'i, 'a> {
 ///
 /// |`name`|`bare_method`|`method1`|`method2`|`method3`|`method4`|
 /// |------|-------------|---------|---------|---------|---------|
-/// |`ctx.arguments.len()`|`0`|`0` | `1`     | `1`     | `2`     |
 /// |`ctx.arguments.get(0)`|`None`|`None`| `foobar` | `"foobar"` | `10 + 3`|
+/// |`ctx.arguments.len()`|`0`|`0` | `1`     | `1`     | `2`     |
 ///
 ///
 /// # How to handle argument parsing
 ///
-/// `cuicui_chirp` expects end-users to use the `parse_dsl_impl` macro or
+/// `cuicui_chirp` expects end-users to use the [`parse_dsl_impl`] macro or
 /// [`ReflectDsl`] struct to take care of parsing for them.
 ///
 /// A set of "blessed" parsers is predefined in the [`args`](self)
@@ -261,6 +268,7 @@ enum ArgumentsInner<'i, 'a> {
 ///
 ///
 /// [parameter substitution]: crate#parameter-substitution
+/// [`parse_dsl_impl`]: mod@crate::parse_dsl_impl
 pub struct Arguments<'i, 'a>(ArgumentsInner<'i, 'a>);
 
 impl<'i, 'a> Arguments<'i, 'a> {

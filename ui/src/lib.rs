@@ -62,7 +62,8 @@ use bevy::ecs::prelude::*;
 use bevy::render::camera::Camera;
 use bevy::ui::Style;
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::{AppContentSizeExt, LayoutRect, LayoutRootCamera, Root, ScreenRoot};
+use cuicui_layout::content_sized::AppContentSizeExt;
+use cuicui_layout::{LayoutRect, LayoutRootCamera, Root, ScreenRoot};
 
 pub use dsl::UiDsl;
 

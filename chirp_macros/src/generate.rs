@@ -8,11 +8,6 @@ enum FnConfig {
     Method,
     Ignore,
 }
-const METHOD_ATTR_DESCR: &str = "\
-- `parse_dsl(ignore)`: Do not add this method to the parse_dsl_impl implementation
-
-There is currently no other accepted parse_dsl method attribute config options.\n";
-
 #[allow(clippy::trivially_copy_pass_by_ref)] // false positive. Type necessary to avoid eta-expension
 fn is_parse_dsl_attr(attr: &&syn::Attribute) -> bool {
     let result = FnConfig::default().parse_attr(attr);
@@ -55,10 +50,7 @@ impl FnConfig {
             () => {
                 let path = &meta.path;
                 let ident = quote!(#path);
-                let msg = format!(
-                    "Unrecognized `parse_dsl` meta attribute: \
-                    `{ident}`\n{METHOD_ATTR_DESCR}"
-                );
+                let msg = format!("Unrecognized `parse_dsl` meta attribute: `{ident}`");
                 Err(meta.error(msg))
             }
         }
@@ -108,43 +100,6 @@ impl Default for ImplConfig {
     }
 }
 
-const CONFIG_ATTR_DESCR: &str = "\
-- `cuicui_chirp_path = alternate::path`: specify which path to use for the \
-  `cuicui_chirp` crate by default, it is `::cuicui_chirp`
-- `delegate = delegate_field`: (optional) Field to delegate `ParseDsl::leaf_node` \
-  and `ParseDsl::method` implementations when encountering a name not implemented \
-  in this `impl` block. This should be the field you mark with `#[deref_mut]`
-- `set_params <D: ParseDsl>`: Instead of re-using the `impl` block's generics \
-  with `+ ParseDsl`, in the `impl<XXX> ParseDsl for Type` use the expression \
-  within cheveron.
-- `type_parsers(<arg_type1> = <parser1>, <arg_type2> = <parser2>, …)`: \
-  For arguments of type `arg_type1`, use `parser1` a function of the following type:
-
-    fn parse(
-        registry: &TypeRegistry,
-        ctx: Option<&LoadContext>,
-        input: &'a str,
-    ) -> Result<ArgumentType, anyhow::Error>;
-
-`parse_dsl_impl` uses functions in the `cuicui_chirp::parse_dsl::args` module.
-To parse the argument. The defaults are as follow:
-
-- For `Handle<T>` and `&Handle<T>` arguments, `args::to_handle` is used.
-- For `&str` arguments, `args::quoted` is used.
-- For any other type, `args::from_reflect` is used. It requires however that the \
-  argument type be `Reflect` and `FromReflect`.
-
-There are other options available:
-- `args::from_str`: it only requires the argument type to be `FromStr`
-- `<parser>` may accept arbitrary expressions, you can use your own parser as \
-  long as it has the type signature mentioned earlier. You can even define the \
-  parser as a closure inline.
-
-Currently, the type must be an identifier, so you can't handle (yet) generic types \
-and references this way.
-
-There is currently no other accepted parse_dsl_impl attribute config options.\n";
-
 impl<'a> ImplConfig {
     #[allow(clippy::needless_pass_by_value)] // false positive. Type necessary for calling it
     pub(crate) fn parse(&mut self, meta: ParseNestedMeta<'a>) -> syn::Result<()> {
@@ -174,9 +129,7 @@ impl<'a> ImplConfig {
             () => {
                 let path = &meta.path;
                 let ident = quote!(#path);
-                let msg = format!(
-                    "Unrecognized parse_dsl_impl meta attribute: {ident}\n{CONFIG_ATTR_DESCR}"
-                );
+                let msg = format!("Unrecognized parse_dsl_impl meta attribute: {ident}");
                 return Err(meta.error(msg));
             }
         }

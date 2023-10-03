@@ -28,6 +28,7 @@ pub struct LayoutRootCamera;
 pub struct ScreenRoot;
 
 /// Stores the tick of the last time [`compute_layout`] ran.
+#[doc(hidden)]
 #[derive(Resource, Default)]
 pub struct LastLayoutChange {
     tick: Option<Tick>,
@@ -48,6 +49,7 @@ type LayoutRef = (
 );
 
 /// A run condition to tell whether it's necessary to recompute layout.
+#[doc(hidden)]
 #[allow(clippy::needless_pass_by_value, clippy::must_use_candidate)]
 pub fn require_layout_recompute(
     nodes: Query<NodeQuery>,
@@ -102,6 +104,7 @@ pub fn compute_layout(
 /// Whether a [`apply_deferred`] needs to run after the last run of [`update_leaf_nodes`].
 ///
 /// [`apply_deferred`]: bevy::prelude::apply_deferred
+#[doc(hidden)]
 #[derive(Resource, Default, PartialEq, Eq, Clone, Copy)]
 pub struct LeafNodeInsertWitness {
     needs_apply: bool,
