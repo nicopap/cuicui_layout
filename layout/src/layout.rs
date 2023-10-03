@@ -465,7 +465,7 @@ impl FromStr for Rule {
             Ok(Self::Parent(percents / 100.))
         } else if let Some(child_ratio) = s.strip_suffix('*') {
             let ratio: f32 = child_ratio.parse().map_err(invalid)?;
-            if ratio > 1. || ratio < 0. {
+            if ratio < 1. {
                 return Err(RuleParseError::BadRatio(ratio));
             }
             Ok(Self::Children(ratio))
