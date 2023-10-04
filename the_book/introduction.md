@@ -2,6 +2,10 @@
 
 `cuicui` is a collection of crates to work with bevy scenes and making UIs in bevy.
 
+<video controls>
+  <source src="https://user-images.githubusercontent.com/26321040/272480834-e964565b-44bb-4363-8955-19515624d71a.mp4" type="video/mp4">
+</video>
+
 This book contains a user-focused guide on how to use the `cuicui` crates and
 more reference-level documentation on what the capabilities of each crate are.
 
