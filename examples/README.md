@@ -1,6 +1,6 @@
 ## Running examples
 
-[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 
 Use the `cargo run --bin` command to list possible examples, and run them.
 

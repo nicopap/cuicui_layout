@@ -25,6 +25,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           personal_token: ${{ secrets.CUICUI_BOOK_DEPLOY_KEY }}
-          external_repository: nicopap/cuicui.github.io
+          external_repository: nicopap/cuicui.nicopap.ch
           destination_dir: next
           publish_dir: ./the_book/book

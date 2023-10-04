@@ -1,6 +1,6 @@
 # [`cuicui_layout`] integration for [`bevy_sprite`]
 
-[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 [![Documentation](https://docs.rs/cuicui_layout_bevy_sprite/badge.svg)](https://docs.rs/cuicui_layout_bevy_sprite/)
 
 Provide the [`SpriteDsl`] trait, extending the [`cuicui_layout`]'s `LayoutDsl`

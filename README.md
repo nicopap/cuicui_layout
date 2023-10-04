@@ -1,7 +1,7 @@
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 [![Latest version](https://img.shields.io/crates/v/cuicui_layout.svg)](https://crates.io/crates/cuicui_layout)
 [![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](./LICENSE)
-[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 
 # The Cuicui Framework
 
@@ -108,9 +108,9 @@ submitted for inclusion in the work by you, as defined in the
 Apache-2.0 license, shall be dual licensed as above, without any
 additional terms or conditions.
 
-[book-usage]: https://nicopap.github.io/cuicui_layout/usage.html
-[The cuicui Book]: https://nicopap.github.io/cuicui_layout/introduction.html
+[book-usage]: https://cuicui.nicopap.ch/usage.html
+[The cuicui Book]: https://cuicui.nicopap.ch/introduction.html
 [the chirpunk example]: https://github.com/nicopap/cuicui_layout/tree/main/examples/chirpunk
-[`cuicui_layout`]: https://nicopap.github.io/cuicui_layout/layout/index.html
-[`cuicui_chirp`]: https://nicopap.github.io/cuicui_layout/chirp/index.html
-[`cuicui_dsl`]: https://nicopap.github.io/cuicui_layout/dsl/index.html
+[`cuicui_layout`]: https://cuicui.nicopap.ch/layout/index.html
+[`cuicui_chirp`]: https://cuicui.nicopap.ch/chirp/index.html
+[`cuicui_dsl`]: https://cuicui.nicopap.ch/dsl/index.html

@@ -1,6 +1,6 @@
 # [`cuicui_layout`] integration for [`bevy_ui`]
 
-[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 [![Documentation](https://docs.rs/cuicui_layout_bevy_ui/badge.svg)](https://docs.rs/cuicui_layout_bevy_ui/)
 
 Provides the [`UiDsl`] trait, extending the [`cuicui_layout`]'s `LayoutDsl`

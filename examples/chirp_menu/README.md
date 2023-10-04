@@ -1,6 +1,6 @@
 # Define a menu using a chirp file
 
-[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 
 > **Note**
 > This section is abbridged and might go in much more details in the future.

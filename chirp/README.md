@@ -1,6 +1,6 @@
 # `cuicui_chirp`
 
-[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 [![Documentation](https://docs.rs/cuicui_chirp/badge.svg)](https://docs.rs/cuicui_chirp/)
 
 `cuicui_chirp` defines a file format for text-based bevy scene description.
