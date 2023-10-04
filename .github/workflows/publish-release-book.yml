@@ -1,0 +1,31 @@
+name: build & deploy release book
+
+on:
+  push:
+    tags:
+      - '**'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: "latest"
+
+      - run: mdbook build the_book/
+
+      - name: Deploy to Github pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          personal_token: ${{ secrets.CUICUI_BOOK_DEPLOY_KEY }}
+          external_repository: nicopap/cuicui.nicopap.ch
+          cname: cuicui.nicopap.ch
+          publish_dir: ./the_book/book
