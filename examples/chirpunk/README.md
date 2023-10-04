@@ -1,5 +1,7 @@
 # Chirpunk
 
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+
 The cuicui cyberpunk example.
 
 Inspired by [`bevy-lunex`]'s [cyberpunk example].

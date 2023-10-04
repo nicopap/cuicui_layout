@@ -1,5 +1,7 @@
 # Chirp `ParseDsl` impl block macro
 
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+
 Proc macro crate for the `parse_dsl_impl` macro in [`cuicui_chirp`]. See `cuicui_chirp`
 documentation for details.
 

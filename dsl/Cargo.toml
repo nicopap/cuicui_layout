@@ -16,3 +16,9 @@ test_and_doc = ["bevy/bevy_render", "bevy/bevy_asset"]
 
 [dependencies]
 bevy = { version = "0.11", default-features = false }
+
+[package.metadata.release]
+pre-release-replacements = [
+  {search="cuicui_dsl/[0-9.]+/",replace="cuicui_dsl/{{version}}/",file="README.md"},
+  {search="cuicui_dsl = .*",replace="cuicui_dsl = \"{{version}}\"",file="../the_book/usage.md"},
+]

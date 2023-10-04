@@ -1,5 +1,7 @@
 ## Running examples
 
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+
 Use the `cargo run --bin` command to list possible examples, and run them.
 
 We do this because it allows us to have different dependencies between examples.

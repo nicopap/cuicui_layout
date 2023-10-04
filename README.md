@@ -1,18 +1,21 @@
 [![Bevy tracking](https://img.shields.io/badge/Bevy%20tracking-released%20version-lightblue)](https://github.com/bevyengine/bevy/blob/main/docs/plugins_guidelines.md#main-branch-tracking)
 [![Latest version](https://img.shields.io/crates/v/cuicui_layout.svg)](https://crates.io/crates/cuicui_layout)
 [![MIT/Apache 2.0](https://img.shields.io/badge/license-MIT%2FApache-blue.svg)](./LICENSE)
-[![Documentation](https://docs.rs/cuicui_layout/badge.svg)](https://docs.rs/cuicui_layout/)
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
 
-# Cuicui Layout
+# The Cuicui Framework
 
-A dumb layout algorithm you can rely on, built for and with bevy.
+The `cuicui` framework is a collection of rust crates made for bevy.
 
-<details><summary><h2>The Cyberpunk 2077 showcase</h2></summary>
+- [`cuicui_layout`]: A dumb layout algorithm you can rely on, built for and with bevy.
+- [`cuicui_dsl`] and [`cuicui_chirp`]: Two enjoyable ways to spawn scenes in bevy.
+
+<details><summary><h2>The Chirperpunk demo</h2></summary>
 
 For some reasons, the Cyberpunk main menu has become the 7GUI of bevy, so here
 is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.
 
-https://github.com/nicopap/cuicui_layout/assets/26321040/8a51f9a9-ffa7-4b60-a2ad-3947ff718e27.mp4
+https://user-images.githubusercontent.com/26321040/272480834-e964565b-44bb-4363-8955-19515624d71a.mp4
 
 | **❗ Hot reloading disclaimer ❗** |
 |------------------------------------|
@@ -22,55 +25,43 @@ is broken due to <https://github.com/bevyengine/bevy/pull/9621>.
 You may want to work on a local patched version of bevy.
 A workaround will probably be provided in cuicui 0.10.
 
-### Code
+The code for the video demo can be read in [the chirpunk example].
+
+</details>
+
+## Hello World
+
+A tinny example to get you an idea of what you can do with `cuicui`.
+
+Shows a blue box with cyan outline in the center of the screen:
 
 ```rust
 use bevy::prelude::*;
+use cuicui_layout::{dsl, LayoutRootCamera};
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
-use cuicui_layout::{LayoutRootCamera, dsl, dsl_functions::{px, pct, child}};
 
-fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
+fn main() {
+    // Do not forget to add cuicui_layout_bevy_{ui,sprite}::Plugin
+    App::new()
+        .add_plugins((DefaultPlugins, cuicui_layout_bevy_ui::Plugin))
+        .add_systems(Startup, setup)
+        .run();
+}
+fn setup(mut commands: Commands) {
+    // Use LayoutRootCamera to mark a camera as the screen boundaries.
+    commands.spawn((Camera2dBundle::default(), LayoutRootCamera));
 
-cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
-let menu_buttons = [
-    "CONTINUE",
-    "NEW GAME",
-    "LOAD GAME",
-    "SETTINGS",
-    "ADDITIONAL CONTENT",
-    "CREDITS",
-    "QUIT GAME",
-];
-let title_card = serv.load::<Image, _>("logo.png");
-let bg = serv.load("background.png");
-let board = serv.load("board.png");
-let button = serv.load("button.png");
-
-dsl! {
-    &mut cmds.spawn_empty(),
-    Root(layout(">dSaS") screen_root main_margin(100.) image(&bg)) {
-        Menu(rules(px(310), pct(100)) main_margin(40.) image(&board) column) {
-            TitleCard(image(&title_card) width(pct(100)))
-            TitleCard2(ui(title_card) width(pct(50)))
-            code(let cmds) {
-                dsl!(cmds, Buttons(column height(child(2.)) width(pct(100))));
-                cmds.with_children(|cmds|{
-                    for n in &menu_buttons {
-                        let name = format!("{n} button");
-                        dsl!(
-                            &mut cmds.spawn_empty(),
-                            Entity(ui(*n) named(name) image(&button) height(px(33)))
-                        );
-                    }
-                });
+    dsl! { &mut commands.spawn_empty(),
+        // Use screen_root to follow the screen's boundaries
+        Entity(row screen_root) {
+            // Stuff is centered by default.
+            Entity(row margin(9.) border(5, Color::CYAN) bg(Color::NAVY)) {
+                Entity(ui("Hello world!"))
             }
         }
-    }
-};
+    };
 }
 ```
-
-</details>
 
 ## Running examples
 
@@ -85,7 +76,6 @@ The [Usage section of the book][book-usage] is a good starting point.
 ### MOAR DOCS!!
 
 - [The cuicui Book]
-- [The docs.rs API docs]
 
 ### For the lazy
 
@@ -94,7 +84,7 @@ if you don't care for explanations.
 
 ### Change log
 
-See the [./CHANGELOG.md] file.
+See the [./CHANGELOG.md](./CHANGELOG.md) file.
 
 ### Version matrix
 
@@ -119,3 +109,8 @@ Apache-2.0 license, shall be dual licensed as above, without any
 additional terms or conditions.
 
 [book-usage]: https://nicopap.github.io/cuicui_layout/usage.html
+[The cuicui Book]: https://nicopap.github.io/cuicui_layout/introduction.html
+[the chirpunk example]: https://github.com/nicopap/cuicui_layout/tree/main/examples/chirpunk
+[`cuicui_layout`]: https://nicopap.github.io/cuicui_layout/layout/index.html
+[`cuicui_chirp`]: https://nicopap.github.io/cuicui_layout/chirp/index.html
+[`cuicui_dsl`]: https://nicopap.github.io/cuicui_layout/dsl/index.html

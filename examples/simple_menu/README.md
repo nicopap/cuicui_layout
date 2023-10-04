@@ -1,5 +1,7 @@
 # Define a menu using `cuicui_layout_bevy_ui`
 
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+
 We added previously `cuicui_dsl`, `cuicui_layout`, and `cuicui_layout_bevy_ui`
 to our `Cargo.toml`.
 

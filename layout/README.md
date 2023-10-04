@@ -1,5 +1,8 @@
 # `cuicui_layout`
 
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![Documentation](https://docs.rs/cuicui_layout/badge.svg)](https://docs.rs/cuicui_layout/)
+
 `cuicui_layout` is a very primitive layouting algorithm implemented in bevy for bevy.
 
 It is similar to CSS, but without the headache. The philosophy is:
@@ -119,8 +122,6 @@ in two short bullet points.
 
 That's it. There are some edge cases, but cuicui will ~~yell at you~~
 tell you nicely when you hit them and tell you how to handle them properly.
-
-[`bevy-inspector-egui`]: https://lib.rs/crates/bevy-inspector-egui
 
 ### Flexbox FAQ
 

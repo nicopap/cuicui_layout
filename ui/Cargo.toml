@@ -31,5 +31,8 @@ bevy = { version = "0.11", default-features = false, features = [
 
 [package.metadata.release]
 pre-release-replacements = [
-  {file="../README.md", search="cuicui_layout_bevy_ui = .*", replace="cuicui_layout_bevy_ui = \"{{version}}\""},
+  {search="cuicui_layout_bevy_ui/[0-9.]+/",replace="cuicui_layout_bevy_ui/{{version}}/",file="../the_book/choosing_a_cuicui_crate.md"},
+  {search="cuicui_layout_bevy_ui/[0-9.]+/",replace="cuicui_layout_bevy_ui/{{version}}/",file="../examples/simple_menu/README.md"},
+  {search="cuicui_layout_bevy_ui/[0-9.]+/",replace="cuicui_layout_bevy_ui/{{version}}/",file="../examples/chirp_menu/README.md"},
+  {search="cuicui_layout_bevy_ui = .*",replace="cuicui_layout_bevy_ui = \"{{version}}\"",file="../the_book/usage.md"},
 ]

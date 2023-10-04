@@ -1,5 +1,8 @@
 # [`cuicui_layout`] integration for [`bevy_sprite`]
 
+[![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://nicopap.github.io/cuicui_layout/introduction.html)
+[![Documentation](https://docs.rs/cuicui_layout_bevy_sprite/badge.svg)](https://docs.rs/cuicui_layout_bevy_sprite/)
+
 Provide the [`SpriteDsl`] trait, extending the [`cuicui_layout`]'s `LayoutDsl`
 with the following features:
 
@@ -20,7 +23,7 @@ Check the following crates for details:
 
 [`cuicui_layout`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/
 [`bevy_sprite`]: https://docs.rs/bevy_sprite/latest/bevy_sprite/
-[`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/latest/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
-[`ui`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.LayoutDsl.html#method.ui
-[`ContentSized`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/dsl/struct.ContentSized.html
+[`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/0.9.0/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
+[`ui`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.ui
+[`ContentSized`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/dsl/struct.ContentSized.html
 [`cuicui_dsl`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/
