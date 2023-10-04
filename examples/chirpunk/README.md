@@ -67,12 +67,6 @@ And use `--features advanced_logging` to log more stuff.
   - Bloom doesn't work on UI
   - **Requires a patches version of bevy for hot reloading** to work (see the
     repository's workspace `Cargo.toml`)
-- Missing cuicui features:
-  - A "all overlapping" `Distribution` mode, to replace some of the `MenuSwatch`
-    functionality and the deep nesting on the main menu background.
-  - A "templating" feature, replacing `dsl::element`
-  - Single root attribute, so to avoid some nesting required for `bevy_ui` to
-    not panic, and generally better scene management.
 - General 3rd party crate ideas:
   - Extract and generalize the `style.rs` module, which is really cool.
 - When using mouse input, the current tab in the settings menu is not highlighted.
