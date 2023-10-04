@@ -35,7 +35,7 @@ A tinny example to get you an idea of what you can do with `cuicui`.
 
 Shows a blue box with cyan outline in the center of the screen:
 
-```rust
+```rust,no_run
 use bevy::prelude::*;
 use cuicui_layout::{dsl, LayoutRootCamera};
 use cuicui_layout_bevy_ui::UiDsl as Dsl;
