@@ -65,6 +65,6 @@ will use a `code` block with a `for` loop
 ```
 
 
-[`LayoutRootCamera`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/struct.LayoutRootCamera.html
-[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.9.0/cuicui_layout/dsl/struct.LayoutDsl.html
-[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.9.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
+[`LayoutRootCamera`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/struct.LayoutRootCamera.html
+[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/dsl/struct.LayoutDsl.html
+[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.10.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html

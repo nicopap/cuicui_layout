@@ -50,5 +50,5 @@ it is a very lightweight dependency.
 [`cuicui_dsl`]: dsl
 [`cuicui_dsl` page]: dsl/index.html#what-is-the-relationship-between-cuicui_dsl-and-cuicui_chirp
 [`cuicui_layout`]: layout
-[`cuicui_layout_bevy_sprite`]: https://docs.rs/cuicui_layout_bevy_sprite/0.9.0/cuicui_layout_bevy_sprite/index.html
-[`cuicui_layout_bevy_ui`]: https://docs.rs/cuicui_layout_bevy_ui/0.9.0/cuicui_layout_bevy_ui/index.html
+[`cuicui_layout_bevy_sprite`]: https://docs.rs/cuicui_layout_bevy_sprite/0.10.0/cuicui_layout_bevy_sprite/index.html
+[`cuicui_layout_bevy_ui`]: https://docs.rs/cuicui_layout_bevy_ui/0.10.0/cuicui_layout_bevy_ui/index.html

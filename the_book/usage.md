@@ -6,9 +6,9 @@ For illustration, we assume that we went with `cuicui_layout_bevy_ui`.
 
 ```toml
 [dependencies]
-cuicui_layout_bevy_ui = "0.9.0"
-cuicui_layout = "0.9.0"
-cuicui_dsl = "0.9.0"
+cuicui_layout_bevy_ui = "0.10.0"
+cuicui_layout = "0.10.0"
+cuicui_dsl = "0.10.0"
 ```
 
 ## Using the `dsl!` macro
