@@ -299,6 +299,24 @@ impl<'i, S> Input<'i, S> {
         ret.start = start;
         ret
     }
+
+    /// Return the slice in this stream of next token, known to be either a string or identifier.
+    ///
+    /// # Safety
+    /// The next token must be either a [`Token::Ident`] or [`Token::String`].
+    pub(super) unsafe fn next_statement_name(&self) -> &'i [u8] {
+        let mut slice = self.input_u8();
+        unsafe { lex::next_statement_name(&mut slice) }
+    }
+
+    /// Return the slice in this stream of a token known to be an identifier.
+    ///
+    /// # Safety
+    /// The next token must be a [`Token::Ident`].
+    pub(super) unsafe fn next_ident(&self) -> &'i [u8] {
+        let mut slice = self.input_u8();
+        unsafe { lex::next_ident(&mut slice) }
+    }
 }
 
 impl Offset<StateCheckpoint> for StateCheckpoint {

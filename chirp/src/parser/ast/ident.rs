@@ -14,30 +14,9 @@
 //!   the absence of value.
 //! - [`OptNameOffset`] is similar to `IdentOffset`, but the parsed token may either
 //!   be a string or identifier (it is also optional).
-use winnow::stream::Stream;
-
 use super::as_u32;
 use super::node::{Argument, IdentOffset};
-use crate::parser::stream::{Input, Token};
-
-macro_rules! more_unsafe_unreachable {
-    ($it:expr) => {
-        if cfg!(feature = "more_unsafe") {
-            // SAFETY: We can only create OptNameOffset in crate::parser,
-            // and we only create OptNameOffset that points to proper
-            // identifier/string tokens
-            unsafe { std::hint::unreachable_unchecked() }
-        } else {
-            let Self { start } = $it;
-            let type_name = std::any::type_name::<Self>();
-            unreachable!(
-                "When parsing the chirp file, we generated an invalid {type_name} \
-                    at {start}, This is a major cuicui bug, please open an issue:\n\n\
-                    https://github.com/nicopap/cuicui_layout/issues/new"
-            )
-        }
-    };
-}
+use crate::parser::stream::Input;
 
 /// Offset in an [`Input`] of an entity name, may be an identifier or string literal,
 /// and **is optional**.
@@ -54,13 +33,13 @@ impl OptNameOffset {
         if self.start == u32::MAX {
             return None;
         }
-        let next_token = input.starting_at(self.start).next_token();
-        if let Some(Token::Ident(ident) | Token::String(ident)) = next_token {
-            let end = self.start + as_u32(ident.len());
-            Some((ident, (self.start, end)))
-        } else {
-            more_unsafe_unreachable!(self);
-        }
+        // SAFETY:
+        // - We can only create OptNameOffset in crate::parser
+        // - We only create OptNameOffset in crate::parser::grammar
+        // - And they are the starting offset of either an identifier or string, always
+        let ident = unsafe { input.starting_at(self.start).next_statement_name() };
+        let end = self.start + as_u32(ident.len());
+        Some((ident, (self.start, end)))
     }
 }
 impl OptIdentOffset {
@@ -73,11 +52,12 @@ impl OptIdentOffset {
 }
 impl IdentOffset {
     pub fn read_spanned<'i>(self, input: &Input<'i>) -> (&'i [u8], (u32, u32)) {
-        if let Some(Token::Ident(ident)) = input.starting_at(self.start).next_token() {
-            (ident, (self.start, self.start + as_u32(ident.len())))
-        } else {
-            more_unsafe_unreachable!(self);
-        }
+        // SAFETY:
+        // - We can only create IdentOffset in crate::parser
+        // - We only create IdentOffset in crate::parser::grammar
+        // - And they are the starting offset of identifiers, always
+        let ident = unsafe { input.starting_at(self.start).next_ident() };
+        (ident, (self.start, self.start + as_u32(ident.len())))
     }
     pub fn read<'i>(self, input: &Input<'i>) -> &'i [u8] {
         self.read_spanned(input).0
@@ -90,9 +70,7 @@ impl Argument<'_> {
     }
 }
 
-#[rustfmt::skip] impl From<u32> for IdentOffset {
-    fn from(start: u32) -> Self { Self { start } }
-}
+#[rustfmt::skip] impl From<u32> for IdentOffset { fn from(start: u32) -> Self { Self { start } } }
 #[rustfmt::skip] impl From<Option<IdentOffset>> for OptIdentOffset {
     fn from(value: Option<IdentOffset>) -> Self { Self { start: value.map_or(u32::MAX, |i| i.start) } }
 }

@@ -6,7 +6,7 @@ use super::header::{Block, HeaderFieldAccess, Idx, Lower, Upper, Usplit};
 #[cfg(not(feature = "more_unsafe"))]
 use super::list::Node;
 use super::list::{List, SimpleNode};
-use super::{as_u32, as_usize, FnIndex, OptIdentOffset, OptNameOffset, RefAst};
+use super::{as_u32, as_usize, OptIdentOffset, OptNameOffset, RefAst};
 
 #[cfg(feature = "more_unsafe")]
 #[derive(Clone, Copy)]
@@ -15,6 +15,9 @@ struct Header<'a, const N: usize>(&'a [Block; N]);
 #[cfg(not(feature = "more_unsafe"))]
 #[derive(Clone, Copy)]
 struct Header<'a, const N: usize>(&'a [Block]);
+
+#[derive(Clone, Copy)]
+pub struct FnIndex<'a>(pub(super) Fn<'a>);
 
 impl<'a, const N: usize> Header<'a, N> {
     fn raw_block(self) -> &'a [Block] {
@@ -111,13 +114,13 @@ macro_rules! impl_header {
 
             #[allow(unused)]
             pub(in crate::parser) fn block_index(self, ast: RefAst<'a>) -> isize {
-                unsafe { self.0.0.as_ptr().offset_from(ast.0.as_ptr()) }
+                unsafe { self.0 .0.as_ptr().offset_from(ast.0.as_ptr()) }
             }
             $(
             #[track_caller]
             #[inline(always)]
             $vis fn $method_name(self) -> $method_accessor_field_type {
-                let slice = self.0.0;
+                let slice = self.0 .0;
                 #[cfg(not(feature = "more_unsafe"))]
                 let slice = {
                     assert!($size <= slice.len());
@@ -202,13 +205,12 @@ impl<'a> Fn<'a> {
     }
     #[inline]
     pub fn body(self) -> Statement<'a> {
-        // TODO(clean): Need to replace that 0 by something else
-        let statement_slice = unsafe { self.0.offset(self.parameter_len(), 0) };
-        unsafe { Statement::new_unchecked(statement_slice) }
+        let fn_len = as_u32(self.0 .0.len()) - self.parameter_len() - FnHeader::SIZE;
+        let len = if cfg!(feature = "more_unsafe") { 0 } else { fn_len };
+        unsafe { Statement::new_unchecked(self.0.offset(self.parameter_len(), len)) }
     }
-    #[inline]
-    pub fn index(self) -> FnIndex {
-        FnIndex(self.0 .0.as_ptr())
+    pub fn index(self) -> FnIndex<'a> {
+        FnIndex(self)
     }
 }
 impl_header![Method, MethodHeader, 1, {
@@ -279,12 +281,8 @@ impl<'a> Template<'a> {
     }
     #[inline]
     pub fn children(self) -> List<'a, Statement<'a>> {
-        List::new(unsafe {
-            self.0.offset(
-                self.argument_len() + self.methods_len(),
-                self.children_len(),
-            )
-        })
+        let offset = self.argument_len() + self.methods_len();
+        List::new(unsafe { self.0.offset(offset, self.children_len()) })
     }
 }
 impl_header![Code, CodeHeader, 1, { pub name: (THeader0, Lower) => IdentOffset }];

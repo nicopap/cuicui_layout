@@ -79,6 +79,30 @@ impl<'i> Ident<'i> {
     }
 }
 
+pub(super) unsafe fn next_statement_name<'i>(input: &mut &'i [u8]) -> &'i [u8] {
+    let (first, remaining) = input.split_at(1);
+    *input = remaining;
+    match recognize(first[0]) {
+        Recognized::Quote => {
+            let mut q = Quoted::<b'"'>(first);
+            q.next(input);
+            q.0
+        }
+        Recognized::Apostrophe => {
+            let mut q = Quoted::<b'\''>(first);
+            q.next(input);
+            q.0
+        }
+        Recognized::Ident => Ident(first).next(input),
+        _ => unsafe { std::hint::unreachable_unchecked() },
+    }
+}
+pub(super) unsafe fn next_ident<'i>(input: &mut &'i [u8]) -> &'i [u8] {
+    let (first, remaining) = input.split_at(1);
+    *input = remaining;
+    Ident(first).next(input)
+}
+
 pub fn next_token<'i>(input: &mut &'i [u8]) -> Option<Token<'i>> {
     after_space(input)
 }

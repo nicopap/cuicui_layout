@@ -46,16 +46,16 @@ pub type Span = (u32, u32);
 pub type Name<'a> = (&'a [u8], Span);
 
 // TODO(clean): There is a bit of duplicate code between ChirpTemplate and ChirpFile
-struct ChirpCall<'i, 'a> {
+struct ChirpCall<'t, 'i, 'a> {
     input: Input<'i>,
     ast: RefAst<'a>,
     params: Parameters<'a>,
-    parent: Option<&'a ChirpCall<'i, 'a>>,
+    parent: Option<&'t ChirpCall<'t, 'i, 'a>>,
     trailing_methods: ast::Methods<'a>,
     trailing_children: ast::Statements<'a>,
 }
-impl<'i, 'a> ChirpCall<'i, 'a> {
-    fn with_parameters(&'a self, parameters: Parameters<'a>, template: Template<'a>) -> Self {
+impl<'t, 'i, 'a> ChirpCall<'t, 'i, 'a> {
+    fn with_parameters(&'t self, parameters: Parameters<'a>, template: Template<'a>) -> Self {
         ChirpCall {
             input: self.input,
             ast: self.ast,
@@ -65,7 +65,7 @@ impl<'i, 'a> ChirpCall<'i, 'a> {
             parent: Some(self),
         }
     }
-    fn interpret_template(&self, tpl: Template, runner: &mut impl Interpreter<'i>) {
+    fn interpret_template(&self, tpl: Template<'a>, runner: &mut impl Interpreter<'i, 'a>) {
         let inp = &self.input;
         let (mut name, span) = tpl.name().read_spanned(inp);
         name = &name[..name.len() - 1];
@@ -85,12 +85,14 @@ impl<'i, 'a> ChirpCall<'i, 'a> {
     // 2. We may inherit template extras from deeper ancestors than the direct parent.
     // 3. And of course, those deeper template extras need to be evaluated with their own
     //    parent.
-    fn interpret_spawn(&self, spawn: ast::Spawn, runner: &mut impl Interpreter<'i>) {
+    fn interpret_spawn(&self, spawn: ast::Spawn<'a>, runner: &mut impl Interpreter<'i, 'a>) {
+        trace!("{} - {spawn:?}", spawn.block_index(self.ast));
         let inp = &self.input;
         if let Some(name) = spawn.name().get_with_span(inp) {
             runner.set_name(name);
         }
         for method in spawn.methods().iter() {
+            trace!("{} - {method:?}", method.block_index(self.ast));
             let (name, arguments) = (method.name(), method.arguments());
             let arguments = Arguments::new(*inp, arguments, &self.params);
             runner.method(name.read_spanned(inp), &arguments);
@@ -99,6 +101,7 @@ impl<'i, 'a> ChirpCall<'i, 'a> {
         let mut this = self;
         loop {
             for method in this.trailing_methods.iter() {
+                trace!("{} - {method:?}", method.block_index(self.ast));
                 let (name, arguments) = (method.name(), method.arguments());
                 let empty_parameters = Parameters::empty();
                 let parameters = this.parent.map_or(&empty_parameters, |p| &p.params);
@@ -115,16 +118,15 @@ impl<'i, 'a> ChirpCall<'i, 'a> {
             runner.spawn_leaf();
         } else {
             runner.start_children();
-            for node in spawn.children().iter() {
-                self.file().interpret_statement(node, runner);
+            for statement in spawn.children().iter() {
+                self.file().interpret_statement(statement, runner);
             }
             let mut this = self;
             loop {
-                for node in this.trailing_children.iter() {
-                    let parent = this
-                        .parent
-                        .map_or_else(|| ChirpFile::new_ref(self.input, self.ast), Self::file);
-                    parent.interpret_statement(node, runner);
+                for statement in this.trailing_children.iter() {
+                    let root_file = || ChirpFile::new_ref(self.input, self.ast);
+                    let parent = this.parent.map_or_else(root_file, Self::file);
+                    parent.interpret_statement(statement, runner);
                 }
                 this = match this.parent {
                     None => break,
@@ -141,7 +143,7 @@ impl<'i, 'a> ChirpCall<'i, 'a> {
             params: self.params.clone(),
         }
     }
-    fn interpret_root(&self, statement: ast::Statement<'a>, runner: &mut impl Interpreter<'i>) {
+    fn interpret_root(&self, statement: ast::Statement<'a>, runner: &mut impl Interpreter<'i, 'a>) {
         match statement.typed() {
             ast::StType::Template(template) => self.interpret_template(template, runner),
             ast::StType::Spawn(spawn) => self.interpret_spawn(spawn, runner),
@@ -156,7 +158,7 @@ pub struct ChirpFile<'i, 'a> {
     params: Parameters<'a>,
 }
 impl<'i, 'a> ChirpFile<'i, 'a> {
-    fn with_parameters(&'a self, ps: Parameters<'a>, template: Template<'a>) -> ChirpCall<'i, 'a> {
+    fn with_parameters(&self, ps: Parameters<'a>, template: Template<'a>) -> ChirpCall<'_, 'i, 'a> {
         ChirpCall {
             input: self.input,
             ast: self.ast,
@@ -173,7 +175,7 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
         Self { input, ast, params: Parameters::empty() }
     }
 
-    fn interpret_spawn(&self, spawn: ast::Spawn<'a>, runner: &mut impl Interpreter<'i>) {
+    fn interpret_spawn(&self, spawn: ast::Spawn<'a>, runner: &mut impl Interpreter<'i, 'a>) {
         trace!("{} - {spawn:?}", spawn.block_index(self.ast));
         let inp = &self.input;
         if let Some(name) = spawn.name().get_with_span(inp) {
@@ -189,13 +191,14 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
             runner.spawn_leaf();
         } else {
             runner.start_children();
-            for node in spawn.children().iter() {
-                self.interpret_statement(node, runner);
+            for statement in spawn.children().iter() {
+                self.interpret_statement(statement, runner);
             }
             runner.complete_children();
         }
     }
-    fn interpret_template(&self, tpl: Template<'a>, runner: &mut impl Interpreter<'i>) {
+    fn interpret_template(&self, tpl: Template<'a>, runner: &mut impl Interpreter<'i, 'a>) {
+        trace!("{} - {tpl:?}", tpl.block_index(self.ast));
         let inp = &self.input;
         let (mut name, span) = tpl.name().read_spanned(inp);
         name = &name[..name.len() - 1];
@@ -207,14 +210,14 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
         let inner_chirp = self.with_parameters(parameters, tpl);
         inner_chirp.interpret_root(declr.body(), runner);
     }
-    fn interpret_statement(&self, statement: ast::Statement, runner: &mut impl Interpreter<'i>) {
-        match statement.typed() {
+    fn interpret_statement(&self, st: ast::Statement<'a>, runner: &mut impl Interpreter<'i, 'a>) {
+        match st.typed() {
             ast::StType::Template(template) => self.interpret_template(template, runner),
             ast::StType::Spawn(spawn) => self.interpret_spawn(spawn, runner),
             ast::StType::Code(code) => runner.code(code.name().read_spanned(&self.input)),
         }
     }
-    pub fn interpret(&self, runner: &mut impl Interpreter<'i>) {
+    pub fn interpret(&self, runner: &mut impl Interpreter<'i, 'a>) {
         let inp = &self.input;
         let file = self.ast.chirp_file();
         trace!("{} - {file:?}", file.block_index(self.ast));
@@ -231,10 +234,10 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
         self.interpret_statement(file.root_statement(), runner);
     }
 }
-pub trait Interpreter<'i> {
+pub trait Interpreter<'i, 'a> {
     fn import(&mut self, name: Name<'i>, alias: Option<Name<'i>>);
-    fn register_fn(&mut self, name: Name<'i>, index: FnIndex);
-    fn get_template(&mut self, name: Name<'i>) -> Option<FnIndex>;
+    fn register_fn(&mut self, name: Name<'i>, index: FnIndex<'a>);
+    fn get_template(&mut self, name: Name<'i>) -> Option<FnIndex<'a>>;
     fn code(&mut self, code: Name<'i>);
     fn spawn_leaf(&mut self) {
         self.start_children();
@@ -245,11 +248,11 @@ pub trait Interpreter<'i> {
     fn complete_children(&mut self);
     fn method(&mut self, name: Name<'i>, arguments: &Arguments);
 }
-impl Interpreter<'_> for () {
+impl<'a> Interpreter<'_, 'a> for () {
     fn code(&mut self, _: Name) {}
     fn import(&mut self, _: Name, _: Option<Name>) {}
-    fn register_fn(&mut self, _: Name, _: FnIndex) {}
-    fn get_template(&mut self, _: Name) -> Option<FnIndex> {
+    fn register_fn(&mut self, _: Name, _: FnIndex<'a>) {}
+    fn get_template(&mut self, _: Name) -> Option<FnIndex<'a>> {
         None
     }
     fn set_name(&mut self, _: Name) {}

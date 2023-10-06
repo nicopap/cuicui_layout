@@ -147,13 +147,13 @@ fn dsl_function(item: &syn::ImplItem) -> Option<&syn::ImplItemFn> {
     let syn::ImplItem::Fn(fn_item) = item else {
         return None;
     };
-    parse_dsl_receiver(fn_item).map(|_| fn_item)
+    parse_dsl_receiver(fn_item).map(|()| fn_item)
 }
 fn dsl_function_mut(item: &mut syn::ImplItem) -> Option<&mut syn::ImplItemFn> {
     let syn::ImplItem::Fn(fn_item) = item else {
         return None;
     };
-    parse_dsl_receiver(fn_item).map(|_| fn_item)
+    parse_dsl_receiver(fn_item).map(|()| fn_item)
 }
 
 pub(crate) fn parse_dsl_impl(config: &mut ImplConfig, block: &mut syn::ItemImpl) -> TokenStream {

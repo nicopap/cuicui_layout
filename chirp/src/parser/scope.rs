@@ -41,7 +41,7 @@ impl<'a> Parameters<'a> {
         }
     }
 
-    fn values(&self) -> impl Iterator<Item = ast::Argument> + '_ {
+    fn values(&self) -> impl Iterator<Item = ast::Argument<'a>> + '_ {
         let get_special = |i: usize| self.special_values.get(i).and_then(|a| a.0);
         let iter = self.values.iter().enumerate();
         iter.map(move |(i, v)| get_special(i).unwrap_or(v))
@@ -52,7 +52,7 @@ impl<'a> Parameters<'a> {
     // - We are "forwarding" a parameter. But lo! that parameter itself is forwarded,
     //   so we need to search it in the "special values" thingy.
     pub(crate) fn scope(
-        &'a self,
+        &self,
         idents: ast::IdentOffsets<'a>,
         values: ast::Arguments<'a>,
         inp: &Input,
@@ -62,7 +62,7 @@ impl<'a> Parameters<'a> {
             values.iter().any(|value| param == value.read(inp))
         });
         let special_values = if any_special_values {
-            let map_special = |value: ast::Argument| {
+            let map_special = |value: ast::Argument<'a>| {
                 let mut iter = self.idents.iter().zip(self.values());
                 let special = iter.find_map(|(param, scope_value)| {
                     (value.read(inp) == param.read(inp)).then_some(Special(Some(scope_value)))

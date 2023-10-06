@@ -112,7 +112,7 @@ impl TestInterpreter {
     }
 }
 
-impl<'a> Interpreter<'a> for TestInterpreter {
+impl<'i, 'a> Interpreter<'i, 'a> for TestInterpreter {
     fn code(&mut self, (code, range): (&[u8], Span)) {
         let current = self.0.hierarchy.get_index_mut(&self.0.current);
         current.insert_code(code, range);
@@ -136,15 +136,15 @@ impl<'a> Interpreter<'a> for TestInterpreter {
         self.0.current.push(0);
     }
 
-    fn get_template(&mut self, _name: Name<'a>) -> Option<FnIndex> {
+    fn get_template(&mut self, _name: Name<'i>) -> Option<FnIndex<'a>> {
         todo!()
     }
 
-    fn import(&mut self, _name: Name<'a>, _alias: Option<Name<'a>>) {
+    fn import(&mut self, _name: Name<'i>, _alias: Option<Name<'i>>) {
         todo!()
     }
 
-    fn register_fn(&mut self, _name: Name<'a>, _index: FnIndex) {
+    fn register_fn(&mut self, _name: Name<'i>, _index: FnIndex<'a>) {
         todo!()
     }
 }

@@ -66,11 +66,10 @@
 //! [^1]: Not to be confused with `AdBlock`, in any case, prefer ublock origin
 #![allow(clippy::missing_const_for_fn)]
 
-use core::slice;
-
 pub(super) use build::{AstBuilder, WriteHeader};
 pub use ident::*;
 pub(super) use list::List;
+pub use node::FnIndex;
 pub(super) use node::{Argument, Fn, IdentOffset, Spawn, StKind, StType, Statement, Template};
 pub(super) use node::{ArgumentHeader, ChirpFileHeader, FnHeader, ImportHeader, MethodHeader};
 pub(super) use node::{CodeHeader, SpawnHeader, TemplateHeader};
@@ -87,20 +86,10 @@ mod list;
 mod node;
 
 #[derive(Clone, Copy)]
-pub struct FnIndex(*const header::Block);
-
-#[derive(Clone, Copy)]
 pub struct RefAst<'a>(&'a [header::Block]);
 impl<'a> RefAst<'a> {
-    pub(super) fn get_fn(&self, fn_index: FnIndex) -> Fn<'a> {
-        let self_ptr = self.0.as_ptr();
-        assert!(self_ptr <= fn_index.0 && fn_index.0 <= self_ptr.wrapping_add(self.0.len()));
-        // SAFETY:
-        // - Within our AST
-        // - We UNSOUNDLY assume this means it comes from the same allocation
-        // - non null: within &T means non-null
-        let slice = unsafe { slice::from_raw_parts(self_ptr, 0) };
-        unsafe { Fn::new_unchecked(slice) }
+    pub(super) fn get_fn(&self, fn_index: FnIndex<'a>) -> Fn<'a> {
+        fn_index.0
     }
     pub(super) fn chirp_file(self) -> node::ChirpFile<'a> {
         node::ChirpFile::new(self.0)

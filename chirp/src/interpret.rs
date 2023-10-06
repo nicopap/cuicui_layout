@@ -210,7 +210,7 @@ pub(crate) struct Interpreter<'w, 's, 'a, 'l, D> {
     ///
     /// Or the current parent if we are not on the root entity.
     root_entity: Entity,
-    templates: HashMap<&'a [u8], FnIndex>,
+    templates: HashMap<&'a [u8], FnIndex<'a>>,
     errors: Vec<SpannedError>,
     load_ctx: Option<&'a mut LoadContext<'l>>,
     dsl: D,
@@ -297,7 +297,7 @@ impl<'w, 's, 'a, 'l, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, D> {
         self.errors.is_empty().then(|| dsl.insert(&mut cmds))
     }
 }
-impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a> for Interpreter<'w, 's, 'a, 'l, D> {
+impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a, 'a> for Interpreter<'w, 's, 'a, 'l, D> {
     fn spawn_leaf(&mut self) {
         self.statement_spawn();
     }
@@ -392,11 +392,11 @@ impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a> for Interpreter<'w, 's
         self.push_error(span, InterpError::Import);
     }
 
-    fn register_fn(&mut self, (name, _): Name<'a>, index: FnIndex) {
+    fn register_fn(&mut self, (name, _): Name<'a>, index: FnIndex<'a>) {
         self.templates.insert(name, index);
     }
 
-    fn get_template(&mut self, (name, span): Name<'a>) -> Option<FnIndex> {
+    fn get_template(&mut self, (name, span): Name<'a>) -> Option<FnIndex<'a>> {
         if let Some(key) = self.templates.get(name) {
             trace!("<<--- {}", BStr::new(name));
             return Some(*key);

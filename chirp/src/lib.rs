@@ -358,7 +358,7 @@ impl<'a> ChirpReader<'a> {
         if result.is_ok() {
             state.apply(self.world);
         }
-        result.map(|_| id)
+        result.map(|()| id)
     }
     /// Same as [`Self::interpret`], but directly logs error message instead
     /// of returning the result.

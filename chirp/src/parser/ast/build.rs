@@ -26,6 +26,7 @@ impl AstBuilder {
             written: false,
         }
     }
+    #[cfg_attr(not(debug_assertions), allow(unused_mut))]
     pub fn write<T, const N: usize>(&mut self, mut head: AstBuilderHead<T>, writer: T)
     where
         T: std::fmt::Debug + for<'a> WriteHeader<Buffer<'a> = Buffer<'a, N>>,
