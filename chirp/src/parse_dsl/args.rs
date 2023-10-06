@@ -283,12 +283,12 @@ impl<'i, 'a> Arguments<'i, 'a> {
     }
     /// Whether arguments were passed to the method.
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
     /// How many arguments were passed to the method.
     #[must_use]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         match &self.0 {
             ArgumentsInner::Parser(p) => p.len(),
             ArgumentsInner::Named(_) => 1,

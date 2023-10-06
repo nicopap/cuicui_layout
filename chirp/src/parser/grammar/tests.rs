@@ -1,17 +1,20 @@
-use winnow::combinator::delimited;
+use winnow::combinator::{delimited, opt, separated0};
+use winnow::Parser;
 
-use super::*;
+use super::{tokens::many_tts, *};
+use crate::parser::stream::tokens;
 
 fn split_tt(str_input: &'static str) -> Vec<&'static str> {
     let input = Input::new(str_input.as_bytes(), ());
     let (lparen, rparen, comma) = (tokens::Lparen, tokens::Rparen, tokens::Comma);
-    let parsed = delimited(lparen, sep(many_tts::<true>), (opt(comma), rparen))
+    let tts = separated0(many_tts::<true>, comma);
+    let parsed: Vec<(u32, u32)> = delimited(lparen, tts, (opt(comma), rparen))
         .parse(input)
         .unwrap();
     parsed
         .into_iter()
-        .map(|arg| {
-            let range = arg.start as usize..arg.end as usize;
+        .map(|(start, end)| {
+            let range = start as usize..end as usize;
             &str_input[range]
         })
         .collect()

@@ -39,6 +39,9 @@ Also, as of `0.10`, `cuicui_chirp` doesn't support WASM for image and font asset
 - **`load_font`** (default): load `Handle<Font>` as method argument
 - **`load_image`** (default): load `Handle<Image>` as method argument
 - **`trace_parser`**: log very verbose parsing information
+- **`more_unsafe`**: Convert some runtime checks into unsafe assumptions.
+  In theory, this is sound, but `cuicui_chirp` is not tested enough to my taste
+  for making those assumptions by default.
 
 ### Usage
 

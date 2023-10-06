@@ -2,7 +2,7 @@
 
 use std::slice;
 
-use super::Token;
+use super::stream::Token;
 
 const RECOGNIZED_SYMBOL_COUNT: usize = 15;
 const RECOGNIZED_SYMBOLS: [u8; RECOGNIZED_SYMBOL_COUNT] = *b"=(){}[],\"'/ \n\t\r";

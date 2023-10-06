@@ -1,3 +1,9 @@
+# 0.10.1
+
+- Reworked the AST so that it is a fully contiguous memory block.
+  - Reduces allocations when parsing chirp files
+  - improve performance when interpreting chirp files
+
 # 0.10.0
 
 ## All changes
@@ -16,7 +22,7 @@
   layouts.
 - debug view: do not show outline of hidden containers (togglable)
 - chirp files and dsl now allow only a single root entity.
-- Rewrote the chirp scene spawner to add components to the seed instead instead of
+- Rewrote the chirp scene spawner to add components to the seed instead of
   removing it and replacing it with several entities.
 
 ## Minor breaking changes:

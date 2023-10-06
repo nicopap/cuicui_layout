@@ -2,10 +2,11 @@
 
 use stream::TokenType;
 
+pub use ast::{Ast, FnIndex};
 pub(crate) use grammar::chirp_file;
-pub use interpret::{ChirpFile, FnIndex, Interpreter, Name, Span};
+pub use interpret::{ChirpFile, Interpreter, Name, Span};
 pub use scope::Arguments;
-pub use stream::{Input, StateCheckpoint, Token};
+pub use stream::{Input, StateCheckpoint};
 
 mod ast;
 mod grammar;

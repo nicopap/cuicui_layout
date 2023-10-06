@@ -23,13 +23,14 @@ In our current grammar we have the following AST nodes:
 
 - `Use`: An import statement with an **identifier name**
   and an optional **identifier name** `as` binding
-- `Fn`: Function with an **identifier name**, N arguments
-  and a single inner `Statement | Template`
-- `Statement`: A statement with a **name**, N methods and N children `Statement | Template`
+- `Fn`: Function with an **identifier name**, N **identifier name** parameters
+  and a single inner `Spawn | Template | Code`
+- `Spawn`: A statement with an optional **name**, N methods and N children `Spawn | Template | Code`
 - `Template`: A template call with an **identifier name**, N arguments, N methods
-  and N children `Statement | Template`
+  and N children `Spawn | Template | Code`
 - `Method`: A method call with an **identifier name** and N argument
 - `Argument`: Currently, an offset + length into the input stream.
+- `Code`: A `code` **identifier name**
 
 If we make use of an interner, we can compress what we call "identifier names".
 The value, instead of being an offset in the input stream, is a small index number.
@@ -46,88 +47,97 @@ the next node.
 If we commit to a block-based approach we can do the following:
 
 ```
-struct NameOffset(u32); // Start offset in input stream of an Ident token.
+struct IdentOffset(u32); // Start offset in input stream of an Ident token.
+struct OptIdentOffset(u32); // Optional version of `IdentOffset` where u32::MAX denotes "None"
+struct NameOffset(u32); // Start offset in input stream of a (String | Ident) token.
 struct OptNameOffset(u32); // Optional version of `NameOffset` where u32::MAX denotes "None"
 
 # Node 1: ChirpFile (~ blocks)
 
 ast_header: {
   import_count: u32,
-  statement_start: u32,
+  root_statement_offset: u32,
 }
 imports: [Import]
-fn declarations: [Fn]
-statements: [Statement | Template]
+fn_declarations: [Fn]
+root_statement: Spawn | Template | Code
 
 # Node 2: Import (2 blocks)
 
-name: NameOffset
-alias: OptNameOffset
+name: IdentOffset
+alias: OptIdentOffset
 
 # Node 3: Fn (~ blocks)
 
 // we have a hashmap somewhere that associate a name to an `Fn` index in the AST.
 
 header: {
-  argument_count: u6,
-  name_offset: u26,
+  parameter_count: u6,
+  name: u26 as IdentOffset,
 }
-arguments: [Argument]
-body: Statement | Template
+parameters: [IdentOffset]
+body: Spawn | Template | Code
 
 total_length:
-  1 + header.argument_count * size_of::<Argument>
+  1 + header.argument_count * size_of::<NameOffset>
   + total_length(body[0])
 
 # Node 4: Argument (2 blocks)
 
 // the start and end of a `many_tts` syntax element
 
-start_offset: u32
-end_offset: u32
+start: u32
+end: u32
 
 # Node 5: Method (~ blocks)
 
 header: {
   argument_count: u6,
-  name_offset: u26,
+  name: u26 as IdentOffset,
 }
 arguments: [Argument]
 
 total_length: 1 + header.argument_count * size_of::<Argument>
 
-# Node 6: Statement (~ blocks)
+# Node 6: Spawn (~ blocks)
 
 header: {
-  discriminant: u1,
-  name_offset: u31,
+  discriminant: u4,
+  name: u28 as OptNameOffset,
 }
-methods_blocks: u32
-children_blocks: u32
+methods_len: u32
+children_len: u32
 methods: [Method]
-children: [Statement | Template]
+children: [Spawn | Template | Code]
 
 total_length: 3 + methods_blocks + children_blocks
 
 # Node 7: Template (~ blocks)
 
 header: {
-  discriminant: u1,
-  name_offset: u31,
+  discriminant: u4,
+  name: u28 as IdentOffset,
 }
 template_header: {
   argument_count: u6,
-  methods_blocks: u26,
+  methods_len: u26,
 }
-children_blocks: u32
+children_len: u32
 arguments: [Argument]
 methods: [Method]
-children: [Statement | Template]
+children: [Spawn | Template | Code]
 
 total_length:
   3 + template_header.argument_count * size_of::<Argument>
   + template_header.methods_blocks
   + children_blocks
+
+# Node 8: Code (1 block)
+
+header: {
+  discriminant: u4,
+  name: u28 as IdentOffset,
+}
 ```
 
 The way we access AST nodes is through view structs as follow:

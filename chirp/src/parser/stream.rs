@@ -134,6 +134,7 @@ impl Token<'_> {
 macro_rules! grammar {
     ($( $name:ident ),* $(,)?) => {
         $(
+        #[derive(Default, Clone, Copy)]
         pub struct $name;
         impl<'i, S: Clone + fmt::Debug> Parser<Input<'i, S>, Token<'i>, Error> for $name {
             #[inline(always)]
@@ -159,6 +160,7 @@ macro_rules! grammar {
 macro_rules! grammar_identifiers {
     ($( $identifier:literal as $name:ident ),* $(,)?) => {
         $(
+        #[derive(Default, Clone, Copy)]
         pub struct $name;
         impl<'i, S: Clone + fmt::Debug> Parser<Input<'i, S>, Token<'i>, Error> for $name {
             #[inline(always)]
@@ -295,16 +297,6 @@ impl<'i, S> Input<'i, S> {
     {
         let mut ret = self.clone();
         ret.start = start;
-        ret
-    }
-
-    #[inline(always)]
-    pub(crate) fn at(&self, checkpoint: StateCheckpoint) -> Self
-    where
-        S: Clone + fmt::Debug,
-    {
-        let mut ret = self.clone();
-        ret.reset(checkpoint);
         ret
     }
 }

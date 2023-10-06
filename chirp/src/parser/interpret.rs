@@ -36,49 +36,48 @@
 //! we walk back the whole call stack (in the actual machine stack) and read all
 //! the extras for each stack level. We can read the parent's `Parameters` field
 //! to get the correct parameter substitution for that particular extra.
+use bevy::log::trace;
 
-use super::ast::{self, Statement, Template};
+use super::ast::{self, Ast, FnIndex, RefAst, Template};
 use super::scope::{Arguments, Parameters};
 use super::Input;
 
 pub type Span = (u32, u32);
 pub type Name<'a> = (&'a [u8], Span);
-#[derive(Clone, Copy)]
-pub struct FnIndex(usize);
 
 // TODO(clean): There is a bit of duplicate code between ChirpTemplate and ChirpFile
-struct ChirpTemplate<'i, 'a> {
+struct ChirpCall<'i, 'a> {
     input: Input<'i>,
-    ast: &'a ast::ChirpFile,
-    parameters: Parameters<'a>,
-    parent: Option<&'a ChirpTemplate<'i, 'a>>,
-    trailing_methods: &'a [ast::Method],
-    trailing_nodes: &'a [ast::Node],
+    ast: RefAst<'a>,
+    params: Parameters<'a>,
+    parent: Option<&'a ChirpCall<'i, 'a>>,
+    trailing_methods: ast::Methods<'a>,
+    trailing_children: ast::Statements<'a>,
 }
-impl<'i, 'a> ChirpTemplate<'i, 'a> {
-    fn with_parameters(&'a self, parameters: Parameters<'a>, template: &'a Template) -> Self {
-        ChirpTemplate {
+impl<'i, 'a> ChirpCall<'i, 'a> {
+    fn with_parameters(&'a self, parameters: Parameters<'a>, template: Template<'a>) -> Self {
+        ChirpCall {
             input: self.input,
             ast: self.ast,
-            parameters,
-            trailing_methods: &template.methods,
-            trailing_nodes: &template.children,
+            params: parameters,
+            trailing_methods: template.methods(),
+            trailing_children: template.children(),
             parent: Some(self),
         }
     }
-    fn interpret_template(&self, tpl: &Template, runner: &mut impl Interpreter<'i>) {
+    fn interpret_template(&self, tpl: Template, runner: &mut impl Interpreter<'i>) {
         let inp = &self.input;
-        let (mut name, span) = tpl.name.read_spanned(inp);
+        let (mut name, span) = tpl.name().read_spanned(inp);
         name = &name[..name.len() - 1];
         let Some(fn_index) = runner.get_template((name, span)) else {
             return;
         };
-        let declr = &self.ast.functions[fn_index.0];
-        let parameters = self.parameters.scope(&declr.arguments, &tpl.arguments, inp);
+        let declr = self.ast.get_fn(fn_index);
+        let parameters = self.params.scope(declr.parameters(), tpl.arguments(), inp);
         let inner_chirp = self.with_parameters(parameters, tpl);
-        inner_chirp.interpret_root(&declr.body, runner);
+        inner_chirp.interpret_root(declr.body(), runner);
     }
-    // This function is similar to [`ChirpFile::interpret_statement`] with the
+    // This function is similar to [`ChirpFile::interpret_spawn`] with the
     // difference that it inlines the passed "template extras" to the root expression.
     //
     // To do this is extra tricky, because:
@@ -86,25 +85,27 @@ impl<'i, 'a> ChirpTemplate<'i, 'a> {
     // 2. We may inherit template extras from deeper ancestors than the direct parent.
     // 3. And of course, those deeper template extras need to be evaluated with their own
     //    parent.
-    fn interpret_statement(&self, st: &Statement, runner: &mut impl Interpreter<'i>) {
+    fn interpret_spawn(&self, spawn: ast::Spawn, runner: &mut impl Interpreter<'i>) {
         let inp = &self.input;
-        if let Some(name) = st.name.get_with_span(inp) {
+        if let Some(name) = spawn.name().get_with_span(inp) {
             runner.set_name(name);
         }
-        for ast::Method { name, arguments } in &st.methods {
-            let arguments = Arguments::new(*inp, arguments, &self.parameters);
+        for method in spawn.methods().iter() {
+            let (name, arguments) = (method.name(), method.arguments());
+            let arguments = Arguments::new(*inp, arguments, &self.params);
             runner.method(name.read_spanned(inp), &arguments);
         }
-        let mut no_children = st.children.is_empty();
+        let mut no_children = spawn.children().is_empty();
         let mut this = self;
         loop {
-            for ast::Method { name, arguments } in this.trailing_methods {
+            for method in this.trailing_methods.iter() {
+                let (name, arguments) = (method.name(), method.arguments());
                 let empty_parameters = Parameters::empty();
-                let parameters = this.parent.map_or(&empty_parameters, |p| &p.parameters);
+                let parameters = this.parent.map_or(&empty_parameters, |p| &p.params);
                 let arguments = Arguments::new(*inp, arguments, parameters);
                 runner.method(name.read_spanned(inp), &arguments);
             }
-            no_children &= this.trailing_nodes.is_empty();
+            no_children &= this.trailing_children.is_empty();
             this = match this.parent {
                 None => break,
                 Some(v) => v,
@@ -114,16 +115,16 @@ impl<'i, 'a> ChirpTemplate<'i, 'a> {
             runner.spawn_leaf();
         } else {
             runner.start_children();
-            for node in &st.children {
-                self.file().interpret_node(node, runner);
+            for node in spawn.children().iter() {
+                self.file().interpret_statement(node, runner);
             }
             let mut this = self;
             loop {
-                for node in this.trailing_nodes {
+                for node in this.trailing_children.iter() {
                     let parent = this
                         .parent
-                        .map_or_else(|| ChirpFile::new(self.input, self.ast), Self::file);
-                    parent.interpret_node(node, runner);
+                        .map_or_else(|| ChirpFile::new_ref(self.input, self.ast), Self::file);
+                    parent.interpret_statement(node, runner);
                 }
                 this = match this.parent {
                     None => break,
@@ -137,89 +138,97 @@ impl<'i, 'a> ChirpTemplate<'i, 'a> {
         ChirpFile {
             input: self.input,
             ast: self.ast,
-            parameters: self.parameters.clone(),
+            params: self.params.clone(),
         }
     }
-    fn interpret_root(&self, node: &ast::Node, runner: &mut impl Interpreter<'i>) {
-        match node {
-            ast::Node::Template(template) => self.interpret_template(template, runner),
-            ast::Node::Statement(statement) => self.interpret_statement(statement, runner),
+    fn interpret_root(&self, statement: ast::Statement<'a>, runner: &mut impl Interpreter<'i>) {
+        match statement.typed() {
+            ast::StType::Template(template) => self.interpret_template(template, runner),
+            ast::StType::Spawn(spawn) => self.interpret_spawn(spawn, runner),
             // TODO(bug): Need to add the template extras here.
-            ast::Node::Code(ident) => runner.code(ident.read_spanned(&self.input)),
+            ast::StType::Code(code) => runner.code(code.name().read_spanned(&self.input)),
         }
     }
 }
 pub struct ChirpFile<'i, 'a> {
     input: Input<'i>,
-    ast: &'a ast::ChirpFile,
-    parameters: Parameters<'a>,
+    ast: RefAst<'a>,
+    params: Parameters<'a>,
 }
 impl<'i, 'a> ChirpFile<'i, 'a> {
-    fn with_parameters(
-        &'a self,
-        parameters: Parameters<'a>,
-        template: &'a Template,
-    ) -> ChirpTemplate<'i, 'a> {
-        ChirpTemplate {
+    fn with_parameters(&'a self, ps: Parameters<'a>, template: Template<'a>) -> ChirpCall<'i, 'a> {
+        ChirpCall {
             input: self.input,
             ast: self.ast,
-            parameters,
-            trailing_methods: &template.methods,
-            trailing_nodes: &template.children,
+            params: ps,
+            trailing_methods: template.methods(),
+            trailing_children: template.children(),
             parent: None,
         }
     }
-    pub fn new(input: Input<'i>, ast: &'a ast::ChirpFile) -> Self {
-        Self { input, ast, parameters: Parameters::empty() }
+    pub fn new(input: Input<'i>, ast: &'a Ast) -> Self {
+        Self::new_ref(input, ast.as_ref())
+    }
+    fn new_ref(input: Input<'i>, ast: RefAst<'a>) -> Self {
+        Self { input, ast, params: Parameters::empty() }
     }
 
-    fn interpret_statement(&self, st: &Statement, runner: &mut impl Interpreter<'i>) {
+    fn interpret_spawn(&self, spawn: ast::Spawn<'a>, runner: &mut impl Interpreter<'i>) {
+        trace!("{} - {spawn:?}", spawn.block_index(self.ast));
         let inp = &self.input;
-        if let Some(name) = st.name.get_with_span(inp) {
+        if let Some(name) = spawn.name().get_with_span(inp) {
             runner.set_name(name);
         }
-        for ast::Method { name, arguments } in &st.methods {
-            let arguments = Arguments::new(*inp, arguments, &self.parameters);
+        for method in spawn.methods().iter() {
+            trace!("{} - {method:?}", method.block_index(self.ast));
+            let (name, arguments) = (method.name(), method.arguments());
+            let arguments = Arguments::new(*inp, arguments, &self.params);
             runner.method(name.read_spanned(inp), &arguments);
         }
-        if st.children.is_empty() {
+        if spawn.children().is_empty() {
             runner.spawn_leaf();
         } else {
             runner.start_children();
-            for node in &st.children {
-                self.interpret_node(node, runner);
+            for node in spawn.children().iter() {
+                self.interpret_statement(node, runner);
             }
             runner.complete_children();
         }
     }
-    fn interpret_template(&self, tpl: &Template, runner: &mut impl Interpreter<'i>) {
+    fn interpret_template(&self, tpl: Template<'a>, runner: &mut impl Interpreter<'i>) {
         let inp = &self.input;
-        let (mut name, span) = tpl.name.read_spanned(inp);
+        let (mut name, span) = tpl.name().read_spanned(inp);
         name = &name[..name.len() - 1];
         let Some(fn_index) = runner.get_template((name, span)) else {
             return;
         };
-        let declr = &self.ast.functions[fn_index.0];
-        let parameters = self.parameters.scope(&declr.arguments, &tpl.arguments, inp);
+        let declr = self.ast.get_fn(fn_index);
+        let parameters = self.params.scope(declr.parameters(), tpl.arguments(), inp);
         let inner_chirp = self.with_parameters(parameters, tpl);
-        inner_chirp.interpret_root(&declr.body, runner);
+        inner_chirp.interpret_root(declr.body(), runner);
     }
-    fn interpret_node(&self, node: &ast::Node, runner: &mut impl Interpreter<'i>) {
-        match node {
-            ast::Node::Template(template) => self.interpret_template(template, runner),
-            ast::Node::Statement(statement) => self.interpret_statement(statement, runner),
-            ast::Node::Code(ident) => runner.code(ident.read_spanned(&self.input)),
+    fn interpret_statement(&self, statement: ast::Statement, runner: &mut impl Interpreter<'i>) {
+        match statement.typed() {
+            ast::StType::Template(template) => self.interpret_template(template, runner),
+            ast::StType::Spawn(spawn) => self.interpret_spawn(spawn, runner),
+            ast::StType::Code(code) => runner.code(code.name().read_spanned(&self.input)),
         }
     }
     pub fn interpret(&self, runner: &mut impl Interpreter<'i>) {
         let inp = &self.input;
-        for ast::Import { name, alias } in &self.ast.imports {
+        let file = self.ast.chirp_file();
+        trace!("{} - {file:?}", file.block_index(self.ast));
+        for import in file.imports().iter() {
+            trace!("{} - {import:?}", import.block_index(self.ast));
+            let (name, alias) = (import.name(), import.alias());
             runner.import(name.read_spanned(inp), alias.read_spanned(inp));
         }
-        for (i, ast::Function { name, .. }) in self.ast.functions.iter().enumerate() {
-            runner.register_fn(name.read_spanned(inp), FnIndex(i));
+        for fn_declr in file.fn_declrs().iter() {
+            trace!("{} - {fn_declr:?}", fn_declr.block_index(self.ast));
+            let index = fn_declr.index();
+            runner.register_fn(fn_declr.name().read_spanned(inp), index);
         }
-        self.interpret_node(&self.ast.root, runner);
+        self.interpret_statement(file.root_statement(), runner);
     }
 }
 pub trait Interpreter<'i> {
