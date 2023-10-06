@@ -371,12 +371,7 @@
 #[rustfmt::skip]
 #[macro_export]
 macro_rules! dsl {
-    (@methods [$d_ty:ty] $($args:tt)*) => {{
-        let mut x = <$d_ty>::default();
-        dsl!(@arg [x] $($args)*);
-        x
-    }};
-    (@arg [$x:tt] ) => {  };
+    (@arg [$x:tt] ) => {};
     (@arg [$x:tt] $m:ident ($($arg:tt)*) $($t:tt)*)=>{$x.$m($($arg)*) ; dsl!(@arg [$x] $($t)*)};
     (@arg [$x:tt] $m:ident               $($t:tt)*)=>{$x.$m()         ; dsl!(@arg [$x] $($t)*)};
 
@@ -387,8 +382,17 @@ macro_rules! dsl {
         // Generate the rest of the code
         $(; dsl!(@statement [$d_ty, $cmds] $($t)*))?
     };
+    (@statement [$d_ty:ty, $cmds:expr] Entity ($($args:tt)*) {} $($t:tt)*) => {
+        let mut x = <$d_ty>::default();
+        dsl!(@arg [x] $($args)*);
+        x.insert($cmds);
+        // Generate the rest of the code
+        dsl!(@statement [$d_ty, $cmds] $($t)*)
+    };
     (@statement [$d_ty:ty, $cmds:expr] Entity ($($args:tt)*) {$($inner:tt)*} $($t:tt)*) => {
-        dsl!(@methods [$d_ty] $($args)*).node($cmds, |mut child_builder| {
+        let mut x = <$d_ty>::default();
+        dsl!(@arg [x] $($args)*);
+        x.node($cmds, |mut child_builder| {
             // Generate code for statements inside curly braces
             dsl!(@statement [$d_ty, &mut child_builder.spawn_empty()] $($inner)*);
         });

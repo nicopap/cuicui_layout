@@ -21,7 +21,7 @@ that takes care of spawning the UI.
 
 Now, we write the `chirp` file in the `assets/` folder.
 
-This is fairly close to a copy/paste of the one in ???, with the distinction
+This is fairly close to a copy/paste of [the `dsl!` example], with the distinction
 that we use an `fn` template instead of a `code` block to avoid repetition for
 the menu buttons.
 
@@ -38,3 +38,4 @@ how it affects the layout!
 
 [`LayoutDsl`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/dsl/struct.LayoutDsl.html
 [`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.10.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
+[the `dsl!` example]: ../simple_menu
