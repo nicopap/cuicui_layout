@@ -40,7 +40,7 @@ impl AstBuilder {
         writer.write_header(Buffer((&mut self.0[start..end]).try_into().unwrap()));
     }
     pub fn build(self) -> Ast {
-        Ast(self.0)
+        Ast(self.0.into())
     }
 }
 

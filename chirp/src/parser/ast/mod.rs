@@ -14,7 +14,7 @@
 //!    or methods and children to statements.
 //!
 //! The "header" contains information proper to the node (such as the `name` of
-//! a statement, and the size of the sub-item lists of AST nodes within this node.
+//! a statement, and the size of the sub-item lists of AST nodes within this node.)
 //!
 //! A "sub-item" list is a variable length homogenous list (think of a `Vec<T>`) of a given node.
 //!
@@ -57,13 +57,18 @@
 //! The single buffer architecture requires keeping a single buffer and accumulate
 //! new blocks into it. The accumulator cannot be created from nothing.
 //!
-//! Thankfully, `winnow` is very flexible, and allows imperative style. We define
-//! a trait, `AddBlocks`[^1], which is basically `winnow::Parser` with an additional
-//! `&mut Vec<Block>` argument. And instead of returning the AST node, it pushs it to
-//! the buffer. It's a lot more code than the original `winnow` parser,
-//! but it works very similarly.
+//! Thankfully, `winnow` is very flexible, and allows imperative style.
+//! [`AstBuilder`] is the single buffer for the AST. Through the [`WriteHeader`]
+//! trait, it knows about the layout and size of each AST node headers (as
+//! `WriteHeader` is implemented for each AST nodes in the [`node`] macro).
 //!
-//! [^1]: Not to be confused with `AdBlock`, in any case, prefer ublock origin
+//! In [`crate::parser::grammar::chirp_file`] each time we encounter a new node, we:
+//!
+//! - "reserve" an unitialized header with [`AstBuilder::reserve_header`].
+//! - Add the sub-item nodes of this node, counting them
+//! - Create a `node::XYZHeader` struct, a representation of the header content
+//!   with the counted nodes.
+//! - Write to the reserved header with [`AstBuilder::write`].
 #![allow(clippy::missing_const_for_fn)]
 
 pub(super) use build::{AstBuilder, WriteHeader};
@@ -74,20 +79,27 @@ pub(super) use node::{Argument, Fn, IdentOffset, Spawn, StKind, StType, Statemen
 pub(super) use node::{ArgumentHeader, ChirpFileHeader, FnHeader, ImportHeader, MethodHeader};
 pub(super) use node::{CodeHeader, SpawnHeader, TemplateHeader};
 
-pub(super) type Methods<'a> = List<'a, node::Method<'a>>;
-pub(super) type Statements<'a> = List<'a, node::Statement<'a>>;
-pub(super) type Arguments<'a> = List<'a, node::Argument<'a>>;
-pub(super) type IdentOffsets<'a> = List<'a, node::IdentOffset>;
-
 mod build;
 mod header;
 mod ident;
 mod list;
 mod node;
 
+pub(super) type Methods<'a> = List<'a, node::Method<'a>>;
+pub(super) type Statements<'a> = List<'a, node::Statement<'a>>;
+pub(super) type Arguments<'a> = List<'a, node::Argument<'a>>;
+pub(super) type IdentOffsets<'a> = List<'a, node::IdentOffset>;
+
+pub struct Ast(Box<[header::Block]>);
+impl Ast {
+    pub fn as_ref(&self) -> AstRef {
+        AstRef(&self.0)
+    }
+}
+
 #[derive(Clone, Copy)]
-pub struct RefAst<'a>(&'a [header::Block]);
-impl<'a> RefAst<'a> {
+pub struct AstRef<'a>(&'a [header::Block]);
+impl<'a> AstRef<'a> {
     pub(super) fn get_fn(&self, fn_index: FnIndex<'a>) -> Fn<'a> {
         fn_index.0
     }
@@ -96,21 +108,12 @@ impl<'a> RefAst<'a> {
     }
 }
 
-pub struct Ast(Vec<header::Block>);
-impl Ast {
-    pub fn as_ref(&self) -> RefAst {
-        RefAst(&self.0)
-    }
-}
-
-#[allow(clippy::inline_always)]
-#[inline(always)]
+#[inline]
 fn as_u32(usize: usize) -> u32 {
     usize.try_into().unwrap()
 }
 
-#[allow(clippy::inline_always)]
-#[inline(always)]
+#[inline]
 fn as_usize(u32: u32) -> usize {
     u32.try_into().unwrap()
 }

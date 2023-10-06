@@ -1,4 +1,10 @@
 //! Define all AST nodes with the layout of their header.
+//!
+//! See documentation on [`Header`] (both with and without `more_unsafe` feature)
+//! and [`impl_header!`] macro.
+//!
+//! The list node accessors are defined as additional `impl` block after the
+//! macor definition of the header accessors of the nodes.
 use std::fmt;
 
 use super::build::{self, WriteHeader};
@@ -6,15 +12,40 @@ use super::header::{Block, HeaderFieldAccess, Idx, Lower, Upper, Usplit};
 #[cfg(not(feature = "more_unsafe"))]
 use super::list::Node;
 use super::list::{List, SimpleNode};
-use super::{as_u32, as_usize, OptIdentOffset, OptNameOffset, RefAst};
+use super::{as_u32, as_usize, AstRef, OptIdentOffset, OptNameOffset};
 
-#[cfg(feature = "more_unsafe")]
-#[derive(Clone, Copy)]
-struct Header<'a, const N: usize>(&'a [Block; N]);
-
+/// A reference to an untyped node header, keeping track of AST node sizes for runtime
+/// bound checks.
+///
+/// The safe-er version keeps track of the total slice length and always checks
+/// that we are reading memory from the same allocation.
+///
+/// Afaik, all invariants are upheld within `cuicui_chirp::parser`. But the
+/// upholding of invariant must be holistic. Most notably, we need to ensure that:
+///
+/// - When writting the AST, we correctly layout the blocks according to the
+///   `design_docs/ast.md` layout.
+/// - We also write the correct `len` and `count` to the headers of the nodes.
+///   This is ensured in this module in `impl_header!` in the `WriteHeader for $header_name`
+///   impl.
+/// - Whenever we assume a block is an identifier node, we are indeed reading
+///   something that is an identifier node. In `ast::ident`, we do assume that
+///   the offsets are valid.
 #[cfg(not(feature = "more_unsafe"))]
 #[derive(Clone, Copy)]
 struct Header<'a, const N: usize>(&'a [Block]);
+
+/// A reference to an untyped node header.
+///
+/// By construction, the AST is valid, so we should be able to skip those checks.
+/// If we don't need to check the size of the slices, we don't need to store it.
+/// A `&[Block]` is two machine words (ptr + len), while `&[Block; N]` has a known
+/// size and is only a single machine word (ptr).
+///
+/// Furthermore, the unsafe ptr ops are a way to elide bound checks.
+#[cfg(feature = "more_unsafe")]
+#[derive(Clone, Copy)]
+struct Header<'a, const N: usize>(&'a [Block; N]);
 
 #[derive(Clone, Copy)]
 pub struct FnIndex<'a>(pub(super) Fn<'a>);
@@ -58,9 +89,25 @@ impl<'a, const N: usize> Header<'a, N> {
 
 /// Define an AST node.
 ///
-/// The trailing list of fields between `{}` represents "fields" as in defined
-/// in `design_docs/ast.md`, it is not exactly a rust field, but a value derived
-/// from the array `[Block; $size]` located in `Header`.
+/// It is called in the form:
+/// ```ignore
+/// impl_header![Node, NodeHeader, N, {
+///     (pub)? field1: FieldAccessorType => FieldType,
+///     // ...
+/// }];
+/// ```
+/// Where:
+/// - `FieldAccessorType` implements `HeaderFieldAccess<FieldType = FieldType>`.
+/// - `N` is the size in `Block`s of the header of the node.
+///
+/// It creates two `struct`s, (1) is `Node`, which is a wrapper around `Header<'_, N>`
+/// (which itself is a wrapper around `&[Block; N]`). With methods named `field1`, …
+/// that reads from the header referenced by `Header` and returns something of type
+/// `FieldType` according to the `HeaderFieldAccess::get` impl of `FieldAccessorType`
+///
+/// The other (2) is `NodeHeader`, a `struct` with public fields named `field1`, …
+/// with types `FieldType`. `NodeHeader` implements `WriteHeader` according to
+/// the  `HeaderFieldAccess::write_to` impl of `FieldAccessorType`.
 macro_rules! impl_header {
     ( $node_name:ident, $header_name:ident, $size:literal,
       {$($vis:vis $method_name:ident : $method_accessor:ty => $method_accessor_field_type:ty),* $(,)?}
@@ -113,7 +160,7 @@ macro_rules! impl_header {
             }
 
             #[allow(unused)]
-            pub(in crate::parser) fn block_index(self, ast: RefAst<'a>) -> isize {
+            pub(in crate::parser) fn block_index(self, ast: AstRef<'a>) -> isize {
                 unsafe { self.0 .0.as_ptr().offset_from(ast.0.as_ptr()) }
             }
             $(
@@ -236,7 +283,6 @@ impl<'a> Statement<'a> {
         use StKind::Template as KTemplate;
 
         match self.discriminant() {
-            // SAFETY: currently I'm unsure this is sound
             StKind::Spawn => unsafe { StType::Spawn(Spawn::new_unchecked(self.0.raw_block())) },
             KTemplate => unsafe { StType::Template(Template::new_unchecked(self.0.raw_block())) },
             StKind::Code => unsafe { StType::Code(Code::new_unchecked(self.0.raw_block())) },

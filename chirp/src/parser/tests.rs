@@ -153,7 +153,7 @@ fn interpret(input: &str) -> Hier {
     let input = Input::new(input.as_bytes(), ());
     let chirp_file = super::chirp_file(input).unwrap();
     let mut state = TestInterpreter::new();
-    let file = ChirpFile::new(input, &chirp_file);
+    let file = ChirpFile::new(input, chirp_file.as_ref());
     file.interpret(&mut state);
     state.0.hierarchy
 }

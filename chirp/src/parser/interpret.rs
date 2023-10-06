@@ -38,7 +38,7 @@
 //! to get the correct parameter substitution for that particular extra.
 use bevy::log::trace;
 
-use super::ast::{self, Ast, FnIndex, RefAst, Template};
+use super::ast::{self, AstRef, FnIndex, Template};
 use super::scope::{Arguments, Parameters};
 use super::Input;
 
@@ -48,7 +48,7 @@ pub type Name<'a> = (&'a [u8], Span);
 // TODO(clean): There is a bit of duplicate code between ChirpTemplate and ChirpFile
 struct ChirpCall<'t, 'i, 'a> {
     input: Input<'i>,
-    ast: RefAst<'a>,
+    ast: AstRef<'a>,
     params: Parameters<'a>,
     parent: Option<&'t ChirpCall<'t, 'i, 'a>>,
     trailing_methods: ast::Methods<'a>,
@@ -124,7 +124,7 @@ impl<'t, 'i, 'a> ChirpCall<'t, 'i, 'a> {
             let mut this = self;
             loop {
                 for statement in this.trailing_children.iter() {
-                    let root_file = || ChirpFile::new_ref(self.input, self.ast);
+                    let root_file = || ChirpFile::new(self.input, self.ast);
                     let parent = this.parent.map_or_else(root_file, Self::file);
                     parent.interpret_statement(statement, runner);
                 }
@@ -154,7 +154,7 @@ impl<'t, 'i, 'a> ChirpCall<'t, 'i, 'a> {
 }
 pub struct ChirpFile<'i, 'a> {
     input: Input<'i>,
-    ast: RefAst<'a>,
+    ast: AstRef<'a>,
     params: Parameters<'a>,
 }
 impl<'i, 'a> ChirpFile<'i, 'a> {
@@ -168,10 +168,7 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
             parent: None,
         }
     }
-    pub fn new(input: Input<'i>, ast: &'a Ast) -> Self {
-        Self::new_ref(input, ast.as_ref())
-    }
-    fn new_ref(input: Input<'i>, ast: RefAst<'a>) -> Self {
+    pub fn new(input: Input<'i>, ast: AstRef<'a>) -> Self {
         Self { input, ast, params: Parameters::empty() }
     }
 

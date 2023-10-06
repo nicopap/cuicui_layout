@@ -38,7 +38,6 @@ Also, as of `0.10`, `cuicui_chirp` doesn't support WASM for image and font asset
 - **`macros`** (default): Define and export the [`parse_dsl_impl`] macro
 - **`load_font`** (default): load `Handle<Font>` as method argument
 - **`load_image`** (default): load `Handle<Image>` as method argument
-- **`trace_parser`**: log very verbose parsing information
 - **`more_unsafe`**: Convert some runtime checks into unsafe assumptions.
   In theory, this is sound, but `cuicui_chirp` is not tested enough to my taste
   for making those assumptions by default.
@@ -241,6 +240,37 @@ fn button(button_text) {
 
 See the [dedicated documentation page][`parse_dsl_impl`] for all available
 configuration options on `parse_dsl_impl`.
+
+#### Performance
+
+Consider explicitly depending on the `log` and `tracing` crates, and enable the
+`"release_max_level_debug"` features of those crates, so that log messages are
+elided from release builds.
+
+`cuicui_chirp` contains **a lot** of trace logging in very hot loops.
+`"release_max_level_debug"` will remove trace logging **at compile time** and
+not only make the code faster (code that would otherwise read a lock atomic),
+but it enables **more optimization**, inlining and loop unrolling.
+
+First, find the version of the `log` and `tracing` crates in your dependency tree with:
+
+```sh
+cargo tree -p log -p tracing
+```
+
+Then, add them to your `Cargo.toml` and enable a `max_level` feature. Note
+that they are already in your dependency tree, so there is no downside to doing so:
+
+```toml
+log = { version = "<version found with `cargo tree`>", features = ["release_max_level_debug"] }
+tracing = { version = "<version found with `cargo tree`>", features = ["release_max_level_debug"] }
+# Note: I recommend `release_max_level_warn` instead.
+# `debug` is specific for performance regarding `cuicui_chirp`
+```
+
+Next time you compile your game, you'll probably have to recompile the whole
+dependency tree, since `tracing` and `log` are usually fairly deep.
+
 
 #### Inheritance
 

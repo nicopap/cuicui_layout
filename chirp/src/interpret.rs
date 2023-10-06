@@ -243,7 +243,7 @@ impl<'w, 's, 'a, 'l> Interpreter<'w, 's, 'a, 'l, ()> {
                 return Err(Errors::new(vec![error], input_u8, load_ctx.as_deref()));
             }
         };
-        let chirp_file = ChirpFile::new(input, &ast);
+        let chirp_file = ChirpFile::new(input, ast.as_ref());
         let mut interpreter = Interpreter::<D>::new(builder, load_ctx, reg, handles);
         chirp_file.interpret(&mut interpreter);
         if interpreter.errors.is_empty() {
