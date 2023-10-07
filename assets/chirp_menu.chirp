@@ -1,19 +1,26 @@
 // file used in <examples/chirp_menu/main.rs>
-fn menu_button(txt) {
-    Entity(text(txt) font_size(30) named(txt) image("button.png") height(33px))
+// ANCHOR: template_fn
+// button_text is a parameter
+fn button(button_text) {
+    //     'named' allows us to set the entity name dynamically
+    //     vvvvv   We can use the template parameter as argument to methods
+    //     vvvvv vvvvvvvvvvv                                      vvvvvvvvvvv
+    Entity(named(button_text) image("button.png") width(80%) text(button_text))
 }
-Root(layout(">dSaS") screen_root main_margin(100) image("background.jpg")) {
-    Menu(rules(310px, 100%) main_margin(40) image("board.png") column) {
-        TitleCard(image("logo.png") width(100%))
-        TitleCard2(image("logo.png") width(50%))
-        Buttons(column rules(100%, 2*)) {
-            Entity(text("CONTINUE") font_size(30) named("CONTINUE") image("button.png") height(33px))
-            menu_button!("NEW GAME")
-            menu_button!("LOAD GAME")
-            menu_button!("SETTINGS")
-            menu_button!("ADDITIONAL CONTENT")
-            menu_button!("CREDITS")
-            menu_button!("QUIT GAME")
-        }
+// ANCHOR_END: template_fn
+Root(screen_root row distrib_start main_margin(50) image("background.jpg")) {
+    Column(column rules(150px, 100%) main_margin(10) image("board.png")) {
+        // ANCHOR: template_call
+        TitleCard(width(100%) image("logo.png"))
+        TitleCard2(width(50%) image("logo.png"))
+        // just pass the button name as argument
+        button!("CONTINUE")
+        button!("NEW GAME")
+        button!("LOAD GAME")
+        button!("SETTINGS")
+        button!("ADDITIONAL CONTENT")
+        button!("CREDITS")
+        button!("QUIT GAME")
+        // ANCHOR_END: template_call
     }
 }

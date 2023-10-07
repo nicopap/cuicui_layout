@@ -3,6 +3,9 @@
 - Reworked the AST so that it is a fully contiguous memory block.
   - Reduces allocations when parsing chirp files
   - improve performance when interpreting chirp files
+- Completed the two "Usage" chapter ("Using the `dsl!` macro" and "Using a chirp file")
+- Added a "Define your own DSL" chapter and example
+- Added a "Reactivity" chapter
 
 # 0.10.0
 

@@ -10,7 +10,7 @@ The `cuicui` framework is a collection of rust crates made for bevy.
 - [`cuicui_layout`]: A dumb layout algorithm you can rely on, built for and with bevy.
 - [`cuicui_dsl`] and [`cuicui_chirp`]: Two enjoyable ways to spawn scenes in bevy.
 
-<details><summary><h2>The Chirperpunk demo</h2></summary>
+<details><summary><b>The Chirpunk demo</b></summary>
 
 For some reasons, the Cyberpunk main menu has become the 7GUI of bevy, so here
 is the Cyberpunk main menu using `cuicui_layout_bevy_ui`.

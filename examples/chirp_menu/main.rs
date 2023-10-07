@@ -9,6 +9,21 @@ use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 use cuicui_layout_bevy_ui::UiDsl;
 
+struct DefaultPlugins;
+
+impl PluginGroup for DefaultPlugins {
+    fn build(self) -> bevy::app::PluginGroupBuilder {
+        let title = "ui Control Gallery".into();
+        let primary_window = Some(Window {
+            title,
+            resolution: (640., 360.).into(),
+            ..default()
+        });
+        bevy::prelude::DefaultPlugins.set(WindowPlugin { primary_window, ..default() })
+        // .add(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
+    }
+}
+
 fn main() {
     let asset_folder = "../../assets".to_owned();
 
@@ -21,7 +36,6 @@ fn main() {
                 AssetPlugin { asset_folder, watch_for_changes }
             }),
             cuicui_layout_bevy_ui::Plugin,
-            bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
             // You still need to add manually the chirp loaded for UiDsl!
             cuicui_chirp::loader::Plugin::new::<UiDsl>(),
         ))

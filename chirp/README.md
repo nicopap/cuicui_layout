@@ -47,7 +47,7 @@ Also, as of `0.10`, `cuicui_chirp` doesn't support WASM for image and font asset
 `cuicui_chirp` reads files ending with the `.chirp` extension. To load a `.chirp`
 file, use `ChirpBundle` as follow:
 
-```rust
+```rust,noplayground
 # #[cfg(feature = "doc_and_test")] mod test {
 # use cuicui_chirp::__doc_helpers::*; // ignore this line pls
 use bevy::prelude::*;
@@ -66,7 +66,7 @@ The DSL type needs to implement the [`ParseDsl`] trait.
 
 Here is an example using `cuicui_layout_bevy_ui`'s DSL:
 
-```rust,no_run
+```rust,no_run,noplayground
 # #[cfg(feature = "doc_and_test")] mod test {
 # use cuicui_chirp::__doc_helpers::*; // ignore this line pls
 # fn setup() {}
@@ -128,13 +128,57 @@ template definitions (`fn`), and template calls (`template!()`).
 
 They are currently not implemented, so please proceed to the next section.
 
+<details><summary>Click to see draft design</summary>
+
+> **Note**
+> Imports ARE NOT IMPLEMENTED
+
+In `cuicui_chirp` you are not limited to a single file. You can _import_ other
+chirp files.
+
+To do so, use an import statement. Import statements **are the first statements
+in the file**; They start with the `use` keyword, are followed by the source
+path of the file to import and an optional "`as` imported_name", this is the
+name with which the import will be refered in this file.
+
+```ron
+use different/file
+// ...
+```
+
+You have two ways to use imports:
+
+1. As **whole file imports**. You can import any file and directly use it as
+   if it was a template without parameters. This is useful if you want to compose
+   several complex menus you write in different files.
+2. As **template collections**. You can import individual templates defined in
+   a file. Just complete the path with a `.template_name`.
+
+Similarly to rust, you can combine imports, but only templates from the same file,
+so the following is valid:
+
+```ron
+use different/file.template
+use different/file.{template1, template2}
+// ...
+```
+
+Wild card imports are not supported.
+
+#### Publicity
+
+However, to be able to import templates, you need to mark them as `pub` in the
+source template. Just prefix the `fn` with `pub` and that's it.
+
+</details>
+
 #### Template definitions
 
 chirp files admit a series of `fn` definitions at the very beginning of the
 file. A `fn` definition looks very similar to rust function definitions.
 It has a name and zero or several parameters. Their body is a single statement:
 
-```ron
+```rust,ignore,noplayground
 // file: <scene.chirp>
 // template name
 //   ↓
@@ -156,13 +200,15 @@ fn button(button_text) {
 You can call a template like you would call a rust macro, by writing the template
 name followed by `!` and parenthesis:
 
-```ron
+```rust,ignore,noplayground
+# fn sys(cmds: &mut cuicui_dsl::EntityCommands) { cuicui_dsl::dsl!(cmds,
 // file: <scene.chirp> (following)
 Menu(screen_root row bg(darkgrey)) {
     TestSpacer(width(30%) height(100px) bg(pink))
     spacer!()
     button!("Hello world")
 }
+# )}
 ```
 
 When a template is called, it will be replaced by the single root statement
@@ -172,7 +218,8 @@ defined as body of the `fn` definition for that template.
 
 Template calls can be followed by **template extras**.
 
-```ron
+```rust,ignore,noplayground
+# fn sys(cmds: &mut cuicui_dsl::EntityCommands) { cuicui_dsl::dsl!(cmds,
 // file: <scene.chirp> (following)
 Menu(screen_root row bg(darkgrey)) {
     TestSpacer(width(30%) height(100px) bg(pink))
@@ -188,11 +235,42 @@ Menu(screen_root row bg(darkgrey)) {
         MoreChildren(text("World"))
     }
 }
+# )}
 ```
 
 The additional methods will be added at the end of template's root statement
 method list. While the additional children statements will be added as children
 of the template's root statement.
+
+Take for example this chirp file:
+
+```rust,ignore,noplayground
+fn deep_trailing2(line, color) {
+    Trailing2Parent {
+        Trailing2 (text(line) bg(color) width(1*))
+    }
+}
+fn deep_trailing1(line2, line1) {
+    deep_trailing2!(line1, red) {
+        Trailing1 (text(line2) bg(green) width(2*))
+    }
+}
+deep_trailing1!("Second line", "First line") (column bg(beige) rules(1.1*, 2*) margin(20)) {
+    Trailing0 (text("Third line") bg(blue))
+}
+```
+
+It is equivalent to:
+
+```rust,ignore,noplayground
+# fn sys(cmds: &mut cuicui_dsl::EntityCommands) { cuicui_dsl::dsl!(cmds,
+Trailing2Parent(column bg(beige) rules(1.1*, 2*) margin(20)) {
+    Trailing2 (text("First line") bg(red) width(1*))
+    Trailing1 (text("Second line") bg(green) width(2*))
+    Trailing0 (text("Third line") bg(blue))
+}
+# )}
+```
 
 #### Parameter substitution
 
@@ -220,7 +298,8 @@ Please pay close attention to how parameters are inlined:
 | In the future, parameters will be allowed in more contexts: <ul><li>in method lists (such as `Entity(parameter)`)</li><li>As template names (such as `parameter!()`)</li><li>Embedded in a more complex method argument (such as `Entity(mehod({ width: parameter }))`)</li></ul> |
 | To avoid painfull breaking changes, avoid naming parameters the same as DSL methods or templates. |
 
-```ron
+```rust,ignore,noplayground
+# fn sys(cmds: &mut EntityCommands) { dsl!(cmds,
 fn button(button_text) {
     // Will spawn an entity without name, with tooltip set to whatever
     // was passed to `button!`.
@@ -234,6 +313,7 @@ fn button(button_text) {
         Gizmo(gizmo(GizmoBuilder(button_text), button_text) rules(0.5*, 0.5*))
     }
 }
+# )}
 ```
 
 ### Tips and tricks

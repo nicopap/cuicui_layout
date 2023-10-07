@@ -6,8 +6,10 @@
 
 - [Choosing a `cuicui` crate](choosing_a_cuicui_crate.md)
 - [Usage](usage.md)
-  - [Using the DSL directly](../examples/simple_menu/README.md)
+  - [Using the dsl macro](../examples/simple_menu/README.md)
   - [Using a chirp file](../examples/chirp_menu/README.md)
+  - [Defining your own DSL](../examples/custom_dsl/README.md)
+  - [Reactivity](reactivity.md)
 - [Examples](../examples/README.md)
   - [`chirpunk`](../examples/chirpunk/README.md)
 
