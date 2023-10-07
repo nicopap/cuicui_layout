@@ -128,7 +128,7 @@ template definitions (`fn`), and template calls (`template!()`).
 
 They are currently not implemented, so please proceed to the next section.
 
-<details><summary>Click to see draft design</summary>
+<details><summary><b>Draft design</b></summary>
 
 > **Note**
 > Imports ARE NOT IMPLEMENTED
@@ -415,6 +415,7 @@ different niches.
 [`parse_dsl::args::to_handle`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl/args/fn.to_handle.html
 [`parse_dsl_impl`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl_impl/index.html
 [`parse_dsl_impl::delegate`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl_impl/fn.delegate.html
+[`parse_dsl_impl::type_parsers`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl_impl/fn.type_parsers.html
 [`ParseDsl`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl/trait.ParseDsl.html
 [`ReflectDsl`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/reflect/struct.ReflectDsl.html
 [`Reflect`]: https://docs.rs/bevy/0.11/bevy/reflect/trait.Reflect.html

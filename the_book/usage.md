@@ -11,8 +11,8 @@ cuicui_layout = "0.10.0"
 cuicui_dsl = "0.10.0"
 ```
 
-## Using the `dsl!` macro
+## Using the cuicui crates
 
 That's it! You are now using `cuicui_layout`, congratulations!
 
-Check the next two sections for actual rust code!
+Check the next chapters for actual rust code!

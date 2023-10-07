@@ -65,7 +65,7 @@ And use `--features advanced_logging` to log more stuff.
 
 - Uses `bevy_ui` (through `cuicui_layout_bevy_ui`):
   - Bloom doesn't work on UI
-  - **Requires a patches version of bevy for hot reloading** to work (see the
+  - **Requires a patched version of bevy for hot reloading** to work (see the
     repository's workspace `Cargo.toml`)
 - General 3rd party crate ideas:
   - Extract and generalize the `style.rs` module, which is really cool.

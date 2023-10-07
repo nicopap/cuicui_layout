@@ -5,3 +5,8 @@ language = "en"
 multilingual = false
 description = "The user guide and reference of the cuicui framework"
 src = "."
+
+[output.html]
+default-theme = "rust"
+curly-quotes = true
+additional-css = ["custom.css"]

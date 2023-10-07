@@ -1,0 +1,14 @@
+/* FiraMono by The Mozilla Foundation and Telefonica S.A (SIL Open Font License, Version 1.1: licenses/SIL-1.1) */
+/* Inter-Regular Copyright (c) 2016-2020 The Inter Project Authors (SIL Open Font License, Version 1.1: licenses/SIL-1.1) */
+
+@font-face {
+	font-family: "Inter-Regular";
+	src: url("InterRegular.woff2");
+}
+
+@font-face {
+  font-family: 'FiraMono';
+  font-style: normal;
+  font-weight: 500;
+  src: url('FiraMono-subset.ttf');
+}

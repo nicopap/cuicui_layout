@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-exclude = ["assets/"]
+exclude = ["assets/", "the_book/"]
 members = [
   "examples/*",
   "dsl",

@@ -1,5 +1,7 @@
 # Reactivity
 
+> This chapter is **WIP**, the factual accuracy, pedagogic strength, and code weren't tested.
+
 An extremely serious scientific study[^1] that surveyed many developpers revealed
 that UI is most often used to display data and accept input from users.
 
@@ -77,7 +79,7 @@ impl DslBundle for BetterFactorioDsl {
 }
 ```
 
-Now we can use the `print_hello` and `print_goodbye` as methods in our chirp files!
+Now we can use `print_hello` and `print_goodbye` as methods in our chirp files!
 
 ```rust,no_run,noplayground
 // Show the chirp file with print_hello

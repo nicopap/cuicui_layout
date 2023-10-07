@@ -1,0 +1,22 @@
+html {
+    font-family: Inter, sans-serif;
+}
+blockquote {
+    margin: 20px 0;
+    padding: 0 20px;
+    color: var(--fg);
+    border-radius: 5px;
+    background-color: var(--quote-bg);
+    border: solid var(--quote-border);
+}
+summary b::after {
+    content: "(click to expand)";
+    font-weight: 200;
+    font-size: 60%;
+}
+h1 code, h2 code, h3 code, h4 code {
+    --mono-font: "Inter-Regular", sans-serif;
+}
+:root {
+    --mono-font: "FiraMono", Consolas, "Ubuntu Mono", Menlo, "DejaVu Sans Mono", monospace;
+}
