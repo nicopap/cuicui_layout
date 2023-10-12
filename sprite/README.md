@@ -23,7 +23,7 @@ Check the following crates for details:
 
 [`cuicui_layout`]: https://docs.rs/cuicui_layout/latest/cuicui_layout/
 [`bevy_sprite`]: https://docs.rs/bevy_sprite/latest/bevy_sprite/
-[`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/0.10.0/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
-[`ui`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.ui
-[`ContentSized`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/dsl/struct.ContentSized.html
+[`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/0.10.1/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
+[`ui`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/dsl/struct.LayoutDsl.html#method.ui
+[`ContentSized`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/dsl/struct.ContentSized.html
 [`cuicui_dsl`]: https://docs.rs/cuicui_dsl/latest/cuicui_dsl/

@@ -38,11 +38,11 @@ thiserror = "1.0.44"
 tracing = { version = "0.1.37", features = ["release_max_level_warn"] }
 winnow = "0.5.15"
 
-cuicui_dsl = { version = "0.10.0", path = "./dsl" }
-cuicui_chirp = { version = "0.10.0", path = "./chirp" }
-cuicui_layout = { version = "0.10.0", path = "./layout", default-features = false }
-cuicui_layout_bevy_sprite = { version = "0.10.0", path = "./sprite", default-features = false }
-cuicui_layout_bevy_ui = { version = "0.10.0", path = "./ui" }
+cuicui_dsl = { version = "0.10.1", path = "./dsl" }
+cuicui_chirp = { version = "0.10.1", path = "./chirp" }
+cuicui_layout = { version = "0.10.1", path = "./layout", default-features = false }
+cuicui_layout_bevy_sprite = { version = "0.10.1", path = "./sprite", default-features = false }
+cuicui_layout_bevy_ui = { version = "0.10.1", path = "./ui" }
 cuicui = { version = "0.8.0", path = "./cuicui" }
 
 # For examples only

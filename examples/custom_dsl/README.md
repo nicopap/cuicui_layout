@@ -394,21 +394,21 @@ implementation, as it's pretty much a copy/paste of the tabs switching code.
 
 
 [`bevy_mod_picking`]: https://crates.io/crates/bevy_mod_picking
-[`cuicui_chirp`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/
-[`cuicui_dsl`]: https://docs.rs/cuicui_dsl/0.10.0/cuicui_dsl/
+[`cuicui_chirp`]: https://docs.rs/cuicui_chirp/0.10.1/cuicui_chirp/
+[`cuicui_dsl`]: https://docs.rs/cuicui_dsl/0.10.1/cuicui_dsl/
 [`cuicui_examples`]: https://github.com/nicopap/cuicui_layout/tree/main/examples/cuicui_examples
-[`delegate`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl_impl/fn.delegate.html
-[`DslBundle`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/trait.DslBundle.html
+[`delegate`]: https://docs.rs/cuicui_chirp/0.10.1/cuicui_chirp/parse_dsl_impl/fn.delegate.html
+[`DslBundle`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/trait.DslBundle.html
 [highlight.rs]: https://github.com/nicopap/cuicui_layout/blob/main/examples/cuicui_examples/src/highlight.rs
-[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.10.0/cuicui_layout/dsl/struct.LayoutDsl.html
+[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/dsl/struct.LayoutDsl.html
 [`NavigationDsl`]: https://docs.rs/bevy-ui-navigation/0.32.0/bevy_ui_navigation/index.html
 [`On`]: https://docs.rs/bevy_mod_picking/0.15.0/bevy_mod_picking/prelude/struct.On.html
-[`ParseDsl`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl/trait.ParseDsl.html
-[`parse_dsl_impl`]: https://docs.rs/cuicui_chirp/0.10.0/cuicui_chirp/parse_dsl_impl/index.html
+[`ParseDsl`]: https://docs.rs/cuicui_chirp/0.10.1/cuicui_chirp/parse_dsl/trait.ParseDsl.html
+[`parse_dsl_impl`]: https://docs.rs/cuicui_chirp/0.10.1/cuicui_chirp/parse_dsl_impl/index.html
 [`Reflect`]: https://docs.rs/bevy/0.11/bevy/reflect/trait.Reflect.html
 [skeuomorphic design]: https://en.wikipedia.org/wiki/Skeuomorph
-[`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/0.10.0/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
+[`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/0.10.1/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
 [switch.rs]: https://github.com/nicopap/cuicui_layout/blob/main/examples/cuicui_examples/src/switch.rs
 [the chirpunk example]: https://github.com/nicopap/cuicui_layout/tree/main/examples/chirpunk
 [the next chapter]: ../../reactivity.html
-[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.10.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
+[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.10.1/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
