@@ -57,7 +57,6 @@ fn main() {
         .add_systems(Startup, setup)
         .run();
 }
-#[allow(clippy::needless_pass_by_value)] // false positive
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     use ui_event::Roots;
     use Visibility::Hidden;

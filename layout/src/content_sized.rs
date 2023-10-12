@@ -50,8 +50,8 @@ impl<T> FailureMode for Why<T> {
     fn identify(&self) {}
     fn log_level(&self) -> LogLevel {
         match self {
-            Why::Nan(_, _) | Why::Orphan(_) => LogLevel::Error,
-            Why::CyclicRule | Why::_Ignore(..) => LogLevel::Silent,
+            Self::Nan(_, _) | Self::Orphan(_) => LogLevel::Error,
+            Self::CyclicRule | Self::_Ignore(..) => LogLevel::Silent,
         }
     }
     fn display(&self) -> Option<String> {
@@ -78,7 +78,7 @@ pub trait AppContentSizeExt {
         for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>;
 }
 impl AppContentSizeExt for App {
-    fn add_content_sized<S: ComputeContentParam>(&mut self) -> &mut App
+    fn add_content_sized<S: ComputeContentParam>(&mut self) -> &mut Self
     where
         for<'w, 's> S::Item<'w, 's>: ComputeContentSize<Components = S::Components>,
     {
@@ -206,10 +206,10 @@ impl BadRule {
         use Handle::{Named, Unnamed};
         let handle = || name.map_or(Unnamed(e), |n| Named(n.clone()));
         match self {
-            BadRule::OrphanUnnamed => Why::Orphan(handle()),
-            BadRule::Orphan(handle) => Why::Orphan(handle),
-            BadRule::Nan(axis) => Why::Nan(axis, handle()),
-            BadRule::Cyclic => Why::CyclicRule,
+            Self::OrphanUnnamed => Why::Orphan(handle()),
+            Self::Orphan(handle) => Why::Orphan(handle),
+            Self::Nan(axis) => Why::Nan(axis, handle()),
+            Self::Cyclic => Why::CyclicRule,
         }
     }
 
@@ -217,8 +217,8 @@ impl BadRule {
         use Handle::{Named, Unnamed};
         let handle = || name.map_or(Unnamed(e), |n| Named(n.clone()));
         match self {
-            BadRule::OrphanUnnamed => BadRule::Orphan(handle()),
-            BadRule::Orphan(_) | BadRule::Nan(_) | BadRule::Cyclic => self,
+            Self::OrphanUnnamed => Self::Orphan(handle()),
+            Self::Orphan(_) | Self::Nan(_) | Self::Cyclic => self,
         }
     }
 }

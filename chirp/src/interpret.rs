@@ -50,8 +50,8 @@ impl InterpError {
         use InterpError::{BadUtf8Argument, BadUtf8MethodName, Import, TemplateNotFound};
 
         match self {
-            InterpError::CodeNotPresent(_) | TemplateNotFound(_) | Import => None,
-            InterpError::DslError(err) => Some(if err.downcast_ref::<DslParseError>().is_some() {
+            Self::CodeNotPresent(_) | TemplateNotFound(_) | Import => None,
+            Self::DslError(err) => Some(if err.downcast_ref::<DslParseError>().is_some() {
                 format!(
                     "{} doesn't contain a method with this name.",
                     any::type_name::<D>()
@@ -60,8 +60,8 @@ impl InterpError {
             } else {
                 "The error comes from the ParseDsl implementation.".into()
             }),
-            InterpError::ParseError(err) => Some(err.help().into()),
-            InterpError::UppercaseMethod(_) => {
+            Self::ParseError(err) => Some(err.help().into()),
+            Self::UppercaseMethod(_) => {
                 Some("You probably forgot to close a parenthesis in the last method list.".into())
             }
             BadUtf8MethodName | BadUtf8Argument => Some(UTF8_ERROR.into()),

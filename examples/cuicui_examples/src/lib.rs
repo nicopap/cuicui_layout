@@ -1,8 +1,4 @@
-#![allow(
-    clippy::needless_pass_by_value,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions
-)]
+#![allow(clippy::needless_pass_by_value, missing_docs)]
 use bevy::{log::LogPlugin, prelude::default};
 
 pub use highlight::{Highlight, HighlightPlugin};

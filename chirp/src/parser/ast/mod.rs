@@ -69,13 +69,12 @@
 //! - Create a `node::XYZHeader` struct, a representation of the header content
 //!   with the counted nodes.
 //! - Write to the reserved header with [`AstBuilder::write`].
-#![allow(clippy::missing_const_for_fn)]
 
 pub(super) use build::{AstBuilder, WriteHeader};
 pub use ident::*;
 pub(super) use list::List;
 pub use node::FnIndex;
-pub(super) use node::{Argument, Fn, IdentOffset, Spawn, StKind, StType, Statement, Template};
+pub(super) use node::{Argument, IdentOffset, Spawn, StKind, StType, Statement, Template};
 pub(super) use node::{ArgumentHeader, ChirpFileHeader, FnHeader, ImportHeader, MethodHeader};
 pub(super) use node::{CodeHeader, SpawnHeader, TemplateHeader};
 
@@ -100,9 +99,6 @@ impl Ast {
 #[derive(Clone, Copy)]
 pub struct AstRef<'a>(&'a [header::Block]);
 impl<'a> AstRef<'a> {
-    pub(super) fn get_fn(&self, fn_index: FnIndex<'a>) -> Fn<'a> {
-        fn_index.0
-    }
     pub(super) fn chirp_file(self) -> node::ChirpFile<'a> {
         node::ChirpFile::new(self.0)
     }

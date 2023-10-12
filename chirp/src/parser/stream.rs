@@ -74,40 +74,40 @@ impl From<Option<Token<'_>>> for TokenType {
     #[inline(always)]
     fn from(value: Option<Token<'_>>) -> Self {
         match value {
-            Some(Token::Equal) => TokenType::Equal,
-            Some(Token::Lparen) => TokenType::Lparen,
-            Some(Token::Rparen) => TokenType::Rparen,
-            Some(Token::Lcurly) => TokenType::Lcurly,
-            Some(Token::Rcurly) => TokenType::Rcurly,
-            Some(Token::Lbracket) => TokenType::Lbracket,
-            Some(Token::Rbracket) => TokenType::Rbracket,
-            Some(Token::Comma) => TokenType::Comma,
-            Some(Token::Reserved(_)) => TokenType::Reserved,
-            Some(Token::Ident(_)) => TokenType::Ident,
-            Some(Token::String(_)) => TokenType::String,
-            None => TokenType::None,
+            Some(Token::Equal) => Self::Equal,
+            Some(Token::Lparen) => Self::Lparen,
+            Some(Token::Rparen) => Self::Rparen,
+            Some(Token::Lcurly) => Self::Lcurly,
+            Some(Token::Rcurly) => Self::Rcurly,
+            Some(Token::Lbracket) => Self::Lbracket,
+            Some(Token::Rbracket) => Self::Rbracket,
+            Some(Token::Comma) => Self::Comma,
+            Some(Token::Reserved(_)) => Self::Reserved,
+            Some(Token::Ident(_)) => Self::Ident,
+            Some(Token::String(_)) => Self::String,
+            None => Self::None,
         }
     }
 }
 impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let nice_token = match self {
-            TokenType::Equal => "'='",
-            TokenType::Lparen => "'('",
-            TokenType::Rparen => "')'",
-            TokenType::Lcurly => "'{'",
-            TokenType::Rcurly => "'}'",
-            TokenType::Lbracket => "'['",
-            TokenType::Rbracket => "']'",
-            TokenType::Comma => "','",
-            TokenType::Reserved => "a reserved keyword",
-            TokenType::Ident => "an identifier",
-            TokenType::Code => "'code'",
-            TokenType::Fn => "'fn'",
-            TokenType::Use => "'use'",
-            TokenType::As => "'as'",
-            TokenType::String => "\"a string literal\"",
-            TokenType::None => "nothing, the end of file",
+            Self::Equal => "'='",
+            Self::Lparen => "'('",
+            Self::Rparen => "')'",
+            Self::Lcurly => "'{'",
+            Self::Rcurly => "'}'",
+            Self::Lbracket => "'['",
+            Self::Rbracket => "']'",
+            Self::Comma => "','",
+            Self::Reserved => "a reserved keyword",
+            Self::Ident => "an identifier",
+            Self::Code => "'code'",
+            Self::Fn => "'fn'",
+            Self::Use => "'use'",
+            Self::As => "'as'",
+            Self::String => "\"a string literal\"",
+            Self::None => "nothing, the end of file",
         };
         f.write_str(nice_token)
     }
@@ -306,6 +306,7 @@ impl<'i, S> Input<'i, S> {
     /// The next token must be either a [`Token::Ident`] or [`Token::String`].
     pub(super) unsafe fn next_statement_name(&self) -> &'i [u8] {
         let mut slice = self.input_u8();
+        // SAFETY: It is the caller's responsability that the next token is an identifier or a string.
         unsafe { lex::next_statement_name(&mut slice) }
     }
 
@@ -315,12 +316,13 @@ impl<'i, S> Input<'i, S> {
     /// The next token must be a [`Token::Ident`].
     pub(super) unsafe fn next_ident(&self) -> &'i [u8] {
         let mut slice = self.input_u8();
+        // SAFETY: It is the caller's responsability that the next token is an identifier.
         unsafe { lex::next_ident(&mut slice) }
     }
 }
 
-impl Offset<StateCheckpoint> for StateCheckpoint {
-    fn offset_from(&self, initial: &StateCheckpoint) -> usize {
+impl Offset<Self> for StateCheckpoint {
+    fn offset_from(&self, initial: &Self) -> usize {
         let advanced = self;
         let frst = initial.start;
         let snd = advanced.start;

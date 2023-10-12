@@ -5,8 +5,6 @@
 [`EntityCommands`]: EntityCommands
 */
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(clippy::use_self, clippy::module_name_repetitions)]
 
 use std::borrow::Cow;
 

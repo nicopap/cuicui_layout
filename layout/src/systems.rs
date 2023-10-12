@@ -50,7 +50,7 @@ type LayoutRef = (
 
 /// A run condition to tell whether it's necessary to recompute layout.
 #[doc(hidden)]
-#[allow(clippy::needless_pass_by_value, clippy::must_use_candidate)]
+#[allow(clippy::must_use_candidate)]
 pub fn require_layout_recompute(
     nodes: Query<NodeQuery>,
     anything_changed: Query<LayoutRef, Or<(With<Node>, With<Root>)>>,

@@ -53,14 +53,14 @@ impl Flow {
     /// This is the inverse of [`Flow::relative`].
     pub const fn absolute<T: Copy>(self, Oriented { main, cross }: Oriented<T>) -> Size<T> {
         match self {
-            Flow::Horizontal => Size::new(main, cross),
-            Flow::Vertical => Size::new(cross, main),
+            Self::Horizontal => Size::new(main, cross),
+            Self::Vertical => Size::new(cross, main),
         }
     }
 }
 impl Size<f32> {
     /// A `Size<f32>` with 0 width and 0 height.
-    pub const ZERO: Self = Size { width: 0., height: 0. };
+    pub const ZERO: Self = Self { width: 0., height: 0. };
 }
 impl ops::Add for Size<f32> {
     type Output = Self;
@@ -82,7 +82,7 @@ impl<T> Size<T> {
     where
         T: Clone,
     {
-        Size { width: value.clone(), height: value }
+        Self { width: value.clone(), height: value }
     }
     /// Apply `f` on `width` and `height`, returning a `Size` with the output
     /// values of `f`.
@@ -115,8 +115,8 @@ impl<T: Copy> Oriented<T> {
 impl fmt::Display for Flow {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Flow::Horizontal => f.write_str("width"),
-            Flow::Vertical => f.write_str("height"),
+            Self::Horizontal => f.write_str("width"),
+            Self::Vertical => f.write_str("height"),
         }
     }
 }
@@ -134,12 +134,12 @@ impl FromStr for Flow {
 
 impl From<bevy::math::Vec2> for Size<f32> {
     fn from(value: bevy::math::Vec2) -> Self {
-        Size::new(value.x, value.y)
+        Self::new(value.x, value.y)
     }
 }
 impl From<Size<f32>> for bevy::math::Vec2 {
     fn from(value: Size<f32>) -> Self {
-        bevy::math::Vec2::new(value.width, value.height)
+        Self::new(value.width, value.height)
     }
 }
 impl<T: fmt::Display> fmt::Display for Size<T> {

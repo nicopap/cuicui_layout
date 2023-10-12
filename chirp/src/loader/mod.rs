@@ -75,12 +75,12 @@ impl ChirpBundle {
     /// Load a new chirp scene.
     #[must_use]
     pub fn new(scene: Handle<Chirp>) -> Self {
-        ChirpBundle { state: ChirpState::Loading, scene }
+        Self { state: ChirpState::Loading, scene }
     }
 }
 impl From<Handle<Chirp>> for ChirpBundle {
     fn from(value: Handle<Chirp>) -> Self {
-        ChirpBundle::new(value)
+        Self::new(value)
     }
 }
 
@@ -130,7 +130,7 @@ impl<D: 'static> FromWorld for ChirpLoader<D> {
         let registry = world.resource::<AppTypeRegistry>().0.clone();
         let handles = HandlesArc::default();
         world.insert_resource(WorldHandles::<D>(Arc::clone(&handles), PhantomData));
-        ChirpLoader { registry, handles, _dsl: PhantomData }
+        Self { registry, handles, _dsl: PhantomData }
     }
 }
 

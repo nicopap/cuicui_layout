@@ -211,7 +211,7 @@ fn interpret_str(mut input: &str) -> Cow<str> {
     }
     input = &input[1..input.len() - 1];
 
-    // SAFTEY: transforms operated by escape_literal is always UTF8-safe
+    // SAFETY: transforms operated by escape_literal is always UTF8-safe
     unsafe {
         match escape_literal(input.as_bytes()) {
             Cow::Borrowed(bytes) => Cow::Borrowed(str::from_utf8_unchecked(bytes)),

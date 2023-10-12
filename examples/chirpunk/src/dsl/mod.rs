@@ -37,9 +37,9 @@ impl Navigation {
         use Navigation::{Focusable, Menu};
         match self {
             Menu(menu) => menu,
-            Focusable(_) | Navigation::None => {
-                *self = Navigation::Menu(MenuData::default());
-                if let Navigation::Menu(menu) = self {
+            Focusable(_) | Self::None => {
+                *self = Self::Menu(MenuData::default());
+                if let Self::Menu(menu) = self {
                     menu
                 } else {
                     unreachable!("We just set self to Menu")
@@ -48,28 +48,28 @@ impl Navigation {
         }
     }
     fn set_cancel(&mut self) {
-        *self = Navigation::Focusable(Focusable::cancel());
+        *self = Self::Focusable(Focusable::cancel());
     }
     fn set_prioritized(&mut self) {
-        *self = Navigation::Focusable(Focusable::new().prioritized());
+        *self = Self::Focusable(Focusable::new().prioritized());
     }
     fn set_focusable(&mut self) {
-        *self = Navigation::Focusable(Focusable::new());
+        *self = Self::Focusable(Focusable::new());
     }
     fn spawn(&mut self, cmds: &mut EntityCommands) {
         use MenuBuilder::{NamedParent, Root};
 
         let this = mem::take(self);
         match this {
-            Navigation::Menu(data) => {
+            Self::Menu(data) => {
                 let builder =
                     data.reachable_from.map_or(Root, |n| NamedParent(Name::new(n.into_string())));
                 cmds.insert((data.setting, builder));
             }
-            Navigation::Focusable(focus) => {
+            Self::Focusable(focus) => {
                 cmds.insert((focus, Interaction::default()));
             }
-            Navigation::None => {}
+            Self::None => {}
         }
     }
 }
@@ -89,7 +89,6 @@ enum SwitchTarget {
     Tabs,
 }
 
-#[allow(clippy::module_name_repetitions)]
 #[derive(Deref, DerefMut, Default, Debug)]
 pub struct BevypunkDsl {
     #[deref]

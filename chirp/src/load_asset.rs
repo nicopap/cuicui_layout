@@ -38,13 +38,13 @@ impl LoadAsset for Image {
         let image_type = ImageType::Extension(ext);
         let formats = CompressedImageFormats::empty();
 
-        Ok(Image::from_buffer(bytes, image_type, formats, true)?)
+        Ok(Self::from_buffer(bytes, image_type, formats, true)?)
     }
 }
 #[cfg(feature = "load_font")]
 impl LoadAsset for Font {
     fn load(_: &Path, bytes: &[u8], _: &LoadContext) -> Result<Self> {
-        Ok(Font::try_from_bytes(bytes.into())?)
+        Ok(Self::try_from_bytes(bytes.into())?)
     }
 }
 impl LoadAsset for Chirp {

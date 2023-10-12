@@ -180,7 +180,7 @@ pub struct Container {
 }
 impl Default for Container {
     fn default() -> Self {
-        Container {
+        Self {
             flow: Flow::Horizontal,
             align: Alignment::Center,
             distrib: Distribution::FillMain,
@@ -237,7 +237,7 @@ pub struct Root {
 }
 impl Default for Root {
     fn default() -> Self {
-        Root { node: Container::default(), debug: true }
+        Self { node: Container::default(), debug: true }
     }
 }
 impl Root {
@@ -301,7 +301,7 @@ impl Root {
         use Rule::Fixed;
         let rules = Size::new(Fixed(width), Fixed(height));
         let node = Container { flow, align, distrib, rules, margin };
-        Root { node, debug: true }
+        Self { node, debug: true }
     }
 }
 
@@ -323,7 +323,7 @@ impl Default for Node {
     /// DO NOT USE THE DEFAULT IMPL OF `Node`, this is only to satisfy `Reflect`
     /// requirements.
     fn default() -> Self {
-        Node::Box(Size::all(LeafRule::Parent(1.)))
+        Self::Box(Size::all(LeafRule::Parent(1.)))
     }
 }
 impl Node {
@@ -333,7 +333,7 @@ impl Node {
         use LeafRule::Content;
         matches!(
             self,
-            Node::Box(Size { width: Content(_), .. } | Size { height: Content(_), .. })
+            Self::Box(Size { width: Content(_), .. } | Size { height: Content(_), .. })
         )
     }
     /// A [`Node`] occupying `value%` of it's parent container on the main axis.
@@ -348,7 +348,7 @@ impl Node {
     /// Returns `None` if `ratio` is not between 0 and 1.
     #[must_use]
     pub fn spacer_ratio(value: f32) -> Option<Self> {
-        let spacer = Node::Axis(Oriented {
+        let spacer = Self::Axis(Oriented {
             main: LeafRule::Parent(value),
             cross: LeafRule::Fixed(0.),
         });
@@ -357,18 +357,18 @@ impl Node {
     /// A fixed size terminal [`Node`], without children.
     #[must_use]
     pub fn fixed(size: Size<f32>) -> Self {
-        Node::Box(size.map(LeafRule::Fixed))
+        Self::Box(size.map(LeafRule::Fixed))
     }
     const fn parent_rule(&self, flow: Flow, axis: Flow) -> Option<f32> {
         match self {
-            Node::Container(Container { rules, .. }) => {
+            Self::Container(Container { rules, .. }) => {
                 axis.relative(rules.as_ref()).main.parent_rule()
             }
-            Node::Axis(oriented) => {
+            Self::Axis(oriented) => {
                 let rules = flow.absolute(oriented.as_ref());
                 axis.relative(rules).main.parent_rule()
             }
-            Node::Box(rules) => axis.relative(rules.as_ref()).main.parent_rule(),
+            Self::Box(rules) => axis.relative(rules.as_ref()).main.parent_rule(),
         }
     }
 }
@@ -394,7 +394,7 @@ pub enum LeafRule {
 }
 impl Default for LeafRule {
     fn default() -> Self {
-        LeafRule::Parent(1.)
+        Self::Parent(1.)
     }
 }
 
@@ -449,7 +449,7 @@ pub enum RuleParseError {
 }
 impl Default for Rule {
     fn default() -> Self {
-        Rule::Children(1.)
+        Self::Children(1.)
     }
 }
 impl FromStr for Rule {
@@ -494,35 +494,35 @@ impl LeafRule {
     fn inside(self, parent_size: Computed) -> Result<f32, Entity> {
         use LeafRule::{Content, Fixed};
         match (self, parent_size) {
-            (LeafRule::Parent(ratio), Computed::Valid(value)) => Ok(value * ratio),
-            (LeafRule::Parent(_), Computed::ChildDefined(_, parent)) => Err(parent),
+            (Self::Parent(ratio), Computed::Valid(value)) => Ok(value * ratio),
+            (Self::Parent(_), Computed::ChildDefined(_, parent)) => Err(parent),
             (Fixed(fixed) | Content(fixed), _) => Ok(fixed),
         }
     }
 
     const fn parent_rule(self) -> Option<f32> {
         match self {
-            LeafRule::Parent(ratio) => Some(ratio),
-            LeafRule::Fixed(_) | LeafRule::Content(_) => None,
+            Self::Parent(ratio) => Some(ratio),
+            Self::Fixed(_) | Self::Content(_) => None,
         }
     }
 }
 impl Rule {
     const fn parent_rule(self) -> Option<f32> {
         match self {
-            Rule::Parent(ratio) => Some(ratio),
-            Rule::Children(_) | Rule::Fixed(_) => None,
+            Self::Parent(ratio) => Some(ratio),
+            Self::Children(_) | Self::Fixed(_) => None,
         }
     }
     /// Compute effective size, given a potentially set parent container size.
     fn inside(self, parent_size: Computed, this: Entity) -> Result<Computed, Entity> {
         use Computed::{ChildDefined, Valid};
         match (self, parent_size) {
-            (Rule::Parent(ratio), Valid(value)) => Ok(Valid(value * ratio)),
-            (Rule::Parent(_), ChildDefined(_, parent)) => Err(parent),
-            (Rule::Fixed(fixed), _) => Ok(Valid(fixed)),
-            (Rule::Children(ratio), ChildDefined(_, parent)) => Ok(ChildDefined(ratio, parent)),
-            (Rule::Children(ratio), _) => Ok(ChildDefined(ratio, this)),
+            (Self::Parent(ratio), Valid(value)) => Ok(Valid(value * ratio)),
+            (Self::Parent(_), ChildDefined(_, parent)) => Err(parent),
+            (Self::Fixed(fixed), _) => Ok(Valid(fixed)),
+            (Self::Children(ratio), ChildDefined(_, parent)) => Ok(ChildDefined(ratio, parent)),
+            (Self::Children(ratio), _) => Ok(ChildDefined(ratio, this)),
         }
     }
 }

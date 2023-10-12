@@ -1,6 +1,11 @@
-CLIPPY_ARGS=-- --deny clippy::all --deny clippy::pedantic --deny clippy::nursery \
-	--warn clippy::needless-pass-by-value \
-	--allow clippy::use-self
+CLIPPY_ARGS=-- -D clippy::all -D clippy::pedantic -D clippy::nursery \
+	-D missing_docs \
+	-D clippy::undocumented_unsafe_blocks \
+	-W clippy::needless-pass-by-value \
+	-A clippy::missing_const_for_fn \
+	-A clippy::module_name_repetitions \
+	-A clippy::redundant_pub_crate
+
 .PHONY: check checkout-cyberpunk run pre-hook
 
 examples/chirpunk/lunex-cyberpunk-assets:

@@ -1,10 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::use_self,
-    clippy::module_name_repetitions,
-    clippy::redundant_pub_crate
-)]
 
 use generate::ImplConfig;
 use proc_macro::TokenStream as TokenStream1;

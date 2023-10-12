@@ -113,7 +113,7 @@ struct ElementBundle {
 }
 impl Default for ElementBundle {
     fn default() -> Self {
-        ElementBundle {
+        Self {
             node: Node::default(),
             pos: default(),
             layer: UI_LAYER,
@@ -123,7 +123,7 @@ impl Default for ElementBundle {
 #[derive(Component, Clone)]
 struct Fixed(i32, i32);
 
-impl IntoUiBundle<Fixed> for Fixed {
+impl IntoUiBundle<Self> for Fixed {
     type Target = ElementBundle;
     fn into_ui_bundle(self) -> Self::Target {
         #[allow(clippy::cast_precision_loss)]

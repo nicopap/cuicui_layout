@@ -50,12 +50,6 @@
 //! ```
 //!
 //! [`DslBundle`]: cuicui_dsl::DslBundle
-#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::use_self,
-    clippy::redundant_pub_crate,
-    clippy::module_name_repetitions
-)]
 
 use bevy::app::{App, Plugin as BevyPlugin};
 use bevy::ecs::prelude::*;

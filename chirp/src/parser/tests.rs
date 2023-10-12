@@ -72,8 +72,8 @@ impl Hier {
         }
     }
 
-    fn new(name: String) -> Hier {
-        Hier {
+    fn new(name: String) -> Self {
+        Self {
             name,
             methods: HashMap::new(),
             code: HashMap::new(),
@@ -88,8 +88,8 @@ struct TestState {
 }
 impl TestState {
     fn new() -> Self {
-        TestState {
-            hierarchy: Hier::new("".to_string()),
+        Self {
+            hierarchy: Hier::new(String::new()),
             current: vec![],
         }
     }
@@ -108,7 +108,7 @@ impl TestState {
 struct TestInterpreter(TestState);
 impl TestInterpreter {
     fn new() -> Self {
-        TestInterpreter(TestState::new())
+        Self(TestState::new())
     }
 }
 

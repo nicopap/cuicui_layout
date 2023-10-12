@@ -91,7 +91,7 @@ pub(crate) struct ImplConfig {
 }
 impl Default for ImplConfig {
     fn default() -> Self {
-        ImplConfig {
+        Self {
             chirp_crate: syn::parse_quote!(::cuicui_chirp),
             delegate: None,
             set_params: None,

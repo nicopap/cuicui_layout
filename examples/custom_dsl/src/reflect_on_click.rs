@@ -19,13 +19,13 @@ impl<'a> From<&'a ReflectOnClick> for OnClick {
         match value {
             ReflectOnClick::LogInfo(text) => {
                 let text = text.clone();
-                OnClick::run(move || info!("{text}"))
+                Self::run(move || info!("{text}"))
             }
             &ReflectOnClick::EmitSwitchTab(index) => {
-                OnClick::run(move |mut ev: EventWriter<_>| ev.send(SwitchTab(index)))
+                Self::run(move |mut ev: EventWriter<_>| ev.send(SwitchTab(index)))
             }
             &ReflectOnClick::EmitSwitchGraph(index) => {
-                OnClick::run(move |mut ev: EventWriter<_>| ev.send(SwitchGraph(index)))
+                Self::run(move |mut ev: EventWriter<_>| ev.send(SwitchGraph(index)))
             }
             ReflectOnClick::Invalid => unreachable!("Should never spawn an invalid ReflectOnClick"),
         }

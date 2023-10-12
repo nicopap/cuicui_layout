@@ -51,11 +51,7 @@
 //!
 //! [`ParseDsl::method`]: crate::ParseDsl::method
 //! [`parse_dsl_impl::parse_dsl`]: parse_dsl
-#![allow(
-    unused_variables,
-    clippy::missing_const_for_fn,
-    clippy::needless_pass_by_value
-)]
+#![allow(unused_variables, clippy::needless_pass_by_value)]
 
 use bevy::{asset::LoadContext, reflect::TypeRegistry, utils::HashMap};
 

@@ -37,23 +37,23 @@ pub enum Error {
 impl Error {
     pub(crate) const fn help(self) -> &'static str {
         match self {
-            Error::Expected(..) => {
+            Self::Expected(..) => {
                 "Check the other errors in the error output. If they are not \
                 enough, unhelpful error messages are considered a bug, so please \
                 open an issue: \
                 https://github.com/nicopap/cuicui_layout/issues\n"
             }
-            Error::Unexpected => {
+            Self::Unexpected => {
                 "This is a bug in the chirp parser, please open an issue at: \
                 https://github.com/nicopap/cuicui_layout/issues\n"
             }
-            Error::Unbalanced => {
+            Self::Unbalanced => {
                 "Method arguments should balance their curly braces `{}`, \
                 brackets `[]` and parenthesis `()`. If you want to pass a \
                 string containing unbalanced delimiters, use a string literal \
                 such as `\":)\"`.\n"
             }
-            Error::StatementDelimiter(_) => {
+            Self::StatementDelimiter(_) => {
                 "After the `EntityName` beginning a statement, you should \
                 specify a `(method list)` or a `{List() Of() Children()}`. \
                 If neither apply, use an empty list. Example: `EntityName ()`\
@@ -66,12 +66,12 @@ impl Error {
                 separator, so you'll get this error if you put a `;` or `,` \
                 at the end of the last statement as well :)\n"
             }
-            Error::StartStatement(_) => {
+            Self::StartStatement(_) => {
                 "After closing a statement, you should either start a new \
                 statement with an `EntityName` or a close the parent's children \
                 statements list with a `}`.\n"
             }
-            Error::BadMethod(_) => {
+            Self::BadMethod(_) => {
                 "Methods are declared between parenthesis after the `EntityName`. \
                 A single method is either an identifier or a an identifier \
                 followed by parenthesis (the arguments to the method).\
@@ -79,7 +79,7 @@ impl Error {
                 You might be getting this error because of an unbalanced \
                 parenthesis in a method list.\n"
             }
-            Error::TrailingText => {
+            Self::TrailingText => {
                 "Chirp files define a single entity. This means that there can \
                 only be a single root statement. Try wrapping your statements \
                 inside a single root statement."
@@ -96,8 +96,8 @@ impl winnow::error::ParserError<Input<'_>> for Error {
         self
     }
 }
-impl winnow::error::FromExternalError<Input<'_>, Error> for Error {
-    fn from_external_error(_: &Input<'_>, _: winnow::error::ErrorKind, e: Error) -> Self {
+impl winnow::error::FromExternalError<Input<'_>, Self> for Error {
+    fn from_external_error(_: &Input<'_>, _: winnow::error::ErrorKind, e: Self) -> Self {
         e
     }
 }

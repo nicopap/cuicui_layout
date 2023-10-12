@@ -19,14 +19,7 @@
 [`ScreenRoot`]: ScreenRoot
 */
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::match_bool,
-    clippy::manual_range_contains,
-    clippy::use_self,
-    clippy::redundant_pub_crate,
-    clippy::module_name_repetitions
-)]
+#![allow(clippy::match_bool, clippy::manual_range_contains)]
 
 use bevy::app::{App, Plugin as BevyPlugin, Update};
 use bevy::ecs::prelude::*;

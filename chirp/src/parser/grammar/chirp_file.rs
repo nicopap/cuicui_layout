@@ -66,7 +66,7 @@ impl AddNodes for ast::IdentOffset {
     fn add_node(input: &mut Input, builder: &mut AstBuilder) -> BlockResult {
         let ident = ident(input)?;
         builder.write_header(ident);
-        Ok(ast::IdentOffset::SIZE)
+        Ok(Self::SIZE)
     }
 }
 

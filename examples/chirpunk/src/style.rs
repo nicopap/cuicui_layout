@@ -19,7 +19,7 @@ impl Fract {
     pub fn get(self) -> f32 {
         self.into()
     }
-    pub fn new(arg: f32) -> Fract {
+    pub fn new(arg: f32) -> Self {
         arg.try_into().unwrap()
     }
 }
@@ -30,17 +30,17 @@ impl TryFrom<f32> for Fract {
         if !(0_f32..=2.).contains(&value) {
             return Err(());
         }
-        Ok(Fract((value * 128.) as u8))
+        Ok(Self((value * 128.) as u8))
     }
 }
 impl From<Fract> for f32 {
     fn from(Fract(value): Fract) -> Self {
-        f32::from(value) / 128.
+        Self::from(value) / 128.
     }
 }
 impl From<Fract> for f64 {
     fn from(Fract(value): Fract) -> Self {
-        f64::from(value) / 128.
+        Self::from(value) / 128.
     }
 }
 
@@ -128,7 +128,7 @@ struct Bevypunk {
 
 impl Default for ButtonAnimation {
     fn default() -> Self {
-        ButtonAnimation {
+        Self {
             item_offset: 20,
             text_inner_offset: 0,
             enable_speed: Fract::new(0.1),
@@ -138,7 +138,7 @@ impl Default for ButtonAnimation {
 }
 impl Default for Palette {
     fn default() -> Self {
-        Palette {
+        Self {
             red: Color::rgb_u8(255, 98, 81),
             red_dim: Color::rgb_u8(204, 56, 51),
             blue: Color::rgb_u8(42, 237, 247),
@@ -158,7 +158,7 @@ impl Default for Palette {
 impl FromWorld for Fonts {
     fn from_world(world: &mut World) -> Self {
         let assets = world.resource::<AssetServer>();
-        Fonts {
+        Self {
             navigation: assets.load("fonts/rajdhani/Rajdhani-Bold.ttf"),
             options: assets.load("fonts/rajdhani/Rajdhani-SemiBold.ttf"),
             item: assets.load("fonts/rajdhani/Rajdhani-Medium.ttf"),
@@ -172,7 +172,7 @@ impl FromWorld for Fonts {
 impl FromWorld for Images {
     fn from_world(world: &mut World) -> Self {
         let assets = world.resource::<AssetServer>();
-        Images {
+        Self {
             item_button: assets.load("images/main_menu/button.png"),
             option_arrow: assets.load("images/settings/arrow_left_empty.png"),
             option_shadow: assets.load("images/settings/selection_shadow.png"),
@@ -181,7 +181,7 @@ impl FromWorld for Images {
 }
 impl FromWorld for Bevypunk {
     fn from_world(world: &mut World) -> Self {
-        Bevypunk {
+        Self {
             fonts: Fonts::from_world(world),
             images: Images::from_world(world),
             palette: Palette::from_world(world),
@@ -250,42 +250,42 @@ impl Element {
     }
     fn set_style(&self, style: &Bevypunk, (text, bg, ui_image, anim): QueryItem<StyleComponents>) {
         match self {
-            Element::Panel => {}
-            Element::MainMenuItemButton => {
+            Self::Panel => {}
+            Self::MainMenuItemButton => {
                 let mut ui_image = ui_image.unwrap();
                 let mut anim = anim.unwrap();
                 ui_image.texture = style.images.item_button.clone_weak();
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::MainMenuItemText => {
+            Self::MainMenuItemText => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
                 text.sections[0].style.font = style.fonts.main_menu.clone_weak();
                 text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::TabText => {
+            Self::TabText => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
                 text.sections[0].style.font = style.fonts.tabline.clone_weak();
                 text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::BackText => {
+            Self::BackText => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
                 text.sections[0].style.font = style.fonts.navigation.clone_weak();
                 text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::TabButton | Element::OptionRow => {
+            Self::TabButton | Self::OptionRow => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
                 text.sections[0].style.font = style.fonts.tabline.clone_weak();
                 text.sections[0].style.font_size = f32::from(style.fonts.size);
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::OptionEntry => {
+            Self::OptionEntry => {
                 let mut text = text.unwrap();
                 let mut anim = anim.unwrap();
                 let mut ui_image = ui_image.unwrap();
@@ -294,42 +294,42 @@ impl Element {
                 ui_image.texture = style.images.option_shadow.clone_weak();
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::SettingsHeader => {
+            Self::SettingsHeader => {
                 let mut bg = bg.unwrap();
                 bg.0 = style.palette.settings_category_bg();
             }
-            Element::SettingsHeaderText => {
+            Self::SettingsHeaderText => {
                 let mut text = text.unwrap();
                 text.sections[0].style.font = style.fonts.item.clone_weak();
                 text.sections[0].style.color = style.palette.settings_category_text();
                 text.sections[0].style.font_size = f32::from(style.fonts.main_item_size);
             }
-            Element::OptionBoxLArrow => {
+            Self::OptionBoxLArrow => {
                 let mut ui_image = ui_image.unwrap();
                 let mut anim = anim.unwrap();
                 ui_image.texture = style.images.option_arrow.clone_weak();
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::OptionBoxRArrow => {
+            Self::OptionBoxRArrow => {
                 let mut ui_image = ui_image.unwrap();
                 let mut anim = anim.unwrap();
                 ui_image.texture = style.images.option_arrow.clone_weak();
                 ui_image.flip_x = true;
                 *anim = self.shift_animation(style).unwrap();
             }
-            Element::OptionBoxChoice => {
+            Self::OptionBoxChoice => {
                 let mut text = text.unwrap();
                 text.sections[0].style.font = style.fonts.options.clone_weak();
                 text.sections[0].style.color = style.palette.red_dim;
                 text.sections[0].style.font_size = f32::from(style.fonts.size);
             }
-            Element::OptionBox => {
+            Self::OptionBox => {
                 let mut ui_image = ui_image.unwrap();
                 let mut bg = bg.unwrap();
                 ui_image.texture = style.images.item_button.clone_weak();
                 bg.0 = style.palette.red_dim;
             }
-            Element::OptionTick => {
+            Self::OptionTick => {
                 let mut bg = bg.unwrap();
                 bg.0 = style.palette.red_dim;
             }
