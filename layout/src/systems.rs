@@ -7,7 +7,7 @@ use bevy::prelude::{Reflect, ReflectComponent};
 use bevy_mod_sysfail::sysfail;
 
 use crate::layout::{Layout, NodeQuery};
-use crate::{error::Computed, ComputeLayoutError, LayoutRect, Node, Root, Size};
+use crate::{ComputeLayoutError, LayoutRect, Node, Root};
 
 /// A [`Node`] that can't have children.
 #[derive(Component, Clone, Copy, Debug, Default)]
@@ -89,14 +89,14 @@ pub fn compute_layout(
     last_layout_change.tick = Some(system_tick.this_run());
     for (entity, root, children) in &roots {
         let root_container = *root.get();
-        let bounds = root.get_size(entity, &names)?;
-        if let Ok(mut to_update) = to_update.get_mut(entity) {
-            to_update.size = bounds;
-        }
+        let mut bounds = root.get_size(entity, &names)?;
         let mut layout = Layout::new(entity, &mut to_update, &nodes, &names);
-        let mut bounds: Size<Computed> = bounds.into();
         bounds.set_margin(root_container.margin, &layout)?;
-        layout.container(root_container, children, bounds)?;
+        let inner_size = layout.container(root_container, children, bounds)?;
+        if let Ok(mut to_update) = to_update.get_mut(entity) {
+            to_update.size.width = root_container.margin.width.mul_add(2., inner_size.width);
+            to_update.size.height = root_container.margin.height.mul_add(2., inner_size.height);
+        }
     }
     Ok(())
 }

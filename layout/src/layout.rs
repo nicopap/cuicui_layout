@@ -275,12 +275,17 @@ impl Root {
         &self,
         entity: Entity,
         names: &Query<&Name>,
-    ) -> Result<Size<f32>, error::Why> {
-        use Rule::Fixed;
-        let Size { width: Fixed(width), height: Fixed(height) } = self.node.rules else {
-            let width_fix = matches!(self.node.rules.width, Fixed(_));
-            let axis = if width_fix { HEIGHT } else { WIDTH };
-            return Err(error::Why::invalid_root(axis, entity, names));
+    ) -> Result<Size<Computed>, error::Why> {
+        let to_child_rule = |rule| match rule {
+            Rule::Fixed(pixels) => Some(Computed::Valid(pixels)),
+            Rule::Children(ratio) => Some(Computed::ChildDefined(ratio, entity)),
+            Rule::Parent(_) => None,
+        };
+        let Some(width) = to_child_rule(self.node.rules.width) else {
+            return Err(error::Why::invalid_root(WIDTH, entity, names));
+        };
+        let Some(height) = to_child_rule(self.node.rules.height) else {
+            return Err(error::Why::invalid_root(HEIGHT, entity, names));
         };
         Ok(Size { width, height })
     }
