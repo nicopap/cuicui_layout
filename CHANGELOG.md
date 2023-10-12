@@ -5,7 +5,7 @@
   - improve performance when interpreting chirp files
 - Completed the two "Usage" chapter ("Using the `dsl!` macro" and "Using a chirp file")
 - Added a "Define your own DSL" chapter and example
-- Added a "Reactivity" chapter
+- Added a WIP "Reactivity" chapter
 
 # 0.10.0
 
