@@ -36,8 +36,9 @@ pub enum HandleDslDeserError<T> {
         tyname::<T>(),
     )]
     NoLoadContext,
-    #[error("Failed to load 'Handle<{}>' from file system", tyname::<T>())]
-    FileIo(#[from] io::Error),
+    #[error("Failed to load 'Handle<{}>' from file '{0}': {1}", tyname::<T>())]
+    FileIo(Box<str>, io::Error),
+
     #[error("Loading handles is not supported with non-FileSystem IO. It will be available starting bevy 0.12")]
     UnsupportedIo,
     #[error("Couldn't load 'Handle<{}>'", tyname::<T>())]
@@ -169,11 +170,13 @@ pub fn to_handle<T: Asset + LoadAsset>(
     let Some(ctx) = load_context else {
         return Err(HandleDslDeserError::<T>::NoLoadContext);
     };
+    let file_error = |e| HandleDslDeserError::<T>::FileIo(input.into(), e);
+
     let file_io: &FileAssetIo = ctx.asset_io().downcast_ref().ok_or(UnsupportedIo)?;
     let input = interpret_str(input);
     let mut file_path = file_io.root_path().clone();
     file_path.push(input.as_ref());
-    let bytes = fs::read(&file_path)?;
+    let bytes = fs::read(&file_path).map_err(file_error)?;
     let asset = T::load(&file_path, &bytes, ctx).map_err(BadLoad)?;
     Ok(ctx.set_labeled_asset(input.as_ref(), LoadedAsset::new(asset)))
 }
@@ -181,6 +184,8 @@ pub fn to_handle<T: Asset + LoadAsset>(
 /// Returns the input as a `&str`, removing quotes applying backslash escapes.
 ///
 /// This allocates whenever a backslash is used in the input string.
+///
+/// Note that if `input` is not quoted, the string is returned as-is.
 ///
 /// # Other parsers
 ///
@@ -200,9 +205,12 @@ pub fn quoted<'a>(
 }
 
 fn interpret_str(mut input: &str) -> Cow<str> {
-    if input.len() > 2 && input.starts_with('"') && input.ends_with('"') {
-        input = &input[1..input.len() - 1];
+    let is_quoted = input.len() >= 2 && input.starts_with('"') && input.ends_with('"');
+    if !is_quoted {
+        return Cow::Borrowed(input);
     }
+    input = &input[1..input.len() - 1];
+
     // SAFTEY: transforms operated by escape_literal is always UTF8-safe
     unsafe {
         match escape_literal(input.as_bytes()) {
