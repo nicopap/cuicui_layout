@@ -3,7 +3,7 @@
 use std::{fmt, mem};
 
 use bevy::log::error;
-use bevy::prelude::{Bundle, Deref, DerefMut, Entity};
+use bevy::prelude::{Bundle, Deref, DerefMut};
 use cuicui_dsl::{BaseDsl, DslBundle, EntityCommands};
 
 use crate::bundles::{Layout, LayoutBundle, RootBundle};
@@ -273,7 +273,7 @@ impl<D: DslBundle> LayoutDsl<D> {
     }
 }
 impl<D: DslBundle> DslBundle for LayoutDsl<D> {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         if self.set_flow {
             let container = self.layout.container();
             let root_bundle = || RootBundle::new(self.layout);
@@ -298,7 +298,7 @@ impl<D: DslBundle> DslBundle for LayoutDsl<D> {
             cmds.insert(LayoutBundle::boxy(size));
             ui_bundle_fn(cmds);
         }
-        self.inner.insert(cmds)
+        self.inner.insert(cmds);
     }
 }
 

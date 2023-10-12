@@ -49,12 +49,11 @@ impl MyDsl {
     }
 }
 impl DslBundle for MyDsl {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         cmds.insert(self.style.clone());
         cmds.insert(BackgroundColor(self.bg_color));
         self.inner.insert(cmds);
         // ...
-        cmds.id()
     }
 }
 // Now you can use `MyDsl` in a `dsl!` macro
@@ -197,12 +196,12 @@ pub struct MyDsl<D = ()> {
     font_size: f32,
 }
 impl<D: DslBundle> DslBundle for MyDsl<D> {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         cmds.insert(self.style.clone());
         // ... other components to insert ...
         // Always call the inner type at the end so that insertion order follows
         // the type declaration order.
-        self.inner.insert(cmds)
+        self.inner.insert(cmds);
     }
 }
 // Both the methods defined on `MyDsl`
@@ -247,11 +246,10 @@ impl MyDynamicDsl {
     // ... Hopefully you get the idea ...
 }
 impl DslBundle for MyDynamicDsl {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         for spawn in self.0.drain(..) {
             spawn(cmds);
         }
-        cmds.id()
     }
 }
 ```

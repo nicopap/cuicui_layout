@@ -190,7 +190,7 @@ impl BevypunkDsl {
     }
 }
 impl DslBundle for BevypunkDsl {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         let name = self.inner.name.clone().unwrap_or(Cow::Owned(String::new()));
         match self.switch_index {
             Some((i, SwitchTarget::Roots)) => cmds.insert(RootButton(i)),
@@ -217,11 +217,10 @@ impl DslBundle for BevypunkDsl {
         }
         self.element.spawn(&name, cmds, self.settings_option.take());
         self.nav.spawn(cmds);
-        let id = self.inner.insert(cmds);
+        self.inner.insert(cmds);
         if self.is_hidden {
             cmds.insert(Visibility::Hidden);
         }
-        id
     }
 }
 

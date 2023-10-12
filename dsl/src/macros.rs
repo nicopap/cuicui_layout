@@ -73,11 +73,11 @@
 ///     pub blink: Blink,
 /// }
 /// impl<D: DslBundle> DslBundle for BlinkDsl<D> {
-///     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+///     fn insert(&mut self, cmds: &mut EntityCommands) {
 ///         // We insert first `Blink`, as to avoid overwriting things
 ///         // `inner_dsl.insert`  might insert itself.
 ///         cmds.insert(BlinkBundle { blink: self.blink, ..default() });
-///         self.inner_dsl.insert(cmds)
+///         self.inner_dsl.insert(cmds);
 ///     }
 /// }
 ///
@@ -442,8 +442,8 @@ pub mod __doc_helpers {
     pub use crate::{BaseDsl, BuildChildren, ChildBuilder, DslBundle};
     pub use bevy::ecs::system::EntityCommands;
     pub use bevy::prelude::{
-        default, AssetServer, Bundle, Commands, Component, Deref, DerefMut, Entity, Handle, Image,
-        Name, Res, Transform,
+        default, AssetServer, Bundle, Commands, Component, Deref, DerefMut, Handle, Image, Name,
+        Res, Transform,
     };
     use bevy::{ecs::system::CommandQueue, prelude::World};
 
@@ -526,8 +526,8 @@ pub mod __doc_helpers {
         pub fn distrib_start(&mut self) {}
     }
     impl<D: DslBundle> DslBundle for DocDsl<D> {
-        fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
-            self.inner.insert(cmds)
+        fn insert(&mut self, cmds: &mut EntityCommands) {
+            self.inner.insert(cmds);
         }
     }
     pub type Dsl = DocDsl;

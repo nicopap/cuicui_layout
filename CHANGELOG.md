@@ -33,6 +33,7 @@
     based on their name only.
   - Added `TypeRegistryDsl` that accepts as method any type present in the type registry (#95)
 - Accept a `&str` whenever we would accept `Handle<T>` in `ReflectDsl` (#78)
+- **Breaking**: Now quoted text used as entity names are correctly unquoted and escaped.
 
 # 0.10.1
 
