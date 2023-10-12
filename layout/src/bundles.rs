@@ -21,7 +21,7 @@ pub struct Layout {
 }
 impl Default for Layout {
     fn default() -> Self {
-        Layout {
+        Self {
             align: Alignment::Center,
             distrib: Distribution::FillMain,
             margin: Oriented::default(),
@@ -62,7 +62,7 @@ impl RootBundle {
     #[must_use]
     pub fn new(Layout { align, distrib, margin, flow, .. }: Layout) -> Self {
         let size = Size::all(f32::MAX);
-        RootBundle {
+        Self {
             pos_rect: default(),
             root: Root::new(size, flow, align, distrib, flow.absolute(margin)),
             screen_root: ScreenRoot,

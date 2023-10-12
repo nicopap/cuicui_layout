@@ -2,9 +2,7 @@
 #![allow(
     clippy::cast_precision_loss,
     clippy::wildcard_imports,
-    clippy::needless_pass_by_value,
-    clippy::missing_const_for_fn,
-    clippy::module_name_repetitions
+    clippy::needless_pass_by_value
 )]
 
 use std::time::Duration;
@@ -21,7 +19,7 @@ use reflect_on_click::ReflectOnClick;
 mod dsl;
 mod reflect_on_click;
 
-pub type OnClick = On<Pointer<Click>>;
+type OnClick = On<Pointer<Click>>;
 
 struct DefaultPlugins;
 

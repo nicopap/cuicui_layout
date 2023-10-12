@@ -15,13 +15,6 @@
 [`WorldHandles`]: WorldHandles
 */
 #![doc = include_str!("../README.md")]
-#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::use_self,
-    clippy::module_name_repetitions,
-    clippy::redundant_pub_crate
-)]
-// TODO(clean): move the parser to an independent crate.
 
 macro_rules! log_miette_error {
     ($err: expr) => {

@@ -12,12 +12,6 @@
 //! This might be changed in the future, so beware!
 //!
 //! [`Sprite`]: bevy::sprite::Sprite
-#![warn(clippy::pedantic, clippy::nursery, missing_docs)]
-#![allow(
-    clippy::use_self,
-    clippy::redundant_pub_crate,
-    clippy::module_name_repetitions
-)]
 
 use bevy::app::{App, Plugin as BevyPlugin};
 use bevy::ecs::prelude::*;
@@ -64,7 +58,7 @@ impl UiCameraBundle {
     /// Create a camera limited to the provided [`Layer`].
     #[must_use]
     pub fn for_layer(order: isize, layer: Layer) -> Self {
-        UiCameraBundle {
+        Self {
             camera: Camera2dBundle {
                 projection: OrthographicProjection {
                     far: 1000.0,

@@ -21,18 +21,18 @@ pub(super) enum SettingsOption {
 impl SettingsOption {
     fn default_text(&self) -> Cow<'static, str> {
         match self {
-            SettingsOption::Choice(elems) => elems[0].clone().into(),
-            SettingsOption::Toggle => "Enabled".into(),
-            SettingsOption::Click => "Click".into(),
-            SettingsOption::Increments(_) => "0".into(),
+            Self::Choice(elems) => elems[0].clone().into(),
+            Self::Toggle => "Enabled".into(),
+            Self::Click => "Click".into(),
+            Self::Increments(_) => "0".into(),
         }
     }
     fn choices(&self) -> usize {
         match self {
-            SettingsOption::Choice(elems) => elems.len(),
-            SettingsOption::Toggle => 2,
-            SettingsOption::Click => 0,
-            SettingsOption::Increments(count) => *count,
+            Self::Choice(elems) => elems.len(),
+            Self::Toggle => 2,
+            Self::Click => 0,
+            Self::Increments(count) => *count,
         }
     }
 }
@@ -53,8 +53,8 @@ impl Element {
         let settings_err = "settings_row element MUST also have a `options` method call included, \
                             none were given.";
         match self {
-            Element::None => {}
-            Element::SettingsRow => settings_row(name, cmds, *options.expect(settings_err)),
+            Self::None => {}
+            Self::SettingsRow => settings_row(name, cmds, *options.expect(settings_err)),
         }
     }
 }

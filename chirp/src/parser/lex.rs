@@ -79,6 +79,8 @@ impl<'i> Ident<'i> {
     }
 }
 
+/// # Safety
+/// The first token in `input` **must** parse as either an identifier or a quoted string.
 pub(super) unsafe fn next_statement_name<'i>(input: &mut &'i [u8]) -> &'i [u8] {
     let (first, remaining) = input.split_at(1);
     *input = remaining;
@@ -94,9 +96,12 @@ pub(super) unsafe fn next_statement_name<'i>(input: &mut &'i [u8]) -> &'i [u8] {
             q.0
         }
         Recognized::Ident => Ident(first).next(input),
+        // SAFETY: Caller ensures the token is either `Quote`, `Apostrophe` or `Ident`
         _ => unsafe { std::hint::unreachable_unchecked() },
     }
 }
+/// # Safety
+/// The first token in `input` **must** parse as an identifier
 pub(super) unsafe fn next_ident<'i>(input: &mut &'i [u8]) -> &'i [u8] {
     let (first, remaining) = input.split_at(1);
     *input = remaining;
@@ -177,7 +182,7 @@ impl Swar8 {
         let len = slice.len().min(8);
         let mut acc = [0; 8];
         acc[..len].copy_from_slice(&slice[..len]);
-        Swar8(u64::from_le_bytes(acc))
+        Self(u64::from_le_bytes(acc))
     }
     fn position<const B: u8>(self) -> Option<usize> {
         let mask = u64::from_le_bytes([B; 8]);

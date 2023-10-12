@@ -72,7 +72,7 @@ impl<'t, 'i, 'a> ChirpCall<'t, 'i, 'a> {
         let Some(fn_index) = runner.get_template((name, span)) else {
             return;
         };
-        let declr = self.ast.get_fn(fn_index);
+        let declr = fn_index.get();
         let parameters = self.params.scope(declr.parameters(), tpl.arguments(), inp);
         let inner_chirp = self.with_parameters(parameters, tpl);
         inner_chirp.interpret_root(declr.body(), runner);
@@ -202,7 +202,7 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
         let Some(fn_index) = runner.get_template((name, span)) else {
             return;
         };
-        let declr = self.ast.get_fn(fn_index);
+        let declr = fn_index.get();
         let parameters = self.params.scope(declr.parameters(), tpl.arguments(), inp);
         let inner_chirp = self.with_parameters(parameters, tpl);
         inner_chirp.interpret_root(declr.body(), runner);

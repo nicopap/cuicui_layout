@@ -5,6 +5,8 @@
 //!
 //! The list node accessors are defined as additional `impl` block after the
 //! macor definition of the header accessors of the nodes.
+#![allow(clippy::undocumented_unsafe_blocks)]
+// Allow: We documented this in [`Header`] docs
 use std::fmt;
 
 use super::build::{self, WriteHeader};
@@ -49,6 +51,12 @@ struct Header<'a, const N: usize>(&'a [Block; N]);
 
 #[derive(Clone, Copy)]
 pub struct FnIndex<'a>(pub(super) Fn<'a>);
+
+impl<'a> FnIndex<'a> {
+    pub(in crate::parser) fn get(self) -> Fn<'a> {
+        self.0
+    }
+}
 
 impl<'a, const N: usize> Header<'a, N> {
     fn raw_block(self) -> &'a [Block] {

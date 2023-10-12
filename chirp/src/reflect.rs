@@ -49,7 +49,7 @@ impl<T> fmt::Debug for ReflectDslError<T> {
                 .field("missing", missing)
                 .finish(),
             BadDeser(error) => f.debug_tuple("BadDeser").field(error).finish(),
-            ReflectDslError::NotExactlyOneArgument => write!(f, "NotExactlyOneArgument"),
+            Self::NotExactlyOneArgument => write!(f, "NotExactlyOneArgument"),
             _Ignonre(..) => unreachable!(),
         }
     }

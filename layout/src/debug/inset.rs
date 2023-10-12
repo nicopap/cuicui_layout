@@ -32,17 +32,17 @@ enum Dir {
 impl Dir {
     const fn increments(self) -> i64 {
         match self {
-            Dir::Start => 1,
-            Dir::End => -1,
+            Self::Start => 1,
+            Self::End => -1,
         }
     }
 }
 impl From<i64> for Dir {
     fn from(value: i64) -> Self {
         if value.is_positive() {
-            Dir::Start
+            Self::Start
         } else {
-            Dir::End
+            Self::End
         }
     }
 }
@@ -56,7 +56,7 @@ struct DrawnLines {
 #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation)]
 impl DrawnLines {
     fn new(width: f32) -> Self {
-        DrawnLines { lines: HashMap::new(), width }
+        Self { lines: HashMap::new(), width }
     }
     /// Return `value` offset by as many `increment`s as necessary to make it
     /// not overlap with already drawn lines.

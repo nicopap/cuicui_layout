@@ -70,7 +70,7 @@ pub struct InputMap {
 }
 impl Default for InputMap {
     fn default() -> Self {
-        InputMap { cycle_debug_flag: KeyCode::Space }
+        Self { cycle_debug_flag: KeyCode::Space }
     }
 }
 
@@ -315,31 +315,30 @@ enum RuleArrow {
     None,
 }
 impl RuleArrow {
-    #[allow(clippy::missing_const_for_fn)] // false positive: need const T::drop
     fn arrange<T>(self, inner: T, outer: T) -> Option<(T, T, Option<f32>)> {
         match self {
-            RuleArrow::Outward(v) => Some((inner, outer, Some(v))),
-            RuleArrow::Inward(v) => Some((outer, inner, Some(v))),
-            RuleArrow::InwardBare => Some((outer, inner, None)),
-            RuleArrow::None => None,
+            Self::Outward(v) => Some((inner, outer, Some(v))),
+            Self::Inward(v) => Some((outer, inner, Some(v))),
+            Self::InwardBare => Some((outer, inner, None)),
+            Self::None => None,
         }
     }
 }
 impl From<LeafRule> for RuleArrow {
     fn from(value: LeafRule) -> Self {
         match value {
-            LeafRule::Content(_) => RuleArrow::InwardBare,
-            LeafRule::Fixed(_) => RuleArrow::None,
-            LeafRule::Parent(value) => RuleArrow::Outward(value),
+            LeafRule::Content(_) => Self::InwardBare,
+            LeafRule::Fixed(_) => Self::None,
+            LeafRule::Parent(value) => Self::Outward(value),
         }
     }
 }
 impl From<Rule> for RuleArrow {
     fn from(value: Rule) -> Self {
         match value {
-            Rule::Fixed(_) => RuleArrow::None,
-            Rule::Parent(value) => RuleArrow::Outward(value),
-            Rule::Children(value) => RuleArrow::Inward(value),
+            Rule::Fixed(_) => Self::None,
+            Rule::Parent(value) => Self::Outward(value),
+            Rule::Children(value) => Self::Inward(value),
         }
     }
 }

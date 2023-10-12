@@ -1,4 +1,3 @@
-#![allow(clippy::module_name_repetitions)]
 use std::fmt;
 
 use bevy::ecs::query::ReadOnlyWorldQuery;
@@ -17,28 +16,28 @@ impl Computed {
     pub(crate) fn with_child(&self, child_size: f32) -> f32 {
         match self {
             // TODO: margin
-            Computed::ChildDefined(ratio, _) => *ratio * child_size,
-            Computed::Valid(size) => *size,
+            Self::ChildDefined(ratio, _) => *ratio * child_size,
+            Self::Valid(size) => *size,
         }
     }
 }
 impl From<f32> for Computed {
     fn from(value: f32) -> Self {
-        Computed::Valid(value)
+        Self::Valid(value)
     }
 }
 impl fmt::Display for Computed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Computed::ChildDefined(_, _) => fmt::Display::fmt("<child_size>", f),
-            Computed::Valid(value) => fmt::Display::fmt(value, f),
+            Self::ChildDefined(_, _) => fmt::Display::fmt("<child_size>", f),
+            Self::Valid(value) => fmt::Display::fmt(value, f),
         }
     }
 }
 
 impl From<Size<f32>> for Size<Computed> {
     fn from(Size { width, height }: Size<f32>) -> Self {
-        Size { width: width.into(), height: height.into() }
+        Self { width: width.into(), height: height.into() }
     }
 }
 
@@ -51,7 +50,7 @@ impl Handle {
     pub(crate) fn of_entity(entity: Entity, names: &Query<&Name>) -> Self {
         names
             .get(entity)
-            .map_or(Handle::Unnamed(entity), |name| Handle::Named(name.clone()))
+            .map_or(Self::Unnamed(entity), |name| Self::Named(name.clone()))
     }
     pub(crate) fn of(queries: &Layout<impl ReadOnlyWorldQuery>) -> Self {
         Self::of_entity(queries.this, queries.names)
@@ -60,8 +59,8 @@ impl Handle {
 impl fmt::Display for Handle {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Handle::Unnamed(entity) => write!(f, "<{entity:?}>"),
-            Handle::Named(name) => write!(f, "{name}"),
+            Self::Unnamed(entity) => write!(f, "<{entity:?}>"),
+            Self::Named(name) => write!(f, "{name}"),
         }
     }
 }
@@ -75,8 +74,8 @@ enum RelativeAxis {
 impl RelativeAxis {
     fn of(reference: Axis, axis: Axis) -> Self {
         match reference == axis {
-            true => RelativeAxis::Main,
-            false => RelativeAxis::Cross,
+            true => Self::Main,
+            false => Self::Cross,
         }
     }
 }
@@ -98,7 +97,7 @@ pub(crate) struct Relative {
 }
 impl Relative {
     pub(crate) fn of(reference: Axis, axis: Axis, size: f32) -> Self {
-        Relative {
+        Self {
             size,
             axis: RelativeAxis::of(reference, axis),
             absolute: reference,
@@ -190,7 +189,7 @@ impl Why {
         parent: Entity,
         queries: &Layout<impl ReadOnlyWorldQuery>,
     ) -> Self {
-        Why::CyclicRule {
+        Self::CyclicRule {
             this: Handle::of(queries),
             parent: Handle::of_entity(parent, queries.names),
             axis,
@@ -198,7 +197,7 @@ impl Why {
     }
 
     pub(crate) fn invalid_root(axis: Axis, entity: Entity, names: &Query<&Name>) -> Self {
-        Why::InvalidRoot { this: Handle::of_entity(entity, names), axis }
+        Self::InvalidRoot { this: Handle::of_entity(entity, names), axis }
     }
 }
 /// An error caused by a bad layout.

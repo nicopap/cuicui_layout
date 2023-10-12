@@ -1,3 +1,7 @@
+//! Demonstrates the equivalence between the `dsl!` macro and the `.chirp` file
+//! format.
+//!
+//! Also used as a test to make sure it is trully equivalent.
 use std::{fmt, num::ParseIntError, str::FromStr};
 
 use bevy::app::{App, Plugin};
@@ -41,9 +45,9 @@ enum Rule {
 impl fmt::Debug for Rule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Rule::Pct(v) => write!(f, "{v}pct"),
-            Rule::Px(v) => write!(f, "{v}px"),
-            Rule::None => write!(f, "none"),
+            Self::Pct(v) => write!(f, "{v}pct"),
+            Self::Px(v) => write!(f, "{v}px"),
+            Self::None => write!(f, "none"),
         }
     }
 }
@@ -64,11 +68,11 @@ impl FromStr for Rule {
         match () {
             () if s.starts_with("px(") => {
                 let number = &s[3..s.len() - 1];
-                Ok(Rule::Px(number.parse()?))
+                Ok(Self::Px(number.parse()?))
             }
             () if s.starts_with("pct(") => {
                 let number = &s[4..s.len() - 1];
-                Ok(Rule::Pct(number.parse()?))
+                Ok(Self::Pct(number.parse()?))
             }
             () => Err("badnumber".parse::<i32>().unwrap_err()),
         }
