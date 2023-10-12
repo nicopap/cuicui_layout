@@ -90,7 +90,7 @@ impl<'i, 'a> Arguments<'i, 'a> {
     ) -> Self {
         Self { input, method_args, parameters }
     }
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.method_args.count()
     }
     pub fn get(&self, index: usize) -> Option<Cow<'i, [u8]>> {

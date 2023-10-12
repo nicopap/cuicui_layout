@@ -114,6 +114,7 @@ fn as_u32(usize: usize) -> u32 {
 }
 
 #[inline]
-fn as_usize(u32: u32) -> usize {
-    u32.try_into().unwrap()
+#[allow(clippy::cast_lossless)]
+const fn as_usize(u32: u32) -> usize {
+    u32 as usize
 }

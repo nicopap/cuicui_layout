@@ -109,7 +109,7 @@ impl<'a, T: Node<'a>> Iterator for ListIter<'a, T> {
     }
 }
 impl<'a, T: SimpleNode + Node<'a>> List<'a, T> {
-    pub fn count(&self) -> usize {
+    pub const fn count(&self) -> usize {
         self.0.len() / as_usize(T::SIZE)
     }
     pub fn get(&self, index: usize) -> Option<T> {
