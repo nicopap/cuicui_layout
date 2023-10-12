@@ -32,7 +32,8 @@ pub use direction::{Flow, Oriented, Size};
 pub use dsl::LayoutDsl;
 pub use error::ComputeLayoutError;
 pub use labels::{ComputeLayout, ComputeLayoutSet};
-pub use layout::{Container, LayoutRect, LeafRule, Node, Root, Rule};
+pub use layout::{Container, LayoutRect, Node, Root};
+pub use rule::{LeafRule, Rule};
 pub use systems::{
     compute_layout, require_layout_recompute, update_leaf_nodes, LastLayoutChange,
     LayoutRootCamera, LeafNode, LeafNodeInsertWitness, ScreenRoot,
@@ -43,6 +44,7 @@ mod direction;
 mod error;
 mod labels;
 mod layout;
+mod rule;
 mod systems;
 
 pub mod bundles;
