@@ -28,7 +28,7 @@ examples/chirpunk/assets/menus: examples/chirpunk/assets examples/chirpunk/menus
 checkout-cyberpunk: examples/chirpunk/assets examples/chirpunk/assets/menus
 
 check:
-	cargo clippy -p cuicui_chirp --all-features $(CLIPPY_ARGS)
+	cargo clippy --workspace --all-features $(CLIPPY_ARGS)
 
 run:
 	# cargo test -p cuicui_chirp grammar --features 'test_and_doc' # with_method # trace_parser'

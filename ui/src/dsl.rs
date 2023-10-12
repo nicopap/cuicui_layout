@@ -289,7 +289,7 @@ impl<D> UiDsl<D> {
 }
 
 impl<D: DslBundle> DslBundle for UiDsl<D> {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         let mut node_bundle = bevy_ui::NodeBundle::default();
         if self.bg_image.is_some() {
             node_bundle.background_color = Color::WHITE.into();
@@ -340,6 +340,6 @@ impl<D: DslBundle> DslBundle for UiDsl<D> {
             }
             None => cmds.insert(node_bundle),
         };
-        self.inner.insert(cmds)
+        self.inner.insert(cmds);
     }
 }

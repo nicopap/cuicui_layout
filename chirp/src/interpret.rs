@@ -294,7 +294,10 @@ impl<'w, 's, 'a, 'l, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, D> {
             cmds.set_parent(self.root_entity);
             cmds
         };
-        self.errors.is_empty().then(|| dsl.insert(&mut cmds))
+        self.errors.is_empty().then(|| {
+            dsl.insert(&mut cmds);
+            cmds.id()
+        })
     }
 }
 impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a, 'a> for Interpreter<'w, 's, 'a, 'l, D> {

@@ -136,7 +136,7 @@ impl<T: fmt::Debug> fmt::Debug for Show<T> {
     }
 }
 impl<D: DslBundle> DslBundle for LayoutDsl<D> {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         cmds.insert(LayoutNode {
             width: self.width,
             height: self.height,
@@ -147,7 +147,7 @@ impl<D: DslBundle> DslBundle for LayoutDsl<D> {
                 cmds.spawn(Pixels(px));
             });
         }
-        self.inner.insert(cmds)
+        self.inner.insert(cmds);
     }
 }
 

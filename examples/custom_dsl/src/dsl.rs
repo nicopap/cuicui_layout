@@ -90,7 +90,7 @@ impl BetterFactorioDsl {
 }
 
 impl DslBundle for BetterFactorioDsl {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         for marker in self.markers.drain(..) {
             (marker.0)(cmds);
         }
@@ -109,11 +109,10 @@ impl DslBundle for BetterFactorioDsl {
             cmds.insert(Highlight::new(Color::BEIGE));
         }
         // ANCHOR: add_hidden ANCHOR_END: game_menu_inserts
-        let id = self.inner.insert(cmds);
+        self.inner.insert(cmds);
         if self.is_hidden {
             cmds.insert(Visibility::Hidden);
         }
-        id
         // ANCHOR_END: add_hidden
     }
 }

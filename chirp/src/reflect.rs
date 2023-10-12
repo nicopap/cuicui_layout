@@ -4,7 +4,7 @@
 use std::{any::type_name, convert::Infallible, fmt, marker::PhantomData};
 
 use anyhow::Result;
-use bevy::ecs::prelude::{Bundle, Entity};
+use bevy::ecs::prelude::Bundle;
 use bevy::prelude::{Deref, DerefMut};
 use bevy::reflect::erased_serde::__private::serde::de::DeserializeSeed;
 use bevy::reflect::{serde::TypedReflectDeserializer, Reflect, Struct};
@@ -162,11 +162,11 @@ where
     D: DslBundle,
     F: Format,
 {
-    fn insert(&mut self, cmds: &mut cuicui_dsl::EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut cuicui_dsl::EntityCommands) {
         // unwrap: This `Self::default` in `Some` state, and only becomes `None` when `insert`
         // is called. Since it is only called once, it is fine to unwrap.
         cmds.insert(self.inner.take().unwrap());
-        self.delegate_dsl.insert(cmds)
+        self.delegate_dsl.insert(cmds);
     }
 }
 impl<T, D, F> ReflectDsl<T, D, F>

@@ -8,8 +8,6 @@
 
 use std::borrow::Cow;
 
-use bevy::prelude::Entity;
-
 pub use bevy::prelude::{BuildChildren, ChildBuilder};
 pub use bevy::{core::Name, ecs::system::EntityCommands};
 
@@ -38,25 +36,22 @@ impl BaseDsl {
 /// [`Default`] is used as the initial value for each entity.
 pub trait DslBundle: Default {
     /// Add given [`Bundle`](bevy::prelude::Bundle) to the entity.
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity;
+    fn insert(&mut self, cmds: &mut EntityCommands);
 
-    /// Spawn the entity as a container.
+    /// Spawn the entity as a parent of other entities.
     fn node(&mut self, cmds: &mut EntityCommands, f: impl FnOnce(&mut ChildBuilder)) {
-        let target_entity = self.insert(cmds);
-        cmds.commands().entity(target_entity).with_children(f);
+        self.insert(cmds);
+        cmds.with_children(f);
     }
 }
 impl DslBundle for () {
-    fn insert(&mut self, e: &mut EntityCommands) -> Entity {
-        e.id()
-    }
+    fn insert(&mut self, _: &mut EntityCommands) {}
 }
 
 impl DslBundle for BaseDsl {
-    fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
+    fn insert(&mut self, cmds: &mut EntityCommands) {
         if let Some(name) = self.name.take() {
             cmds.insert(Name::new(name));
         }
-        cmds.id()
     }
 }
