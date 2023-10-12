@@ -120,7 +120,7 @@ error message. It noticed that the column overflowed its container. The error is
 ERROR bevy_mod_sysfail: Node Root's width is overflowed by its children!
 Notes:
 - Root's inner size (excluding margins) is 640×360
-- There are 1 children of total width 643.5px.
+- There are 1 children of total width 877.5px.
 - The largest child is Column
 ```
 So far, it doesn't teach us anything that we didn't know…
@@ -171,12 +171,12 @@ Notes:
 - The largest child is TitleCard2
 ```
 
-In the previous error message, the total width of `column` was 643.5px, in this,
+In the previous error message, the total width of `column` was 877.55px, in this,
 it is 100px, as we expected, but the children's width is 585px, which is larger than 100
 since last time I checked.
 
 As a hint. Before we specified the size of `Column`, its rules were the default.
-The default rule for containers is `child(1.1)` (585 * 1.1 = ???).
+The default rule for containers is `child(1.5)` (585 * 1.5 = ???).
 
 ### Content size
 

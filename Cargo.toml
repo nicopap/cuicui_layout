@@ -50,9 +50,8 @@ bevy_framepace = "0.13.3"
 bevy-inspector-egui = "0.19"
 bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
   "backend_bevy_ui",
-  "backend_egui",
 ] }
-bevy-ui-navigation = "0.31.0"
+bevy-ui-navigation = "0.32.0"
 rust-hsluv = "0.1.4"
 
 # bevy_ui hot reloading only works with a patched version of bevy:

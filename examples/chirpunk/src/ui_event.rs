@@ -1,11 +1,17 @@
-use bevy::{
-    app::AppExit,
-    ecs::query::{ReadOnlyWorldQuery, WorldQuery},
-    prelude::{Plugin as BevyPlugin, *},
-};
+use bevy::app::AppExit;
+use bevy::ecs::query::{ReadOnlyWorldQuery, WorldQuery};
+use bevy::input::gamepad::GamepadButtonChangedEvent;
+use bevy::input::mouse::MouseMotion;
+use bevy::prelude::{Plugin as BevyPlugin, *};
 use bevy_ui_navigation::prelude::*;
+use cuicui_examples::{switchable_impl, SwitchPlugin};
 
-use crate::{animate::button_shift as bshift, show_menus::Swatch};
+use crate::animate::button_shift as bshift;
+
+switchable_impl! {
+    RootButton[Roots, SwitchRoot],
+    TabButton[Tabs, SwitchTab],
+}
 
 #[derive(WorldQuery)]
 #[world_query(mutable)]
@@ -28,34 +34,32 @@ impl StateItemItem<'_> {
     }
 }
 
-#[derive(Resource, Debug)]
-struct Swatches {
-    root: Entity,
-    settings_submenu: Entity,
-}
-
-#[derive(Reflect, PartialEq, Debug, Default)]
-enum InputSource {
+#[derive(Reflect, Resource, PartialEq, Debug, Default)]
+#[reflect(Resource)]
+enum InputState {
     Gamepad,
     #[default]
     Mouse,
 }
-#[derive(Reflect, Resource, Debug, Default)]
-#[reflect(Resource)]
-struct InputState {
-    input: InputSource,
-}
 
-fn set_new_input_source(state: &mut ResMut<InputState>, new_source: InputSource) {
-    if state.input != new_source {
-        state.input = new_source;
+fn change_input_state(
+    mut state: ResMut<InputState>,
+    mut mouse: EventReader<MouseMotion>,
+    mut gp_buttons: EventReader<GamepadButtonChangedEvent>,
+    mut gp_axis: EventReader<GamepadButtonChangedEvent>,
+) {
+    if mouse.iter().next().is_some() {
+        state.set_if_neq(InputState::Mouse);
+    }
+    if gp_buttons.iter().next().is_some() | gp_axis.iter().next().is_some() {
+        state.set_if_neq(InputState::Gamepad);
     }
 }
 
 // TODO(feat): highlight selected tab
 fn highlight_focused(
     time: Res<Time>,
-    mut state: ResMut<InputState>,
+    input_state: Res<InputState>,
     mut child_anim: Query<&mut bshift::State, Without<Focusable>>,
     mut focus_change: Query<(StateItem, &Focusable), Changed<Focusable>>,
 ) {
@@ -63,14 +67,16 @@ fn highlight_focused(
     use FocusState::{Active, Blocked, Focused, Inert, Prioritized};
 
     let initial_time = time.elapsed_seconds_f64();
+    let gp_input = matches!(*input_state, InputState::Gamepad);
     for (mut anim, focusable) in &mut focus_change {
         match focusable.state() {
-            Focused | Active if !matches!(*anim.state, Shifted { .. }) => {
-                set_new_input_source(&mut state, InputSource::Gamepad);
+            Focused if !matches!(*anim.state, Shifted { .. }) && gp_input => {
+                anim.set_state(&mut child_anim, Shifted { initial_time });
+            }
+            Active => {
                 anim.set_state(&mut child_anim, Shifted { initial_time });
             }
             Prioritized | Blocked | Inert if !matches!(*anim.state, AtRest { .. }) => {
-                set_new_input_source(&mut state, InputSource::Gamepad);
                 anim.set_state(&mut child_anim, AtRest(initial_time));
             }
             _ => {}
@@ -79,7 +85,7 @@ fn highlight_focused(
 }
 fn highlight_hovered(
     time: Res<Time>,
-    mut state: ResMut<InputState>,
+    input_state: Res<InputState>,
     mut child_anim: Query<&mut bshift::State, Without<Interaction>>,
     mut hover_change: Query<(StateItem, &Interaction), Changed<Interaction>>,
 ) {
@@ -87,8 +93,10 @@ fn highlight_hovered(
     use Interaction::{Hovered, Pressed};
 
     let initial_time = time.elapsed_seconds_f64();
+    if !matches!(*input_state, InputState::Mouse) {
+        return;
+    }
     for (mut anim, interaction) in &mut hover_change {
-        set_new_input_source(&mut state, InputSource::Mouse);
         match interaction {
             Pressed | Hovered if !matches!(*anim.state, Shifted { .. }) => {
                 anim.set_state(&mut child_anim, Shifted { initial_time });
@@ -115,112 +123,29 @@ fn clear_unused_input(
     )>,
 ) {
     use bshift::State::{AtRest, Shifted};
-    use FocusState::{Active, Focused};
+    use FocusState::Focused;
     use Interaction::{Hovered, Pressed};
 
     if !state.is_changed() {
         return;
     }
     let initial_time = time.elapsed_seconds_f64();
-    if state.input == InputSource::Mouse {
+    if *state == InputState::Mouse {
         let (mut focusables, mut child_anim) = set.p1();
         for (mut anim, focus) in &mut focusables {
-            if matches!(focus.state(), Focused | Active) {
-                anim.set_state(&mut child_anim, Shifted { initial_time });
+            let focused = matches!(focus.state(), Focused);
+            let animated = matches!(anim.state.as_ref(), &Shifted { .. });
+            if focused && animated {
+                anim.set_state(&mut child_anim, AtRest(initial_time));
             }
         }
     } else {
         let (mut interactions, mut child_anim) = set.p0();
         for (mut anim, interaction) in &mut interactions {
-            if matches!(interaction, Pressed | Hovered) {
+            let pressed = matches!(interaction, Pressed | Hovered);
+            let animated = matches!(anim.state.as_ref(), &Shifted { .. });
+            if pressed && animated {
                 anim.set_state(&mut child_anim, AtRest(initial_time));
-            }
-        }
-    }
-}
-
-#[derive(Reflect, Default, Clone, Copy, Component, Debug)]
-#[reflect(Component)]
-pub enum SwatchMarker {
-    #[default] // nonsensical, but required for ReflectComponent
-    Root,
-    SettingsSubmenu,
-}
-
-#[derive(Reflect, Default, Clone, Copy, Component, Debug)]
-#[reflect(Component)]
-pub enum SwatchTarget {
-    #[default] // nonsensical, but required for ReflectComponent
-    Root,
-    Settings,
-    Display,
-    Sound,
-    Tab3,
-    Tab4,
-}
-impl SwatchTarget {
-    // TODO(clean) bit hacky, basically hard-code the order.
-    // This should get fixed with templating.
-    const fn index(self) -> usize {
-        use SwatchTarget::{Display, Root, Settings, Sound};
-        match self {
-            Root | Display => 0,
-            Settings | Sound => 1,
-            SwatchTarget::Tab3 => 2,
-            SwatchTarget::Tab4 => 3,
-        }
-    }
-}
-fn update_swatches(
-    mut cmds: Commands,
-    swatches: Option<ResMut<Swatches>>,
-    changed: Query<(Entity, &SwatchMarker), Changed<SwatchMarker>>,
-) {
-    if changed.is_empty() {
-        return;
-    }
-    if let Some(mut swatches) = swatches {
-        for (entity, swatch) in &changed {
-            match swatch {
-                SwatchMarker::Root => swatches.root = entity,
-                SwatchMarker::SettingsSubmenu => swatches.settings_submenu = entity,
-            }
-        }
-    } else {
-        let placeholder = Entity::PLACEHOLDER;
-        let mut swatches = Swatches { root: placeholder, settings_submenu: placeholder };
-        for (entity, swatch) in &changed {
-            match swatch {
-                SwatchMarker::Root => swatches.root = entity,
-                SwatchMarker::SettingsSubmenu => swatches.settings_submenu = entity,
-            }
-        }
-        cmds.insert_resource(swatches);
-    }
-}
-
-fn enable_swatch(
-    target_path: &[Entity],
-    swatches: &Swatches,
-    swatches_query: &mut Query<&mut Swatch>,
-    swatch_targets: &Query<&SwatchTarget>,
-) {
-    use SwatchTarget::{Display, Root, Settings, Sound, Tab3, Tab4};
-
-    if matches!(swatch_targets.get(target_path[0]), Ok(&Settings)) {
-        let mut swatch = swatches_query.get_mut(swatches.root).unwrap();
-        swatch.set_shown(0);
-    }
-    for target in swatch_targets.iter_many(&target_path[1..]) {
-        let index = target.index();
-        match target {
-            Root | Settings => {
-                let mut swatch = swatches_query.get_mut(swatches.root).unwrap();
-                swatch.set_shown(index);
-            }
-            Display | Sound | Tab3 | Tab4 => {
-                let mut swatch = swatches_query.get_mut(swatches.settings_submenu).unwrap();
-                swatch.set_shown(index);
             }
         }
     }
@@ -246,40 +171,49 @@ fn quit_game_button(
 #[allow(clippy::explicit_iter_loop)] // bad lint: https://github.com/bevyengine/bevy/pull/9583
 fn switch_swatch(
     mut nav_events: EventReader<NavEvent>,
-    swatches: Res<Swatches>,
-    mut swatches_query: Query<&mut Swatch>,
-    swatch_targets: Query<&SwatchTarget>,
+    mut switch_tab: EventWriter<SwitchTab>,
+    mut switch_root: EventWriter<SwitchRoot>,
+    switch_root_buttons: Query<&RootButton>,
+    switch_tab_buttons: Query<&TabButton>,
 ) {
-    for ev in nav_events.iter() {
-        debug!("event: {ev:?}");
-        let NavEvent::FocusChanged { to, .. } = ev else {
+    for event in nav_events.iter() {
+        let NavEvent::FocusChanged { to, .. } = event else {
             continue;
         };
-        enable_swatch(to, &swatches, &mut swatches_query, &swatch_targets);
+        let (head, trail) = to.split_first();
+        if matches!(switch_root_buttons.get(*head), Ok(RootButton(1))) {
+            switch_root.send(SwitchRoot(0));
+        }
+        if let Some(button) = switch_root_buttons.iter_many(trail).next() {
+            switch_root.send(SwitchRoot(button.0));
+        }
+        if let Some(button) = switch_tab_buttons.iter_many(trail).next() {
+            switch_tab.send(SwitchTab(button.0));
+        }
     }
 }
 
 pub struct Plugin;
 impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<InputState>()
-            .register_type::<SwatchTarget>()
-            .register_type::<SwatchMarker>()
-            .register_type::<InputSource>()
-            .register_type::<InputState>()
-            .register_type::<QuitGame>()
-            .add_systems(
-                Update,
+        app.add_plugins((
+            SwitchPlugin::<RootButton>::new(),
+            SwitchPlugin::<TabButton>::new(),
+        ))
+        .init_resource::<InputState>()
+        .register_type::<InputState>()
+        .register_type::<QuitGame>()
+        .add_systems(
+            Update,
+            (
+                (quit_game_button, switch_swatch.after(NavRequestSystem)),
                 (
-                    update_swatches,
-                    quit_game_button,
-                    switch_swatch.run_if(resource_exists::<Swatches>()).after(NavRequestSystem),
-                    (
-                        (highlight_focused.after(NavRequestSystem), highlight_hovered),
-                        clear_unused_input,
-                    )
-                        .chain(),
-                ),
-            );
+                    change_input_state,
+                    (highlight_focused.after(NavRequestSystem), highlight_hovered),
+                    clear_unused_input,
+                )
+                    .chain(),
+            ),
+        );
     }
 }

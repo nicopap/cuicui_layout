@@ -1,6 +1,6 @@
 // The settings menu
-fn tab_button(name, target) {
-    Entity(named(name) focusable rules(2*, 2*) style(TabButton) row swatch_target(target)) {
+fn tab_button(name, index) {
+    Entity(named(name) focusable rules(2*, 2*) style(TabButton) row swatch_target(index, Tabs)) {
         Entity(text(name) style(TabText))
     }
 }
@@ -35,23 +35,25 @@ SettingsMenu(
     // The header consists of (1) the "RETURN" button (2) each individual tab
     Header(row width(100%) height(10%) main_margin(50)) {
         Entity(column rules(100%, 100%)) {
-            TabButtons(row rules(100%, 99%)) {
-                RETURN(cancel text("RETURN") width(19.9%) style(BackText))
+            TabButtons(row rules(100%, 99%) distrib_end) {
+                RETURN(cancel text("RETURN (b)") swatch_target(0, Roots) rules(1*, 1*) style(BackText))
                 TabBar(row width(79.9%) main_margin(100)) {
-                    tab_button!("DISPLAY", Display)
-                    tab_button!("SOUND", Sound)
-                    tab_button!("TAB 3", Tab3)
-                    tab_button!("TAB 4", Tab4)
+                    LB(text("(LB)"))
+                    tab_button!("DISPLAY", 0)
+                    tab_button!("SOUND", 1)
+                    tab_button!("TAB 3", 2)
+                    tab_button!("TAB 4", 3)
+                    RB(text("(RB)"))
                 }
             }
             TabLineSeparator(bg(rgb(255, 98, 81)) rules(100%, 0.99%))
         }
     }
     // all tabs are actually loaded, but only one is shown at the same time
-    // The logic is implemented by show_menus::Plugin.
-    // Here, the `swatch_name` method inserts a SwatchBuilder component that
+    // The logic is implemented in `examples/cuicui_examples/switch.rs`
+    // Here, the `settings_tabs` method inserts ui_events::Tabs marker component that
     // triggers the behaviors implemented by show_menus::Plugin
-    AllTabs(layout(">oSaS") main_margin(130) cross_margin(50) swatch_name(SettingsSubmenu) rules(100%, 90%)) {
+    AllTabs(layout(">oSaS") main_margin(130) cross_margin(50) settings_tabs rules(100%, 90%)) {
         DisplayMenu(column menu("DISPLAY") rules(100%, 1.5*) layout("vdSaC")) {
             settings_header!("Display")
             "Window mode"(options(Choice(["Windowed","Borderless"])) row rules(100%,1*) settings_row)
@@ -60,19 +62,19 @@ SettingsMenu(
             "Resolution"(options(Choice(["1920x1080","1280x720","720x720"])) row rules(100%,1*) settings_row)
             "Profiler Overlay"(options(Toggle) row rules(100%,1*) settings_row)
         }
-        SoundMenu(column menu("SOUND") rules(100%, 1.5*) layout("vdSaC")) {
+        SoundMenu(column menu("SOUND") rules(100%, 1.5*) layout("vdSaC") hidden) {
             settings_header!("Audio Settings")
             // TODO(feat): add Interaction & Focusable to this
             "Master volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
             "Effects volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
             "Music volume"(options(Increments(9)) row rules(100%, 1*) settings_row)
         }
-        Tab3Menu(column menu("TAB 3") rules(100%, 1.5*) layout("vdSaC")) {
+        Tab3Menu(column menu("TAB 3") rules(100%, 1.5*) layout("vdSaC") hidden) {
             settings_header!("Tab 3")
             "Sound effect 1"(options(Click) row rules(100%, 1*) settings_row)
             "Sound effect 2"(options(Click) row rules(100%, 1*) settings_row)
         }
-        Tab4Menu(column menu("TAB 4") rules(100%, 1.5*) layout("vdSaC")) {
+        Tab4Menu(column menu("TAB 4") rules(100%, 1.5*) layout("vdSaC") hidden) {
             settings_header!("Tab 4")
             "Fine grained clicking"(options(Increments(30)) row rules(100%, 1*) settings_row)
             "UI highlight color"(settings_row row rules(100%,1*) options(Choice([

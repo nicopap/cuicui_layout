@@ -43,6 +43,7 @@ pre-release-replacements = [
   {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../sprite/README.md"},
   {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../examples/simple_menu/README.md"},
   {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../examples/chirp_menu/README.md"},
+  {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../examples/custom_dsl/README.md"},
   {search="\\| 0.11 \\| [0-9.]* \\|",replace="| 0.11 | {{version}} |",file="../README.md"},
   {search="\\| 0.11 \\| [0-9.]* \\|",replace="| 0.11 | {{version}} |",file="../the_book/introduction.md"},
   {search="cuicui_layout = .*",replace="cuicui_layout = \"{{version}}\"",file="../the_book/usage.md"},

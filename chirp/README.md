@@ -401,6 +401,7 @@ different features than `cuicui_dsl`. Here is a feature matrix:
 |reflection-based methods            |    | ✅ |
 |special syntax for colors, rules    |    | ✅ |
 |lightweight                         | ✅ |    |
+|Allows for non-`Reflect` components | ✅ |    |
 
 You may use `cuicui_dsl` in combination with `cuicui_chirp`, both crates fill
 different niches.

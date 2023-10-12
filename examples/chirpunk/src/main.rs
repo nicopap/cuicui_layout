@@ -9,7 +9,6 @@ use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 
 use animate::button_shift;
-use show_menus::Swatch;
 use ui_offset::UiOffset;
 
 /// Animate stuff.
@@ -22,8 +21,6 @@ mod animate;
 mod colormix;
 /// Extensions to the DSL required for the menu.
 mod dsl;
-/// Handle Showing & hidding menus & submenus
-mod show_menus;
 /// Runtime style controls.
 ///
 /// Basically all color, fonts and animations are defined in this module. Since
@@ -37,25 +34,10 @@ mod ui_offset;
 
 type BgColor = BackgroundColor;
 
-#[cfg(feature = "advanced_logging")]
 fn bevy_log_plugin() -> LogPlugin {
-    LogPlugin {
-        level: bevy::log::Level::TRACE,
-        filter: "\
-          cuicui_layout=info,cuicui_layout_bevy_ui=info,\
-          cuicui_chirp=trace,\
-          cuicui_chirp::interpret=trace,\
-          gilrs_core=info,gilrs=info,\
-          naga=info,wgpu=error,wgpu_hal=error,\
-          bevy_app=info,bevy_render::render_resource::pipeline_cache=info,\
-          bevy_render::view::window=info,bevy_ecs::world::entity_ref=info"
-            .to_string(),
-    }
+    cuicui_examples::log_plugin(cfg!(feature = "advanced_logging"))
 }
-#[cfg(not(feature = "advanced_logging"))]
-fn bevy_log_plugin() -> LogPlugin {
-    default()
-}
+
 fn main() {
     App::new()
         .add_plugins((
@@ -64,7 +46,7 @@ fn main() {
                 ..default()
             }),
             (style::Plugin, animate::Plugin, dsl::Plugin),
-            (ui_offset::Plugin, ui_event::Plugin, show_menus::Plugin),
+            (ui_offset::Plugin, ui_event::Plugin),
             cuicui_layout_bevy_ui::Plugin,
             cuicui_chirp::loader::Plugin::new::<dsl::BevypunkDsl>(),
             bevy_ui_navigation::DefaultNavigationPlugins,
@@ -77,7 +59,8 @@ fn main() {
 }
 #[allow(clippy::needless_pass_by_value)] // false positive
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
-    use ui_event::SwatchMarker::Root;
+    use ui_event::Roots;
+    use Visibility::Hidden;
 
     let node = || (Style::default(), Node::default(), SpatialBundle::default());
     let chirp = ChirpBundle::new;
@@ -88,8 +71,8 @@ fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     // TODO(feat): This is a workaround not having single-chirp-entity &
     // not being able to refer to other chirp files within chirp files.
     // This is so bad, it makes me angry.
-    cmds.spawn((Root, Swatch::new(), node(), root_name)).with_children(|cmds| {
+    cmds.spawn((Roots, node(), root_name)).with_children(|cmds| {
         cmds.spawn((node(), chirp(assets.load("menus/main.chirp"))));
-        cmds.spawn((node(), chirp(assets.load("menus/settings.chirp"))));
+        cmds.spawn((node(), chirp(assets.load("menus/settings.chirp")))).insert(Hidden);
     });
 }

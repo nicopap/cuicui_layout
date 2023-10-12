@@ -203,8 +203,8 @@ It's fairly verbose, but currently it's the best approach in bevy.
 
 ### List of items
 
-So in our _Better Factorio_ game, we can _craft_ things. Let's add an inventory
-to see which items we crafted.
+So in our _Better Factorio_ game, we can (apparently?) _craft_ things. Let's
+add an inventory to see which items we crafted.
 
 This also reveals a limitation[^2] in `cuicui_layout`. We want an infinite
 scrollable list of items, but remember, **it is an error for children to overflow

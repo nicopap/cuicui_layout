@@ -2,6 +2,17 @@
 
 [![The Book](https://img.shields.io/badge/The_Cuicui_Book-blue)](https://cuicui.nicopap.ch/introduction.html)
 
+We will now use `cuicui_chirp` to define the UI. To do so, we need to add it
+as a dependency first:
+
+```toml
+[dependencies]
+# previous dependencies
+# ...
+# New dependency:
+cuicui_chirp = "0.10.0"
+```
+
 The app setup requires adding `cuicui_chirp::loader::Plugin::new::<UiDsl>()`,
 we also setup hot reloading by setting the asset plugin.
 

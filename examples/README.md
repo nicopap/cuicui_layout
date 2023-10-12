@@ -20,6 +20,19 @@ A single menu made using `cuicui_dsl`.
 
 A single menu supporting hot reloading made using `cuicui_chirp`.
 
+#### `cuicui_examples`
+
+Library of plugins useful for the more advanced examples.
+
+- `SwitchPlugin`: An event-driven toggle between N children of an entity
+- `MirrorPlugin`: A way to sync `Reflect` components with non-`Reflect` 3rd party components.
+- `HighlightPlugin`: `bevy_mod_picking`-based hover highlight that tries to
+  be smart about color changes.
+
+#### `custom_dsl`
+
+A tabed menu with three different screens
+
 #### `chirpunk`
 
 A clone of the cyberpunk 2077 main menu and settings menu.

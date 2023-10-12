@@ -37,4 +37,7 @@ bevy = { version = "0.11", default-features = false, features = ["bevy_asset", "
 pre-release-replacements = [
   {search="cuicui_chirp/[0-9.]+/",replace="cuicui_chirp/{{version}}/",file="README.md"},
   {search="cuicui_chirp/[0-9.]+/",replace="cuicui_chirp/{{version}}/",file="../layout/README.md"},
+  {search="cuicui_chirp/[0-9.]+/",replace="cuicui_chirp/{{version}}/",file="../examples/chirp_menu/README.md"},
+  {search="cuicui_chirp/[0-9.]+/",replace="cuicui_chirp/{{version}}/",file="../examples/custom_dsl/README.md"},
+  {search="cuicui_chirp = .*",replace="cuicui_chirp = \"{{version}}\"",file="../examples/chirp_menu/README.md"},
 ]

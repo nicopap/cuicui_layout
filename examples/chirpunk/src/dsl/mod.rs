@@ -7,9 +7,8 @@ use cuicui_dsl::{DslBundle, EntityCommands};
 use cuicui_layout_bevy_ui::UiDsl;
 
 use crate::animate::{bloom, main_menu_bg::Animation as BgAnimation};
-use crate::show_menus::Swatch;
 use crate::style;
-use crate::ui_event::{QuitGame, SwatchMarker, SwatchTarget};
+use crate::ui_event::{QuitGame, RootButton, TabButton, Tabs};
 use element::{Element as DslElement, SettingsOption};
 
 /// Elements (hierarchy of entities) used in [`BevypunkDsl`].
@@ -84,6 +83,12 @@ impl fmt::Debug for Arbitrary {
     }
 }
 
+#[derive(Debug, Clone, Copy, Reflect)]
+enum SwitchTarget {
+    Roots,
+    Tabs,
+}
+
 #[allow(clippy::module_name_repetitions)]
 #[derive(Deref, DerefMut, Default, Debug)]
 pub struct BevypunkDsl {
@@ -95,9 +100,10 @@ pub struct BevypunkDsl {
     nav: Navigation,
     animation: Option<BgAnimation>,
     bloom: Option<bloom::Animation>,
-    swatch_target: Option<SwatchTarget>,
-    swatch_name: Option<SwatchMarker>,
-    cancel: bool,
+    switch_index: Option<(u8, SwitchTarget)>,
+    is_cancel: bool,
+    is_settings_tabs: bool,
+    is_hidden: bool,
     arbitrary: Arbitrary,
 }
 #[parse_dsl_impl(delegate = inner)]
@@ -132,12 +138,14 @@ impl BevypunkDsl {
     // crate::show_menu methods
     //
 
-    fn swatch_target(&mut self, swatch: SwatchTarget) {
-        self.swatch_target = Some(swatch);
+    fn swatch_target(&mut self, index: u8, swatch: SwitchTarget) {
+        self.switch_index = Some((index, swatch));
     }
-
-    fn swatch_name(&mut self, swatch: SwatchMarker) {
-        self.swatch_name = Some(swatch);
+    fn settings_tabs(&mut self) {
+        self.is_settings_tabs = true;
+    }
+    fn hidden(&mut self) {
+        self.is_hidden = true;
     }
 
     //
@@ -161,7 +169,7 @@ impl BevypunkDsl {
     }
     fn cancel(&mut self) {
         self.nav.set_cancel();
-        self.cancel = true;
+        self.is_cancel = true;
     }
     fn root_menu(&mut self) {
         let menu = self.nav.get_or_init_menu();
@@ -184,11 +192,13 @@ impl BevypunkDsl {
 impl DslBundle for BevypunkDsl {
     fn insert(&mut self, cmds: &mut EntityCommands) -> Entity {
         let name = self.inner.name.clone().unwrap_or(Cow::Owned(String::new()));
-        if let Some(swatch_target) = self.swatch_target {
-            cmds.insert(swatch_target);
-        }
-        if let Some(swatch_name) = self.swatch_name {
-            cmds.insert((swatch_name, Swatch::new()));
+        match self.switch_index {
+            Some((i, SwitchTarget::Roots)) => cmds.insert(RootButton(i)),
+            Some((i, SwitchTarget::Tabs)) => cmds.insert(TabButton(i)),
+            None => cmds,
+        };
+        if self.is_settings_tabs {
+            cmds.insert(Tabs);
         }
         if let Some(bloom) = self.bloom.take() {
             cmds.insert(bloom);
@@ -199,7 +209,7 @@ impl DslBundle for BevypunkDsl {
         if let Some(style) = self.style.take() {
             style.insert(cmds);
         }
-        if self.cancel {
+        if self.is_cancel {
             cmds.insert(QuitGame);
         }
         for to_add in self.arbitrary.0.drain(..) {
@@ -207,7 +217,11 @@ impl DslBundle for BevypunkDsl {
         }
         self.element.spawn(&name, cmds, self.settings_option.take());
         self.nav.spawn(cmds);
-        self.inner.insert(cmds)
+        let id = self.inner.insert(cmds);
+        if self.is_hidden {
+            cmds.insert(Visibility::Hidden);
+        }
+        id
     }
 }
 
@@ -215,6 +229,8 @@ pub struct Plugin;
 impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
         // Required in order to parse the `options` method argument
-        app.register_type::<SettingsOption>().register_type::<Vec<String>>();
+        app.register_type::<SettingsOption>()
+            .register_type::<Vec<String>>()
+            .register_type::<SwitchTarget>();
     }
 }

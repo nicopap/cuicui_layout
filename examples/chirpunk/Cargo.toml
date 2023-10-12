@@ -19,6 +19,7 @@ bevy-inspector-egui.workspace = true
 # it causes a massive frame drop
 # bevy_mod_picking.workspace = true
 bevy-ui-navigation.workspace = true
+cuicui_examples = { path = "../cuicui_examples" }
 log.workspace = true
 rust-hsluv.workspace = true
 tracing.workspace = true

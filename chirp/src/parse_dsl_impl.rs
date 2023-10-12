@@ -49,6 +49,8 @@
 //! `parse_dsl_impl` also accepts a `parse_dsl` attribute on individual methods
 //! within the `impl` block, see [`parse_dsl_impl::parse_dsl`] for details.
 //!
+//! [`ParseDsl::method`]: crate::ParseDsl::method
+//! [`parse_dsl_impl::parse_dsl`]: parse_dsl
 #![allow(
     unused_variables,
     clippy::missing_const_for_fn,
@@ -56,11 +58,6 @@
 )]
 
 use bevy::{asset::LoadContext, reflect::TypeRegistry, utils::HashMap};
-
-#[cfg(doc)]
-use crate::{parse_dsl::args, *};
-#[cfg(doc)]
-use cuicui_dsl::dsl;
 
 #[doc(hidden)]
 pub struct Generics;
@@ -135,6 +132,9 @@ pub fn cuicui_chirp_path(alternate_path: Path) {}
 ///     // ...
 /// # }
 /// ```
+///
+/// [`ParseDsl::method`]: crate::ParseDsl::method
+/// [`dsl!`]: cuicui_dsl::dsl
 pub fn delegate(inner_field: Ident) {}
 
 /// Use a custom set of type bounds on the `impl` blocks generics.
@@ -204,6 +204,13 @@ pub fn set_params(explicit_trait_bounds: Generics) {}
 ///     pub fn color_and_rule(&mut self, color: Color, rule: Rule) {}
 ///     // ...
 /// # }
+/// ```
+///
+/// [`parse_dsl::args`]: crate::parse_dsl::args
+/// [`args::to_handle`]: crate::parse_dsl::args::to_handle
+/// [`args::quoted`]: crate::parse_dsl::args::quoted
+/// [`args::from_str`]: crate::parse_dsl::args::from_str
+/// [`args::from_reflect`]: crate::parse_dsl::args::from_reflect
 pub fn type_parsers<T, E, F>(overwrite_parsers: HashMap<Ident, F>)
 where
     E: Into<anyhow::Result<T>>,

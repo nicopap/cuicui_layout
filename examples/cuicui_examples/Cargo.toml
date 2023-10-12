@@ -1,19 +1,13 @@
 [package]
-name = "custom_dsl"
-description = "How to define your own DslBundle, ParseDsl, and use it"
+name = "cuicui_examples"
+description = "Common code between cuicui examples"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 publish = false
 
-[features]
-default = []
-advanced_logging = []
-
 [dependencies]
-bevy-inspector-egui.workspace = true
 bevy_mod_picking.workspace = true
-cuicui_examples = { path = "../cuicui_examples" }
 cuicui_dsl.workspace = true
 cuicui_chirp.workspace = true
 cuicui_layout_bevy_ui.workspace = true

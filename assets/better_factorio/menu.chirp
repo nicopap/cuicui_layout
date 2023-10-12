@@ -1,0 +1,75 @@
+// ANCHOR: tab
+fn tab(menu_name, menu_index, color) {
+    Entity(row rules(1.1*, 100%) named(menu_name)) {
+        TabSurface(highlight switch_tab(menu_index) row rules(1.1*, 100%) bg(color)) {
+            TabText(text(menu_name))
+        }
+    }
+}
+// ANCHOR: print_button ANCHOR_END: tab
+fn print_button(button_text) {
+    Entity(print_text(button_text) highlight row rules(1.1*, 2*) named(button_text) bg(brown)) {
+        ButtonText(text(button_text))
+    }
+}
+// ANCHOR_END: print_button ANCHOR: production
+fn production_button(button_text) {
+    Entity(layout(">dSaC") named(button_text) rules(100%, 1.5*) bg(#6b4d22) highlight) {
+        Entity(text(button_text))
+    }
+}
+fn production_menu() {
+    ProductionMenu(row rules(100%, 90%) main_margin(30)) {
+        TypesColumn(layout("vdSaS") rules(19%, 100%)) {
+            production_button!(Electricity)(switch_graph(0) bg(burlywood))
+            production_button!(Water usage)(switch_graph(1))
+            production_button!(Polution)(switch_graph(2))
+        }
+        Entity(rules(0.5%, 90%) bg(brown))
+        TypesGraph(layout(">oCaC") rules(80%, 100%) marked(Graphs)) {
+            Electricity(image("better_factorio/elect_graph.png") width(100%))
+            WaterUsage(image("better_factorio/water_graph.png") hidden width(100%))
+            Polution(image("better_factorio/pollution_graph.png") hidden height(100%))
+        }
+    }
+}
+// ANCHOR: diplomacy ANCHOR_END: production
+fn diplomacy_menu() {
+    DiplomacyMenu(column rules(100%, 90%)) {
+        print_button!("Start war")
+        print_button!("End war")
+        print_button!("Marry Someone")
+        print_button!("Launch Missiles")
+    }
+}
+// ANCHOR_END: diplomacy ANCHOR: game_menu
+fn game_menu() {
+    GameMenu(column rules(100%, 100%)) {
+        Entity(height(0%))
+        print_button!("Resume game")
+        print_button!("Mute/Unmute")
+        print_button!("Save game")
+        print_button!("Quit")
+        Entity(height(0%))
+    }
+}
+// ANCHOR_END: game_menu ANCHOR: root
+// ANCHOR: root_methods
+Root(row screen_root margins(25, 25) image("background.jpg")) {
+    Menus(column rules(100%, 100%)) {
+    // ANCHOR_END: root_methods ANCHOR: tabs
+        Tabs(row rules(100%, 12.5%) distrib_start) {
+            tab!("Game Menu", 0, burlywood)
+            tab!("Production Menu", 1, #6b4d22)
+            tab!("Diplomacy Menu", 2, #6b4d22)
+        }
+        // ANCHOR_END: tabs ANCHOR: menu
+        Menu(layout(">oCaC") rules(100%, 87.5%) marked(Tabs) bg(burlywood)) {
+            game_menu!()
+            production_menu!()(hidden)
+            diplomacy_menu!()(hidden)
+        }
+        // ANCHOR_END: menu
+    }
+}
+// ANCHOR_END: root
