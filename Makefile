@@ -37,6 +37,8 @@ pre-hook:
 	cargo test --package cuicui_dsl --features test_and_doc
 	cargo test --package cuicui_chirp --features test_and_doc
 	cargo test --workspace --exclude cuicui_dsl
+	cargo test --package dsl_and_chirp --features 'cuicui_chirp/more_unsafe'
+	cargo test --package dsl_and_chirp
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps
 	cargo clippy --workspace $(CLIPPY_ARGS)
 	cargo fmt --all -- --check
