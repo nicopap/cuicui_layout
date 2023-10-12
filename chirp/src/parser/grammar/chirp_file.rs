@@ -150,7 +150,7 @@ fn add_spawn(name: Option<u32>, input: &mut Input, builder: &mut AstBuilder) -> 
 struct Method;
 impl AddNodes for Method {
     fn add_node(input: &mut Input, builder: &mut AstBuilder) -> BlockResult {
-        // Note: header crated after name so that we don't create it when closing method zone
+        // Note: header created after name so that we don't create it when closing method zone
         let name = ident.parse_next(input)?;
         let header = builder.reserve_header();
 
