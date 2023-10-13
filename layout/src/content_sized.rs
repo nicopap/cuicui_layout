@@ -20,7 +20,7 @@ use bevy::ecs::schedule::SystemSetConfig;
 use bevy::ecs::system::{assert_is_system, StaticSystemParam, SystemParam};
 use bevy::log::{debug, error, trace};
 use bevy::prelude::{Name, Parent};
-use bevy_mod_sysfail::{sysfail, FailureMode, LogLevel};
+use bevy_mod_sysfail::{sysfail, FailureMode};
 use thiserror::Error;
 
 use crate::direction::Axis;
@@ -48,15 +48,6 @@ enum Why<T> {
 impl<T> FailureMode for Why<T> {
     type ID = ();
     fn identify(&self) {}
-    fn log_level(&self) -> LogLevel {
-        match self {
-            Self::Nan(_, _) | Self::Orphan(_) => LogLevel::Error,
-            Self::CyclicRule | Self::_Ignore(..) => LogLevel::Silent,
-        }
-    }
-    fn display(&self) -> Option<String> {
-        Some(self.to_string())
-    }
 }
 
 /// Extends [`App`] to support adding [`ComputeContentSize`].

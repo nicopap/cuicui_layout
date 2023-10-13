@@ -19,7 +19,7 @@ repository = "https://github.com/nicopap/cuicui_layout"
 
 [workspace.dependencies]
 anyhow = "1.0.72"
-bevy_mod_sysfail = "3"
+bevy_mod_sysfail = "4.3.0"
 # TODO make this optional as well
 css-color = "0.2.5"
 # TODO make this optional, only used in debug module of cuicui_layout
