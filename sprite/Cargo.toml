@@ -14,7 +14,7 @@ repository.workspace = true
 default = ["sprite_text", "reflect", "chirp"]
 reflect = ["cuicui_layout/reflect"]
 sprite_text = []
-chirp = ["cuicui_layout/chirp", "cuicui_chirp"]
+chirp = ["cuicui_layout/chirp", "cuicui_chirp", "reflect"]
 
 [dependencies]
 bevy_mod_sysfail.workspace = true
