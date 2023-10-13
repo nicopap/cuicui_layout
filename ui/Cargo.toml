@@ -15,7 +15,7 @@ default = ["debug_bevy_ui", "reflect", "chirp"]
 debug_bevy_ui = ["cuicui_layout/debug_bevy_ui"]
 reflect = ["cuicui_layout/reflect"]
 ## Enable chirp ParseDsl implementation
-chirp = ["cuicui_chirp", "cuicui_layout/chirp"]
+chirp = ["cuicui_chirp", "cuicui_layout/chirp", "reflect"]
 
 [dependencies]
 bevy_mod_sysfail.workspace = true
