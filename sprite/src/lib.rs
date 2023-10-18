@@ -19,7 +19,6 @@ use bevy::prelude::{Camera, Camera2dBundle, OrthographicProjection, Transform, V
 use bevy::render::view::{Layer, RenderLayers};
 use bevy::utils::default;
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::content_sized::AppContentSizeExt;
 use cuicui_layout::{LayoutRect, LayoutRootCamera, Root, ScreenRoot};
 
 pub use dsl::SpriteDsl;
@@ -146,15 +145,16 @@ impl BevyPlugin for Plugin {
         use bevy::prelude::Update;
         use cuicui_layout::ComputeLayoutSet;
 
-        app.add_plugins(cuicui_layout::Plugin)
-            .add_content_sized::<content_sized::SpriteContentSize>()
-            .add_systems(
-                Update,
-                (
-                    (update_layout_camera_root, set_added_layout_camera_root)
-                        .before(ComputeLayoutSet),
-                    update_layout_transform.after(ComputeLayoutSet),
-                ),
-            );
+        app.add_plugins((
+            cuicui_layout::Plugin,
+            content_sized::SpriteContentSizePlugin,
+        ))
+        .add_systems(
+            Update,
+            (
+                (update_layout_camera_root, set_added_layout_camera_root).before(ComputeLayoutSet),
+                update_layout_transform.after(ComputeLayoutSet),
+            ),
+        );
     }
 }

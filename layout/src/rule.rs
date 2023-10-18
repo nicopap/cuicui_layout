@@ -1,11 +1,11 @@
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
-use bevy::ecs::prelude::Entity;
+use bevy::ecs::prelude::{Component, Entity};
 #[cfg(feature = "reflect")]
-use bevy::prelude::Reflect;
+use bevy::prelude::{Reflect, ReflectComponent};
 use thiserror::Error;
 
-use crate::error::Computed;
+use crate::Size;
 
 /// A constraint on an axis of containers.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -96,26 +96,27 @@ impl LeafRule {
     #[cfg(feature = "dsl")]
     pub(crate) const fn from_rule(rule: Option<Rule>) -> Self {
         match rule {
-            // TODO(err)
-            Some(Rule::Children(_)) | None => Self::Content(0.),
+            None => Self::Content_(1.0),
+            Some(Rule::Children(v)) => Self::Content_(v),
             Some(Rule::Fixed(v)) => Self::Fixed(v),
             Some(Rule::Parent(v)) => Self::Parent(v),
         }
     }
     /// Compute effective size, given a potentially set parent container size.
-    pub(crate) fn inside(self, parent_size: Computed) -> Result<f32, Entity> {
-        use LeafRule::{Content, Fixed};
+    pub(crate) fn inside(self, parent_size: Computed, content: Option<f32>) -> Option<f32> {
+        use LeafRule::{Content_, Fixed};
         match (self, parent_size) {
-            (Self::Parent(ratio), Computed::Valid(value)) => Ok(value * ratio),
-            (Self::Parent(_), Computed::ChildDefined(_, parent)) => Err(parent),
-            (Fixed(fixed) | Content(fixed), _) => Ok(fixed),
+            (Self::Parent(ratio), Computed::Valid(value)) => Some(value * ratio),
+            (Self::Parent(_), Computed::ChildDefined(_, _)) => None,
+            (Fixed(fixed), _) => Some(fixed),
+            (Content_(ratio), _) => content.map(|px_size| px_size * ratio),
         }
     }
 
     pub(crate) const fn parent_rule(self) -> Option<f32> {
         match self {
             Self::Parent(ratio) => Some(ratio),
-            Self::Fixed(_) | Self::Content(_) => None,
+            Self::Fixed(_) | Self::Content_(_) => None,
         }
     }
 }
@@ -127,14 +128,14 @@ impl Rule {
         }
     }
     /// Compute effective size, given a potentially set parent container size.
-    pub(crate) fn inside(self, parent_size: Computed, this: Entity) -> Result<Computed, Entity> {
+    pub(crate) fn inside(self, parent_size: Computed, this: Entity) -> Option<Computed> {
         use Computed::{ChildDefined, Valid};
         match (self, parent_size) {
-            (Self::Parent(ratio), Valid(value)) => Ok(Valid(value * ratio)),
-            (Self::Parent(_), ChildDefined(_, parent)) => Err(parent),
-            (Self::Fixed(fixed), _) => Ok(Valid(fixed)),
-            (Self::Children(ratio), ChildDefined(_, parent)) => Ok(ChildDefined(ratio, parent)),
-            (Self::Children(ratio), _) => Ok(ChildDefined(ratio, this)),
+            (Self::Parent(ratio), Valid(value)) => Some(Valid(value * ratio)),
+            (Self::Parent(_), ChildDefined(_, parent)) => None,
+            (Self::Fixed(fixed), _) => Some(Valid(fixed)),
+            (Self::Children(ratio), ChildDefined(_, parent)) => Some(ChildDefined(ratio, parent)),
+            (Self::Children(ratio), _) => Some(ChildDefined(ratio, this)),
         }
     }
 }
@@ -152,14 +153,63 @@ pub enum LeafRule {
 
     /// The box's size on given axis is dependent on its content.
     ///
-    /// The `f32` is populated by a system added by [`add_content_sized`].
-    /// This will otherwise act pretty much like [`Self::Fixed`].
+    /// The `f32` is the relative sized compared to the content, it works similarly
+    /// to [`Rule::Children`].
     ///
-    /// [`add_content_sized`]: crate::content_sized::AppContentSizeExt::add_content_sized
-    Content(f32),
+    /// The size is read from the [`ContentSized`] component.
+    Content_(f32),
 }
 impl Default for LeafRule {
     fn default() -> Self {
         Self::Parent(1.)
+    }
+}
+
+/// The set size of content of a node with a content-sized rule.
+///
+/// Content-sized rules are rules that depends on content of a node, be it
+/// text, images, or any user-defined things.
+///
+/// This component is added by this crate, other crates are meant to update it
+/// with a meaningfull **fixed** value by adding the modifying system to
+/// [`crate::ContentSizedSet`].
+///
+/// For example, for images, the value should always be the width/height in
+/// pixels of the image, regardless of the actual size of the node.
+#[derive(Clone, Copy, PartialEq, Debug, Component, Default)]
+#[cfg_attr(feature = "reflect", derive(Reflect), reflect(Component))]
+pub struct ContentSized(pub Size<f32>);
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Computed {
+    ChildDefined(f32, Entity),
+    Valid(f32),
+}
+impl Computed {
+    pub(crate) fn with_child(&self, child_size: f32) -> f32 {
+        match self {
+            // TODO: margin
+            Self::ChildDefined(ratio, _) => *ratio * child_size,
+            Self::Valid(size) => *size,
+        }
+    }
+}
+impl From<f32> for Computed {
+    fn from(value: f32) -> Self {
+        Self::Valid(value)
+    }
+}
+impl fmt::Display for Computed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ChildDefined(_, _) => fmt::Display::fmt("<child_size>", f),
+            Self::Valid(value) => fmt::Display::fmt(value, f),
+        }
+    }
+}
+
+impl From<Size<f32>> for Size<Computed> {
+    fn from(Size { width, height }: Size<f32>) -> Self {
+        Self { width: width.into(), height: height.into() }
     }
 }

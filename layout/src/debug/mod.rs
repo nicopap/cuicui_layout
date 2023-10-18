@@ -311,7 +311,7 @@ fn outline_node(
 enum RuleArrow {
     Outward(f32),
     Inward(f32),
-    InwardBare,
+    InwardFlat,
     None,
 }
 impl RuleArrow {
@@ -319,7 +319,7 @@ impl RuleArrow {
         match self {
             Self::Outward(v) => Some((inner, outer, Some(v))),
             Self::Inward(v) => Some((outer, inner, Some(v))),
-            Self::InwardBare => Some((outer, inner, None)),
+            Self::InwardFlat => Some((outer, inner, None)),
             Self::None => None,
         }
     }
@@ -327,7 +327,7 @@ impl RuleArrow {
 impl From<LeafRule> for RuleArrow {
     fn from(value: LeafRule) -> Self {
         match value {
-            LeafRule::Content(_) => Self::InwardBare,
+            LeafRule::Content_(_) => Self::InwardFlat,
             LeafRule::Fixed(_) => Self::None,
             LeafRule::Parent(value) => Self::Outward(value),
         }

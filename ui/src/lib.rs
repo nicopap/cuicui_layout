@@ -56,7 +56,6 @@ use bevy::ecs::prelude::*;
 use bevy::render::camera::Camera;
 use bevy::ui::Style;
 use bevy_mod_sysfail::quick_sysfail;
-use cuicui_layout::content_sized::AppContentSizeExt;
 use cuicui_layout::{LayoutRect, LayoutRootCamera, Root, ScreenRoot};
 
 pub use dsl::UiDsl;
@@ -149,8 +148,7 @@ impl BevyPlugin for Plugin {
         use bevy::ui::UiSystem;
         use cuicui_layout::ComputeLayoutSet;
 
-        app.add_plugins(cuicui_layout::Plugin)
-            .add_content_sized::<content_sized::UiContentSize>()
+        app.add_plugins((cuicui_layout::Plugin, content_sized::UiContentSizePlugin))
             .add_systems(
                 Update,
                 (update_ui_camera_root, set_added_camera_root).before(ComputeLayoutSet),

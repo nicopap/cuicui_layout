@@ -20,128 +20,102 @@
 //!
 //! Also, sizes do not take into account the `Transform` size. I'm not sure how
 //! wishable as a feature this is, so please open an issue if you want it.
+#![allow(clippy::needless_pass_by_value)]
+
 use bevy::ecs::prelude::*;
-use bevy::ecs::{query::QueryItem, schedule::SystemSetConfig, system::SystemParam};
 use bevy::math::Vec3Swizzles;
-use bevy::prelude::{Assets, Handle, Image, Mesh, Vec2};
+use bevy::prelude::{App, Assets, Handle, Image, Mesh, Plugin, Update, Vec2};
 use bevy::sprite::Mesh2dHandle;
 #[cfg(feature = "sprite_text")]
 use bevy::text::{Font, Text, Text2dBounds, TextPipeline};
-use cuicui_layout::content_sized::{
-    ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
-};
-use cuicui_layout::{require_layout_recompute, Node, Size};
+use cuicui_layout::{ContentSized, ContentSizedSet, Node};
 
-#[derive(SystemParam)]
-pub(crate) struct SpriteContentSize<'w> {
-    #[cfg(feature = "sprite_text")]
-    fonts: Res<'w, Assets<Font>>,
-    images: Res<'w, Assets<Image>>,
-    meshes: Res<'w, Assets<Mesh>>,
-}
-impl ComputeContentParam for SpriteContentSize<'static> {
-    #[cfg(feature = "sprite_text")]
-    type Components = AnyOf<(
-        &'static Handle<Image>,
-        &'static Mesh2dHandle,
-        &'static Text,
-        &'static Text2dBounds,
-    )>;
+/// Adjust the [`cuicui_layout`] [`ContentSized`] component based on `bevy_sprite`
+/// sizeable content.
+pub struct SpriteContentSizePlugin;
 
-    #[cfg(not(feature = "sprite_text"))]
-    type Components = AnyOf<(&'static Handle<Image>, &'static Mesh2dHandle)>;
+impl Plugin for SpriteContentSizePlugin {
+    fn build(&self, app: &mut App) {
+        use bevy::ecs::schedule::common_conditions::resource_changed as res;
 
-    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig {
-        use bevy::ecs::schedule::common_conditions as cond;
-
-        #[allow(clippy::needless_pass_by_value)] // `Query` required as a run condition
         fn changed<C: Component>(q: Query<(), (Changed<C>, With<Node>)>) -> bool {
             !q.is_empty()
         }
-
         #[cfg(feature = "sprite_text")]
-        let cond = cond::resource_changed::<Assets<Font>>()
+        let text_cond = res::<Assets<Font>>()
             .or_else(changed::<Text>)
             .or_else(changed::<Text2dBounds>);
-        #[cfg(not(feature = "sprite_text"))]
-        let cond = || true;
 
-        let cond = cond
-            .or_else(cond::resource_changed::<Assets<Image>>())
-            .or_else(cond::resource_changed::<Assets<Mesh>>())
-            .or_else(changed::<Handle<Image>>)
-            .or_else(changed::<Mesh2dHandle>);
-
-        label.run_if(require_layout_recompute.or_else(cond))
+        app.add_systems(
+            Update,
+            (
+                mesh_content_size.run_if(res::<Assets<Mesh>>().or_else(changed::<Mesh2dHandle>)),
+                image_content_size.run_if(res::<Assets<Image>>().or_else(changed::<Handle<Image>>)),
+                #[cfg(feature = "sprite_text")]
+                text_content_size.run_if(text_cond),
+            )
+                .in_set(ContentSizedSet),
+        );
     }
 }
-type OptSize = Size<Option<f32>>;
-impl SpriteContentSize<'_> {
-    #[cfg(feature = "sprite_text")]
-    fn compute_text_size(&self, text: &Text, set_size: OptSize) -> Option<Size<f32>> {
-        let inf = f32::INFINITY;
-        let bounds = Vec2::new(
-            set_size.width.unwrap_or(inf),
-            set_size.height.unwrap_or(inf),
-        );
+
+type QueryContentSize<'w, 's, T, F> = Query<
+    'w,
+    's,
+    (&'static mut ContentSized, &'static T),
+    (Or<(Added<ContentSized>, Changed<T>)>, F),
+>;
+
+fn mesh_content_size(
+    meshes: Res<Assets<Mesh>>,
+    mut query: QueryContentSize<Mesh2dHandle, Without<Handle<Image>>>,
+) {
+    for (mut content_size, mesh) in &mut query {
+        let Some(mesh) = meshes.get(&mesh.0) else {
+            continue;
+        };
+        // TODO(perf): re-use AABB if present on entity
+        let Some(aabb) = mesh.compute_aabb() else {
+            continue;
+        };
+        let size = aabb.half_extents.xy() * 2.;
+        content_size.0 = size.into();
+    }
+}
+
+// TODO(bug): Account for `Sprite::custom_size`, and all sprite fields generally.
+fn image_content_size(
+    images: Res<Assets<Image>>,
+    mut query: QueryContentSize<Handle<Image>, Without<Mesh2dHandle>>,
+) {
+    for (mut content_size, image) in &mut query {
+        let Some(image) = images.get(image) else {
+            continue;
+        };
+        let size = image.size();
+        content_size.0.width = size.x;
+        content_size.0.height = size.y;
+    }
+}
+
+#[cfg(feature = "sprite_text")]
+fn text_content_size(
+    fonts: Res<Assets<Font>>,
+    mut query: QueryContentSize<Text, (Without<Mesh2dHandle>, Without<Handle<Image>>)>,
+) {
+    for (mut content_size, text) in &mut query {
+        let set_size = content_size.0;
+        let bounds = Vec2::from(set_size);
         let measure = TextPipeline::default().create_text_measure(
-            &self.fonts,
+            &fonts,
             &text.sections,
             // Seems like this requires an epsilon, otherwise text wraps poorly.
             1.01,
             text.alignment,
             text.linebreak_behavior,
         );
-        Some(measure.ok()?.compute_size(bounds).into())
-    }
-    // TODO(perf): re-use AABB if present on entity
-    // TODO(bug): preserve aspect ratio
-    fn compute_mesh_size(&self, mesh: &Handle<Mesh>, _set_size: OptSize) -> Option<Size<f32>> {
-        let mesh = self.meshes.get(mesh)?;
-        let aabb = mesh.compute_aabb()?;
-        let size = aabb.half_extents.xy() * 2.;
-        Some(size.into())
-    }
-    // TODO(bug): Account for `Sprite::custom_size`, and all sprite fields generally.
-    fn compute_image_size(&self, image: &Handle<Image>, set_size: OptSize) -> Option<Size<f32>> {
-        let image = self.images.get(image)?;
-        let size = image.size();
-        let size = match (set_size.width, set_size.height) {
-            (None, None) => size,
-            (Some(width), None) => Vec2::new(width, width * size.y / size.x),
-            (None, Some(height)) => Vec2::new(height * size.x / size.y, height),
-            (Some(_), Some(_)) => unreachable!(
-                "This is a bug in cuicui_layout, \
-                the API promises that compute_content is never call with two set values"
-            ),
-        };
-        Some(size.into())
-    }
-}
-impl ComputeContentSize for SpriteContentSize<'_> {
-    #[cfg(feature = "sprite_text")]
-    type Components = AnyOf<(
-        &'static Handle<Image>,
-        &'static Mesh2dHandle,
-        &'static Text,
-        &'static Text2dBounds,
-    )>;
-
-    #[cfg(not(feature = "sprite_text"))]
-    type Components = AnyOf<(&'static Handle<Image>, &'static Mesh2dHandle)>;
-
-    fn compute_content(
-        &self,
-        components: QueryItem<Self::Components>,
-        set_size: OptSize,
-    ) -> Size<f32> {
-        let size = match components {
-            #[cfg(feature = "sprite_text")]
-            (.., Some(text), Some(_)) => self.compute_text_size(text, set_size),
-            (Some(image), ..) => self.compute_image_size(image, set_size),
-            (_, Some(mesh), ..) => self.compute_mesh_size(&mesh.0, set_size),
-            _ => unreachable!("This is a bevy bug"),
-        };
-        size.unwrap_or(Size::ZERO)
+        if let Ok(measure) = measure {
+            content_size.0 = measure.compute_size(bounds).into();
+        }
     }
 }

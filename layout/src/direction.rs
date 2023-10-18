@@ -99,6 +99,14 @@ impl<T> Size<T> {
         Size { width, height }
     }
 }
+impl<T> From<Option<Size<T>>> for Size<Option<T>> {
+    fn from(value: Option<Size<T>>) -> Self {
+        match value {
+            Some(Size { width, height }) => Self::new(Some(width), Some(height)),
+            None => Self::new(None, None),
+        }
+    }
+}
 
 impl<T: Copy> Oriented<T> {
     /// Create an [`Oriented`] for given `main` and `cross` `T`.

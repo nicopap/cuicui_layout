@@ -4,10 +4,10 @@ use bevy::ecs::{component::Tick, prelude::*, system::SystemChangeTick};
 use bevy::prelude::{debug, Children, Name, Parent};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
-use bevy_mod_sysfail::sysfail;
 
+use crate::error::{AnalyzeParam, LayoutEntityError, LayoutEntityErrorKind};
 use crate::layout::{Layout, NodeQuery};
-use crate::{ComputeLayoutError, LayoutRect, Node, Root};
+use crate::{LayoutRect, Node, Root};
 
 /// A [`Node`] that can't have children.
 #[derive(Component, Clone, Copy, Debug, Default)]
@@ -75,30 +75,60 @@ pub fn require_layout_recompute(
     anything_changed || children_removed() || parent_removed()
 }
 
+/// Reads `Vec<LayoutEntityError>` returned by [`compute_layout`] and print
+/// a detailed error message explaining why it happened.
+pub fn analyze_layout_errors(
+    In(errors): In<Result<(), Vec<LayoutEntityError>>>,
+    param: AnalyzeParam,
+) {
+    let Err(errors) = errors else {
+        return;
+    };
+    for error in errors {
+        param.analyze(error);
+    }
+}
 /// Run the layout algorithm.
-#[sysfail(log(level = "error"))]
+///
+/// # Errors
+///
+/// Fails if the layout is invalid. Invalid when:
+/// - The children of a container with a non-child dependent rule occupy more
+///   space than the parent.
+/// - There is a cyclic dependency: a container depends on the size of its children
+///   while at least one of the child depends on the size of the parent.
+/// - A Container's margin is greater than its total size.
 pub fn compute_layout(
     mut to_update: Query<&'static mut LayoutRect>,
     nodes: Query<NodeQuery>,
-    names: Query<&'static Name>,
     roots: Query<(Entity, &'static Root, &'static Children)>,
     mut last_layout_change: ResMut<LastLayoutChange>,
     system_tick: SystemChangeTick,
-) -> Result<(), ComputeLayoutError> {
+) -> Result<(), Vec<LayoutEntityError>> {
     debug!("Computing layout");
     last_layout_change.tick = Some(system_tick.this_run());
+    let mut all_errors = Vec::new();
     for (entity, root, children) in &roots {
-        let root_container = *root.get();
-        let mut bounds = root.get_size(entity, &names)?;
-        let mut layout = Layout::new(entity, &mut to_update, &nodes, &names);
-        bounds.set_margin(root_container.margin, &layout)?;
-        let inner_size = layout.container(root_container, children, bounds)?;
+        let root_container = root.node;
+        let Some(mut bounds) = root.get_size(entity) else {
+            return Err(vec![LayoutEntityErrorKind::InvalidRoot.on(entity)]);
+        };
+        let mut layout = Layout::new(entity, &mut to_update, &nodes);
+        if let Err(err) = bounds.set_margin(root_container.margin, entity) {
+            layout.errors.push(err);
+        }
+        let inner_size = layout.container(root_container, children, bounds);
+        all_errors.extend(layout.errors);
         if let Ok(mut to_update) = to_update.get_mut(entity) {
             to_update.size.width = root_container.margin.width.mul_add(2., inner_size.width);
             to_update.size.height = root_container.margin.height.mul_add(2., inner_size.height);
         }
     }
-    Ok(())
+    if all_errors.is_empty() {
+        Ok(())
+    } else {
+        Err(all_errors)
+    }
 }
 
 /// Whether a [`apply_deferred`] needs to run after the last run of [`update_leaf_nodes`].

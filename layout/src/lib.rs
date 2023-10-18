@@ -30,10 +30,10 @@ pub use cuicui_dsl::{dsl, DslBundle};
 pub use direction::{Flow, Oriented, Size};
 #[cfg(feature = "dsl")]
 pub use dsl::LayoutDsl;
-pub use error::ComputeLayoutError;
-pub use labels::{ComputeLayout, ComputeLayoutSet};
+pub use labels::{ComputeLayout, ComputeLayoutSet, ContentSizedSet};
 pub use layout::{Container, LayoutRect, Node, Root};
-pub use rule::{LeafRule, Rule};
+pub use rule::{ContentSized, LeafRule, Rule};
+use systems::analyze_layout_errors;
 pub use systems::{
     compute_layout, require_layout_recompute, update_leaf_nodes, LastLayoutChange,
     LayoutRootCamera, LeafNode, LeafNodeInsertWitness, ScreenRoot,
@@ -48,7 +48,6 @@ mod rule;
 mod systems;
 
 pub mod bundles;
-pub mod content_sized;
 #[cfg(feature = "debug")]
 pub mod debug;
 #[cfg(feature = "dsl")]
@@ -64,10 +63,10 @@ pub mod dsl_functions {
 ///
 /// This adds:
 /// - [`compute_layout`] system as member of [`ComputeLayout`] and
-///   [`ComputeLayoutSet`].
+///   [`ContentSizedSet`].
 /// - [`ComputeLayout`]: this set only contains `compute_layout`.
 /// - [`ComputeLayoutSet`]: contains `compute_layout` and
-///   [content-sized](content_sized::ComputeContentSize) systems.
+///   [content-sized](ContentSized) systems.
 ///
 /// ## Features
 ///
@@ -79,22 +78,25 @@ impl BevyPlugin for Plugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<LastLayoutChange>()
             .init_resource::<LeafNodeInsertWitness>();
-        let should_update = LeafNodeInsertWitness::new(true);
+        let should_update = resource_exists_and_equals(LeafNodeInsertWitness::new(true));
+
+        let update_leaf_nodes_set =
+            (update_leaf_nodes, apply_deferred.run_if(should_update)).chain();
+
+        let compute_layout = compute_layout.pipe(analyze_layout_errors);
+
+        let compute_layout_set = (apply_deferred, compute_layout)
+            .chain()
+            .run_if(require_layout_recompute)
+            .in_set(ComputeLayout);
+
         app.add_systems(
             Update,
             (
-                compute_layout
-                    .run_if(require_layout_recompute)
-                    .in_set(ComputeLayout)
-                    .in_set(ComputeLayoutSet),
-                (
-                    update_leaf_nodes,
-                    apply_deferred.run_if(resource_exists_and_equals(should_update)),
-                )
-                    .chain()
-                    .in_set(ComputeLayoutSet)
-                    .before(content_sized::ContentSizedComputeSystemSet),
-            ),
+                update_leaf_nodes_set.before(ContentSizedSet),
+                compute_layout_set.after(ContentSizedSet),
+            )
+                .in_set(ComputeLayoutSet),
         );
         #[cfg(feature = "debug")]
         app.add_plugins(debug::Plugin);

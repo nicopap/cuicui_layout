@@ -263,7 +263,7 @@ impl<D: DslBundle> LayoutDsl<D> {
     /// Spawn `ui_bundle`.
     ///
     /// Note that axis without set rules or [`Rule::Children`]
-    /// are considered [content-sized](crate::content_sized::ComputeContentSize).
+    /// are considered [content-sized](crate::ContentSized).
     #[cfg_attr(feature = "chirp", parse_dsl(ignore))]
     pub fn ui<M>(&mut self, ui_bundle: impl IntoUiBundle<M>) {
         let ui_bundle = ui_bundle.into_ui_bundle();

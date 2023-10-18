@@ -1,19 +1,15 @@
 //! The `cuicui_layout` algorithm.
 
-use bevy::ecs::{prelude::*, query::ReadOnlyWorldQuery};
+use bevy::ecs::prelude::*;
 use bevy::log::trace;
-use bevy::prelude::{Children, Name, Vec2};
+use bevy::prelude::{Children, Vec2};
 #[cfg(feature = "reflect")]
 use bevy::prelude::{Reflect, ReflectComponent};
-use bevy::utils::FloatOrd;
 
 use crate::alignment::{Alignment, Distribution};
 use crate::direction::{Flow, Oriented, Size};
-use crate::error::{self, Computed, Handle, Relative};
-use crate::rule::{LeafRule, Rule};
-
-const WIDTH: Flow = Flow::Horizontal;
-const HEIGHT: Flow = Flow::Vertical;
+use crate::error::{LayoutEntityError, LayoutEntityErrorKind};
+use crate::rule::{Computed, ContentSized, LeafRule, Rule};
 
 /// Position and size of a [`Node`] as computed by the layouting algo.
 ///
@@ -40,13 +36,14 @@ impl LayoutRect {
     }
 }
 
-impl<T> Size<Result<T, Entity>> {
+impl<T> Size<Option<T>> {
     /// Go from a `Size<Result<T, Entity>>` to a `Result<Size<T>, error::Why>`.
     /// Assumes the error is a [`error::Why::CyclicRule`].
-    fn transpose(self, queries: &Layout<impl ReadOnlyWorldQuery>) -> Result<Size<T>, error::Why> {
-        let err = |flow, e: Entity| error::Why::bad_rule(flow, e, queries);
-        let width = self.width.map_err(|e| err(WIDTH, e))?;
-        let height = self.height.map_err(|e| err(HEIGHT, e))?;
+    fn transpose(self, this: Entity) -> Result<Size<T>, LayoutEntityError> {
+        let err = LayoutEntityErrorKind::CyclicRule.on(this);
+
+        let width = self.width.ok_or(err)?;
+        let height = self.height.ok_or(err)?;
         Ok(Size { width, height })
     }
 }
@@ -63,41 +60,25 @@ impl Size<Computed> {
     pub(crate) fn set_margin(
         &mut self,
         margin: Size<f32>,
-        queries: &Layout<impl ReadOnlyWorldQuery>,
-    ) -> Result<(), error::Why> {
+        this: Entity,
+    ) -> Result<(), LayoutEntityError> {
+        use LayoutEntityErrorKind::{NegativeMargin, TooMuchMargin};
+
         if let Computed::Valid(width) = &mut self.width {
             if *width < 2. * margin.width {
-                return Err(error::Why::TooMuchMargin {
-                    this: Handle::of(queries),
-                    axis: WIDTH,
-                    margin: margin.width,
-                    this_size: *width,
-                });
+                return Err(TooMuchMargin.on(this));
             }
             if margin.width.is_sign_negative() {
-                return Err(error::Why::NegativeMargin {
-                    this: Handle::of(queries),
-                    axis: WIDTH,
-                    margin: margin.width,
-                });
+                return Err(NegativeMargin.on(this));
             }
             *width -= 2. * margin.width;
         }
         if let Computed::Valid(height) = &mut self.height {
             if *height < 2. * margin.height {
-                return Err(error::Why::TooMuchMargin {
-                    this: Handle::of(queries),
-                    axis: HEIGHT,
-                    margin: margin.height,
-                    this_size: *height,
-                });
+                return Err(TooMuchMargin.on(this));
             }
             if margin.height.is_sign_negative() {
-                return Err(error::Why::NegativeMargin {
-                    this: Handle::of(queries),
-                    axis: HEIGHT,
-                    margin: margin.height,
-                });
+                return Err(NegativeMargin.on(this));
             }
             *height -= 2. * margin.height;
         }
@@ -107,22 +88,26 @@ impl Size<Computed> {
     fn container_size(
         self,
         Container { rules, margin, .. }: &Container,
-        queries: &Layout<impl ReadOnlyWorldQuery>,
-    ) -> Result<Self, error::Why> {
+        this: Entity,
+    ) -> Result<Self, LayoutEntityError> {
         let bounds = Size {
-            width: rules.width.inside(self.width, queries.this),
-            height: rules.height.inside(self.height, queries.this),
+            width: rules.width.inside(self.width, this),
+            height: rules.height.inside(self.height, this),
         };
-        let mut bounds = bounds.transpose(queries)?;
-        bounds.set_margin(*margin, queries)?;
+        let mut bounds = bounds.transpose(this)?;
+        bounds.set_margin(*margin, this)?;
 
         Ok(bounds)
     }
 
-    fn leaf_size(self, Size { width, height }: Size<LeafRule>) -> Size<Result<f32, Entity>> {
+    fn leaf_size(
+        self,
+        Size { width, height }: Size<LeafRule>,
+        content: Size<Option<f32>>,
+    ) -> Size<Option<f32>> {
         Size {
-            width: width.inside(self.width),
-            height: height.inside(self.height),
+            width: width.inside(self.width, content.width),
+            height: height.inside(self.height, content.height),
         }
     }
 }
@@ -269,23 +254,15 @@ impl Root {
         };
         Size { width, height }
     }
-    pub(crate) fn get_size(
-        &self,
-        entity: Entity,
-        names: &Query<&Name>,
-    ) -> Result<Size<Computed>, error::Why> {
+    pub(crate) fn get_size(&self, entity: Entity) -> Option<Size<Computed>> {
         let to_child_rule = |rule| match rule {
             Rule::Fixed(pixels) => Some(Computed::Valid(pixels)),
             Rule::Children(ratio) => Some(Computed::ChildDefined(ratio, entity)),
             Rule::Parent(_) => None,
         };
-        let Some(width) = to_child_rule(self.node.rules.width) else {
-            return Err(error::Why::invalid_root(WIDTH, entity, names));
-        };
-        let Some(height) = to_child_rule(self.node.rules.height) else {
-            return Err(error::Why::invalid_root(HEIGHT, entity, names));
-        };
-        Ok(Size { width, height })
+        let width = to_child_rule(self.node.rules.width)?;
+        let height = to_child_rule(self.node.rules.height)?;
+        Some(Size { width, height })
     }
     /// Create a new [`Root`] with given parameters.
     #[must_use]
@@ -325,15 +302,28 @@ impl Default for Node {
     }
 }
 impl Node {
-    /// Is this node both terminal and content-sized?
+    /// Is this node content-sized?
     #[must_use]
     pub(crate) const fn content_sized(&self) -> bool {
-        use LeafRule::Content;
+        use LeafRule::Content_;
         matches!(
             self,
-            Self::Box(Size { width: Content(_), .. } | Size { height: Content(_), .. })
+            Self::Box(Size { width: Content_(_), .. } | Size { height: Content_(_), .. })
         )
     }
+    const fn parent_rule(&self, flow: Flow, axis: Flow) -> Option<f32> {
+        match self {
+            Self::Container(Container { rules, .. }) => {
+                axis.relative(rules.as_ref()).main.parent_rule()
+            }
+            Self::Axis(oriented) => {
+                let rules = flow.absolute(oriented.as_ref());
+                axis.relative(rules).main.parent_rule()
+            }
+            Self::Box(rules) => axis.relative(rules.as_ref()).main.parent_rule(),
+        }
+    }
+
     /// A [`Node`] occupying `value%` of it's parent container on the main axis.
     ///
     /// Returns `None` if `value` is not between 0 and 100.
@@ -357,24 +347,17 @@ impl Node {
     pub fn fixed(size: Size<f32>) -> Self {
         Self::Box(size.map(LeafRule::Fixed))
     }
-    const fn parent_rule(&self, flow: Flow, axis: Flow) -> Option<f32> {
-        match self {
-            Self::Container(Container { rules, .. }) => {
-                axis.relative(rules.as_ref()).main.parent_rule()
-            }
-            Self::Axis(oriented) => {
-                let rules = flow.absolute(oriented.as_ref());
-                axis.relative(rules).main.parent_rule()
-            }
-            Self::Box(rules) => axis.relative(rules.as_ref()).main.parent_rule(),
-        }
-    }
 }
 
 /// [`WorldQuery`] item used by the layout function.
 ///
 /// [`WorldQuery`]: bevy::ecs::query::WorldQuery
-pub(crate) type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
+pub(crate) type NodeQuery = (
+    Entity,
+    &'static Node,
+    Option<&'static ContentSized>,
+    Option<&'static Children>,
+);
 
 /// The layouting algorithm's inner state.
 ///
@@ -389,22 +372,21 @@ pub(crate) type NodeQuery = (Entity, &'static Node, Option<&'static Children>);
 ///    (It is also necessary to know each child's size to place them next to each-other)
 ///
 /// Done.
-pub struct Layout<'a, 'w, 's, F: ReadOnlyWorldQuery> {
+pub struct Layout<'a, 'w, 's, 'ww, 'ss> {
     // This container's entity
     pub(crate) this: Entity,
-    pub(crate) to_update: &'a mut Query<'w, 's, &'static mut LayoutRect, F>,
-    pub(crate) nodes: &'a Query<'w, 's, NodeQuery, F>,
-    pub(crate) names: &'a Query<'w, 's, &'static Name>,
+    pub(crate) to_update: &'a mut Query<'w, 's, &'static mut LayoutRect>,
+    pub(crate) nodes: &'a Query<'ww, 'ss, NodeQuery>,
+    pub(crate) errors: Vec<LayoutEntityError>,
 }
 
-impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
+impl<'a, 'w, 's, 'ww, 'ss> Layout<'a, 'w, 's, 'ww, 'ss> {
     pub(crate) fn new(
         this: Entity,
-        to_update: &'a mut Query<'w, 's, &'static mut LayoutRect, F>,
-        nodes: &'a Query<'w, 's, NodeQuery, F>,
-        names: &'a Query<'w, 's, &'static Name>,
+        to_update: &'a mut Query<'w, 's, &'static mut LayoutRect>,
+        nodes: &'a Query<'ww, 'ss, NodeQuery>,
     ) -> Self {
-        Self { this, to_update, nodes, names }
+        Self { this, to_update, nodes, errors: Vec::new() }
     }
 
     /// Compute layout for a [`Container`].
@@ -419,28 +401,42 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         &mut self,
         Container { flow, distrib, align, margin, .. }: Container,
         children: &Children,
-        computed_size: Size<Computed>,
-    ) -> Result<Size<f32>, error::Why> {
+        computed: Size<Computed>,
+    ) -> Size<f32> {
+        use LayoutEntityErrorKind::ContainerOverflow;
+
         let mut child_size = Oriented { main: 0., cross: 0. };
         let mut children_count: u32 = 0;
 
         let this_entity = self.this;
-        for (this, node, children) in self.nodes.iter_many(children) {
+        for (this, node, content, children) in self.nodes.iter_many(children) {
+            let content = content.map(|c| c.0).into();
             self.this = this;
-            let Oriented { main, cross } = self.leaf(node, children, flow, computed_size)?;
+            let (main, cross) = match self.leaf(node, children, flow, content, computed) {
+                Ok(Oriented { main, cross }) => (main, cross),
+                Err(err) => {
+                    self.errors.push(err);
+                    (5., 5.)
+                }
+            };
             child_size.main += main;
             child_size.cross = child_size.cross.max(cross);
             children_count += 1;
         }
         self.this = this_entity;
 
-        let size = flow.relative(computed_size).with_children(child_size);
+        let size = flow.relative(computed).with_children(child_size);
         // TODO(BUG): Warn on cross max exceeds & children dependence
         if !distrib.overlaps() {
-            self.validate_size(children, flow, child_size, size)?;
+            let child_size = flow.absolute(child_size);
+            let size = flow.absolute(size);
+
+            if child_size.width > size.width || child_size.height > size.height {
+                self.errors.push(ContainerOverflow.on(self.this));
+            }
         }
 
-        trace!("Setting offsets of children of {}", Handle::of(self));
+        trace!("Setting offsets of children of {:?}", self.this);
         let single_child = children_count == 1;
         let count = children_count.saturating_sub(1).max(1) as f32;
         let cross_align = align.compute(size);
@@ -455,7 +451,7 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
             );
             space.pos = flow.absolute(offset) + margin;
         }
-        Ok(flow.absolute(size))
+        flow.absolute(size)
     }
 
     fn leaf(
@@ -463,66 +459,33 @@ impl<'a, 'w, 's, F: ReadOnlyWorldQuery> Layout<'a, 'w, 's, F> {
         node: &Node,
         children: Option<&Children>,
         flow: Flow,
+        content: Size<Option<f32>>,
         parent: Size<Computed>,
-    ) -> Result<Oriented<f32>, error::Why> {
+    ) -> Result<Oriented<f32>, LayoutEntityError> {
+        use LayoutEntityErrorKind::ChildlessContainer;
+
         let size = match *node {
             Node::Container(container) => match children {
                 Some(children) => {
                     let margin = container.margin;
-                    let computed_size = parent.container_size(&container, self);
-                    let inner_size = self.container(container, children, computed_size?)?;
+                    let computed = parent.container_size(&container, self.this)?;
+                    let inner_size = self.container(container, children, computed);
                     Size {
                         width: margin.width.mul_add(2., inner_size.width),
                         height: margin.height.mul_add(2., inner_size.height),
                     }
                 }
-                None => return Err(error::Why::ChildlessContainer(Handle::of(self))),
+                None => return Err(ChildlessContainer.on(self.this)),
             },
-            Node::Axis(oriented) => parent.leaf_size(flow.absolute(oriented)).transpose(self)?,
-            Node::Box(size) => parent.leaf_size(size).transpose(self)?,
+            Node::Axis(oriented) => parent
+                .leaf_size(flow.absolute(oriented), content)
+                .transpose(self.this)?,
+            Node::Box(size) => parent.leaf_size(size, content).transpose(self.this)?,
         };
-        trace!("Setting size of {}", Handle::of(self));
+        trace!("Setting size of {:?}", self.this);
         if let Ok(mut to_update) = self.to_update.get_mut(self.this) {
             to_update.size = size;
         }
         Ok(flow.relative(size))
-    }
-
-    fn validate_size(
-        &self,
-        children: &Children,
-        flow: Flow,
-        oriented_child_size: Oriented<f32>,
-        oriented_size: Oriented<f32>,
-    ) -> Result<(), error::Why> {
-        let child_size = flow.absolute(oriented_child_size);
-        let size = flow.absolute(oriented_size);
-
-        if child_size.width <= size.width && child_size.height <= size.height {
-            return Ok(());
-        }
-        let width_too_large = child_size.width > size.width;
-        let axis = if width_too_large { WIDTH } else { HEIGHT };
-        let largest_child = children.iter().max_by_key(|e| {
-            let Ok(LayoutRect { size, .. }) = self.to_update.get(**e) else {
-                return FloatOrd(0.);
-            };
-            FloatOrd(if width_too_large { size.width } else { size.height })
-        });
-        let relative_size = children.iter().filter_map(|e| {
-            let node = self.nodes.get(*e).ok()?;
-            node.1.parent_rule(flow, axis)
-        });
-        let relative_size = relative_size.sum();
-        let largest_child = *largest_child.unwrap();
-        Err(error::Why::ContainerOverflow {
-            this: Handle::of(self),
-            size,
-            axis,
-            node_children_count: u32::try_from(self.nodes.iter_many(children).count()).unwrap(),
-            child_size: axis.relative(child_size).main,
-            largest_child: Handle::of_entity(largest_child, self.names),
-            child_relative_size: Relative::of(axis, flow, relative_size),
-        })
     }
 }
