@@ -9,7 +9,7 @@
   - [Using the dsl macro](../examples/simple_menu/README.md)
   - [Using a chirp file](../examples/chirp_menu/README.md)
   - [Defining your own DSL](../examples/custom_dsl/README.md)
-  - [Reactivity](reactivity.md)
+  - [Reactivity]()
 - [Examples](../examples/README.md)
   - [`chirpunk`](../examples/chirpunk/README.md)
 
