@@ -44,10 +44,10 @@ and `cuicui_layout_bevy_sprite`.
 Please take a look at them to get an idea of the kind of code you need to write.
 
 [`AnyOf`]: https://docs.rs/bevy/0.11/bevy/ecs/prelude/struct.AnyOf.html
-[`AppContentSizeExt::add_content_sized`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/content_sized/trait.AppContentSizeExt.html#tymethod.add_content_sized
-[`ComputeContentParam`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/content_sized/trait.ComputeContentParam.html
-[`ComputeContentParam::Components`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/content_sized/trait.ComputeContentParam.html#associatedtype.Components
-[`ComputeContentParam::condition`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/content_sized/trait.ComputeContentParam.html#tymethod.condition
-[`ComputeContentSize::compute_content`]: https://docs.rs/cuicui_layout/0.10.1/cuicui_layout/content_sized/trait.ComputeContentSize.html#tymethod.compute_content
+[`AppContentSizeExt::add_content_sized`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/content_sized/trait.AppContentSizeExt.html#tymethod.add_content_sized
+[`ComputeContentParam`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/content_sized/trait.ComputeContentParam.html
+[`ComputeContentParam::Components`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/content_sized/trait.ComputeContentParam.html#associatedtype.Components
+[`ComputeContentParam::condition`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/content_sized/trait.ComputeContentParam.html#tymethod.condition
+[`ComputeContentSize::compute_content`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/content_sized/trait.ComputeContentSize.html#tymethod.compute_content
 [`Entity`]: https://docs.rs/bevy/0.11/bevy/ecs/prelude/struct.Entity.html
 [`SystemParam`]: https://docs.rs/bevy/0.11/bevy/ecs/system/trait.SystemParam.html

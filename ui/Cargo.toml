@@ -4,7 +4,7 @@ description = "Integration with bevy_ui for cuicui_layout"
 categories = ["game-development", "gui"]
 keywords = ["bevy", "layout", "ui"]
 readme = "README.md"
-version = "0.10.1"
+version = "0.10.2"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -22,9 +22,9 @@ bevy_mod_sysfail.workspace = true
 css-color.workspace = true
 enumset.workspace = true
 thiserror.workspace = true
-cuicui_chirp = { version = "0.10.1", path = "../chirp", optional = true }
+cuicui_chirp = { version = "0.10.2", path = "../chirp", optional = true }
 cuicui_dsl.workspace = true
-cuicui_layout = { version = "0.10.1", path = "../layout", default-features = false, features = ["dsl"] }
+cuicui_layout = { version = "0.10.2", path = "../layout", default-features = false, features = ["dsl"] }
 bevy = { version = "0.11", default-features = false, features = [
   "bevy_ui", "bevy_text", "bevy_core_pipeline", "bevy_asset", "bevy_render"
 ] }

@@ -301,9 +301,9 @@ that instead.
 
 [`bitflags`]: https://docs.rs/bitflags/latest/bitflags/
 [`cuicui_layout`]: https://docs.rs/crate/cuicui_layout/0.9.0
-[`dsl!`]: https://docs.rs/cuicui_dsl/0.10.1/cuicui_dsl/macro.dsl.html
-[`DslBundle`]: https://docs.rs/cuicui_dsl/0.10.1/cuicui_dsl/trait.DslBundle.html
+[`dsl!`]: https://docs.rs/cuicui_dsl/0.10.2/cuicui_dsl/macro.dsl.html
+[`DslBundle`]: https://docs.rs/cuicui_dsl/0.10.2/cuicui_dsl/trait.DslBundle.html
 [`EntityCommands`]: https://docs.rs/bevy/0.11/bevy/ecs/system/struct.EntityCommands.html
 [`enumset`]: https://docs.rs/enumset/latest/enumset/
-[examples]: https://github.com/nicopap/cuicui_layout/tree/cuicui_dsl-v0.10.1/examples
-[`DslBundle::insert`]: https://docs.rs/cuicui_dsl/0.10.1/cuicui_dsl/trait.DslBundle.html#tymethod.insert
+[examples]: https://github.com/nicopap/cuicui_layout/tree/cuicui_dsl-v0.10.2/examples
+[`DslBundle::insert`]: https://docs.rs/cuicui_dsl/0.10.2/cuicui_dsl/trait.DslBundle.html#tymethod.insert

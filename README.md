@@ -90,7 +90,7 @@ See the [./CHANGELOG.md](./CHANGELOG.md) file.
 
 | bevy | latest supporting version |
 |------|-------|
-| 0.11 | 0.10.1 |
+| 0.11 | 0.10.2 |
 | 0.10 | 0.3.0 |
 
 ## License
