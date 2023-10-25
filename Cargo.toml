@@ -73,9 +73,22 @@ lto = "fat"
 split-debuginfo = "packed"
 debug = 1
 
+# Speed up tests (set opt-level of packages not used in tests so that
+# hopefully cargo re-uses the same artifacts)
+[profile.test.package.bevy_ecs]
+opt-level = 1
+[profile.test.package.bevy_render]
+opt-level = 1
+[profile.test.package.image]
+opt-level = 1
+[profile.test.package.png]
+opt-level = 1
+# Speed up dev
+[profile.dev.package.bevy_ecs]
+opt-level = 1
 [profile.dev.package.bevy_render]
-opt-level = 2
+opt-level = 1
 [profile.dev.package.image]
-opt-level = 2
+opt-level = 1
 [profile.dev.package.png]
-opt-level = 2
+opt-level = 1

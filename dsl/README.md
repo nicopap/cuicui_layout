@@ -73,6 +73,13 @@ fn setup(mut cmds: Commands) {
 }
 ```
 
+> **Documentation**
+>
+> Methods available in the `dsl!` macro are the methods available in the choosen
+> DSL type (in this case, it would be the `MyDsl` methods). Check the documentation
+> page for the corresponding type you are using as DSL. All methods that accept
+> an `&mut self` are candidate.
+
 This seems a bit verbose, that's because you should be using [`cuicui_layout`] and
 not bevy's native layouting algorithm (flexbox) for layouting :)
 

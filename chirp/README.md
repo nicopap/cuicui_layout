@@ -85,6 +85,13 @@ fn main() {
 # }
 ```
 
+> **Documentation**
+>
+> Methods available in `chirp` files are the methods available in the choosen
+> DSL type (in this case, it would be the `UiDsl` methods). Check the documentation
+> page for the corresponding type you are using as DSL. All methods that accept
+> an `&mut self` are candidate.
+
 ### DSL-specific documentation
 
 The identifiers within parenthesis are methods on the [`ParseDsl`].

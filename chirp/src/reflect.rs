@@ -84,7 +84,7 @@ impl Format for RonFormat {
 /// # How to use
 ///
 /// You have a type as follow:
-/// ```
+/// ```no_run
 /// use cuicui_chirp::ReflectDsl;
 /// # use bevy::prelude::*;
 ///
@@ -115,7 +115,7 @@ impl Format for RonFormat {
 /// chirp files.
 ///
 /// In order to do that, you should add the loader for the correct DSL as follow:
-/// ```
+/// ```no_run
 /// use cuicui_chirp::ReflectDsl;
 /// # use bevy::prelude::*;
 ///

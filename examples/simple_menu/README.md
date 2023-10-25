@@ -36,6 +36,13 @@ on the viewport size. So let's spawn the camera with it:
 
 Now let's spawn the menu. The methods available on [`UiDsl`] are listed on `docs.rs`.
 
+> **Documentation**
+>
+> Methods available in the `dsl!` macro are the methods available in the choosen
+> DSL type (in this case, it would be the `UiDsl` methods). Check the documentation
+> page for the corresponding type you are using as DSL. All methods that accept
+> an `&mut self` are candidate.
+
 Since `UiDsl` by default `Deref<Target=LayoutDsl>`, the methods on [`LayoutDsl`] are
 also available.
 

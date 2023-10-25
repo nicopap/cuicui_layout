@@ -20,6 +20,13 @@ we also setup hot reloading by setting the asset plugin.
 {{#include main.rs:app}}
 ```
 
+> **Documentation**
+>
+> Methods available in `chirp` files are the methods available in the choosen
+> DSL type (in this case, it would be the `UiDsl` methods). Check the documentation
+> page for the corresponding type you are using as DSL. All methods that accept
+> an `&mut self` are candidate.
+
 The `setup` system, where we previously spawned the whole scene, is now
 completely trivial, we just spawn a single entity with a `ChirpBundle`.
 

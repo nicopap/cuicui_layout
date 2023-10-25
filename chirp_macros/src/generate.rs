@@ -100,9 +100,9 @@ impl Default for ImplConfig {
     }
 }
 
-impl<'a> ImplConfig {
+impl ImplConfig {
     #[allow(clippy::needless_pass_by_value)] // false positive. Type necessary for calling it
-    pub(crate) fn parse(&mut self, meta: ParseNestedMeta<'a>) -> syn::Result<()> {
+    pub(crate) fn parse(&mut self, meta: ParseNestedMeta) -> syn::Result<()> {
         match () {
             () if meta.path.is_ident("cuicui_chirp_path") => {
                 let value = meta.value()?;
