@@ -4,7 +4,7 @@ use bevy::app::{App, Plugin};
 use bevy::ecs::{prelude::*, system::SystemState};
 use bevy::log::Level;
 use bevy::prelude::{BuildChildren, Deref, DerefMut, Parent};
-use bevy::reflect::{Reflect, TypeRegistryInternal as TypeRegistry};
+use bevy::reflect::{Reflect, TypeRegistry};
 use cuicui_chirp::{parse_dsl_impl, ChirpReader, Handles, ParseDsl};
 use cuicui_dsl::{dsl, BaseDsl, DslBundle, EntityCommands, Name};
 use pretty_assertions::assert_eq;

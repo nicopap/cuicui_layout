@@ -7,7 +7,7 @@ use bevy::asset::LoadContext;
 use bevy::ecs::prelude::{Commands, Entity};
 use bevy::hierarchy::BuildChildren;
 use bevy::log::{error, trace};
-use bevy::reflect::TypeRegistryInternal as TypeRegistry;
+use bevy::reflect::TypeRegistry;
 use bevy::utils::HashMap;
 use cuicui_dsl::EntityCommands;
 use miette::{Diagnostic, NamedSource, SourceSpan};

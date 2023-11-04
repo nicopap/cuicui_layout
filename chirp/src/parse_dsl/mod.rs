@@ -22,7 +22,7 @@
 
 use anyhow::Result;
 use bevy::asset::LoadContext;
-use bevy::reflect::TypeRegistryInternal as TypeRegistry;
+use bevy::reflect::TypeRegistry;
 use cuicui_dsl::{BaseDsl, DslBundle};
 use thiserror::Error;
 

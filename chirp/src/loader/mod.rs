@@ -33,10 +33,10 @@ use std::{any::type_name, marker::PhantomData, sync::Arc, sync::RwLock, sync::Tr
 
 use anyhow::Result;
 use bevy::app::{App, Plugin as BevyPlugin, PostUpdate};
-use bevy::asset::{prelude::*, AssetLoader, LoadContext};
+use bevy::asset::{prelude::*, AssetLoader, AsyncReadExt, LoadContext};
 use bevy::ecs::{prelude::*, schedule::ScheduleLabel, system::EntityCommands};
 use bevy::log::{error, info};
-use bevy::reflect::{TypeRegistryArc, TypeRegistryInternal as TypeRegistry};
+use bevy::reflect::{TypeRegistry, TypeRegistryArc};
 use bevy::scene::scene_spawner_system;
 use bevy::transform::TransformSystem;
 use bevy::utils::get_short_name;
@@ -74,6 +74,7 @@ pub struct ChirpBundle {
 impl ChirpBundle {
     /// Load a new chirp scene.
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn new(scene: Handle<Chirp>) -> Self {
         ChirpBundle { state: ChirpState::Loading, scene }
     }
@@ -135,22 +136,30 @@ impl<D: 'static> FromWorld for ChirpLoader<D> {
 }
 
 impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
+    type Asset = Chirp;
+    type Settings = ();
+    type Error = std::io::Error;
+
     fn load<'a>(
         &'a self,
-        bytes: &'a [u8],
+        reader: &'a mut bevy::asset::io::Reader,
+        _: &'a Self::Settings,
         load_context: &'a mut LoadContext,
-    ) -> bevy::utils::BoxedFuture<'a, Result<()>> {
+    ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, std::io::Error>> {
         Box::pin(async move {
-            let registry = self.registry.internal.read();
+            let mut bytes = Vec::new();
+            reader.read_to_end(&mut bytes).await?;
+            let registry = self.registry.internal.read().unwrap();
             let Ok(handles) = self.handles.as_ref().read() else {
                 let name = get_short_name(type_name::<D>());
-                return Err(anyhow::anyhow!("Can't read handles in ChirpLoader<{name}>"));
+                error!("Can't read handles in ChirpLoader<{name}>");
+                return Ok(Chirp(spawn::Chirp_::LoadError));
             };
-            internal::Loader::<D>::new(load_context, &registry, &handles).load(bytes);
+            let chirp = internal::Loader::<D>::new(load_context, &registry, &handles).load(&bytes);
             drop(registry);
             let path = load_context.path().to_string_lossy();
             info!("Complete loading of chirp: {path}");
-            Ok(())
+            Ok(Chirp(chirp))
         })
     }
 
@@ -198,7 +207,7 @@ impl<D: ParseDsl + 'static> BevyPlugin for Plugin<D> {
             .before(bevy::ui::UiSystem::Focus)
             .before(bevy::ui::UiSystem::Stack);
         app.add_systems(PostUpdate, chirp_asset_systems);
-        app.add_asset::<Chirp>()
+        app.init_asset::<Chirp>()
             .register_type::<ChirpState>()
             .init_asset_loader::<ChirpLoader<D>>();
     }

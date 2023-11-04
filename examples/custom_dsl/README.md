@@ -405,7 +405,7 @@ implementation, as it's pretty much a copy/paste of the tabs switching code.
 [`On`]: https://docs.rs/bevy_mod_picking/0.15.0/bevy_mod_picking/prelude/struct.On.html
 [`ParseDsl`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/parse_dsl/trait.ParseDsl.html
 [`parse_dsl_impl`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/parse_dsl_impl/index.html
-[`Reflect`]: https://docs.rs/bevy/0.11/bevy/reflect/trait.Reflect.html
+[`Reflect`]: https://docs.rs/bevy/0.12/bevy/reflect/trait.Reflect.html
 [skeuomorphic design]: https://en.wikipedia.org/wiki/Skeuomorph
 [`SpriteDsl`]: https://docs.rs/cuicui_layout_bevy_sprite/0.10.2/cuicui_layout_bevy_sprite/struct.SpriteDsl.html
 [switch.rs]: https://github.com/nicopap/cuicui_layout/blob/main/examples/cuicui_examples/src/switch.rs

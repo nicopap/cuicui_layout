@@ -31,7 +31,7 @@ thiserror.workspace = true
 winnow.workspace = true
 cuicui_chirp_macros = { version = "0.10.2", path = "../chirp_macros", optional = true }
 cuicui_dsl.workspace = true
-bevy = { version = "0.11", default-features = false, features = ["bevy_asset", "bevy_scene"] }
+bevy = { version = "0.12", default-features = false, features = ["bevy_asset", "bevy_scene"] }
 
 [package.metadata.release]
 pre-release-replacements = [

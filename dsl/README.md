@@ -303,7 +303,7 @@ that instead.
 [`cuicui_layout`]: https://docs.rs/crate/cuicui_layout/0.9.0
 [`dsl!`]: https://docs.rs/cuicui_dsl/0.10.2/cuicui_dsl/macro.dsl.html
 [`DslBundle`]: https://docs.rs/cuicui_dsl/0.10.2/cuicui_dsl/trait.DslBundle.html
-[`EntityCommands`]: https://docs.rs/bevy/0.11/bevy/ecs/system/struct.EntityCommands.html
+[`EntityCommands`]: https://docs.rs/bevy/0.12/bevy/ecs/system/struct.EntityCommands.html
 [`enumset`]: https://docs.rs/enumset/latest/enumset/
 [examples]: https://github.com/nicopap/cuicui_layout/tree/cuicui_dsl-v0.10.2/examples
 [`DslBundle::insert`]: https://docs.rs/cuicui_dsl/0.10.2/cuicui_dsl/trait.DslBundle.html#tymethod.insert

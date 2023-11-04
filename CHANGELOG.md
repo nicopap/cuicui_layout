@@ -1,3 +1,10 @@
+# 0.11
+
+- **BREAKING**: Update to bevy 0.12
+  - Removed the examples that depended on `bevy_mod_picking`
+  - **Now asset loading from chirp files is supported for any asset type**
+  - **Asset loading from chirp files work on WASM**
+
 # 0.10.1
 
 - Reworked the AST so that it is a fully contiguous memory block.

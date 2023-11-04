@@ -2,7 +2,12 @@
 resolver = "2"
 exclude = ["assets/", "the_book/"]
 members = [
-  "examples/*",
+  "examples/chirp_menu",
+  "examples/dsl_and_chirp",
+  "examples/hello_world",
+  "examples/simple_menu",
+  "examples/sprite_debug",
+  "examples/templates",
   "dsl",
   "chirp",
   "chirp_macros",
@@ -19,7 +24,7 @@ repository = "https://github.com/nicopap/cuicui_layout"
 
 [workspace.dependencies]
 anyhow = "1.0.72"
-bevy_mod_sysfail = "3"
+bevy_mod_sysfail = "5"
 # TODO make this optional as well
 css-color = "0.2.5"
 # TODO make this optional, only used in debug module of cuicui_layout
@@ -46,21 +51,13 @@ cuicui_layout_bevy_ui = { version = "0.10.2", path = "./ui" }
 cuicui = { version = "0.8.0", path = "./cuicui" }
 
 # For examples only
-bevy_framepace = "0.13.3"
-bevy-inspector-egui = "0.19"
-bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
-  "backend_bevy_ui",
-] }
-bevy-ui-navigation = "0.32.0"
+# bevy_framepace = "0.13.3"
+# bevy-inspector-egui = "0.19"
+# bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
+#   "backend_bevy_ui",
+# ] }
+# bevy-ui-navigation = "0.32.0"
 rust-hsluv = "0.1.4"
-
-# bevy_ui hot reloading only works with a patched version of bevy:
-#     https://github.com/bevyengine/bevy/pull/9621
-# bevy_sprite should just work. The following line is to quickly generate the lines
-# necessary to patch dependencies with a local version of bevy.
-# [patch.crates-io]
-# bevy = { git = "https://github.com/nicopap/bevy.git", branch = "v0.11.2-no-ui-panic" }
-#app|asset|core|ecs|hierarchy|log|math|reflect|utils|window|mikktspace|transform|render|time|core_pipeline|pbr|
 
 [workspace.metadata.release]
 dependent-version = "upgrade"

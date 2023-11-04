@@ -164,8 +164,8 @@ This might be added in the future.
 
 [`Alignment`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/enum.Alignment.html
 [`bevy-inspector-egui`]: https://docs.rs/bevy-inspector-egui/latest/bevy_inspector_egui/index.html
-[`Children`]: https://docs.rs/bevy/0.11/bevy/hierarchy/struct.Children.html
-[`Component`]: https://docs.rs/bevy/0.11/bevy/ecs/component/trait.Component.html
+[`Children`]: https://docs.rs/bevy/0.12/bevy/hierarchy/struct.Children.html
+[`Component`]: https://docs.rs/bevy/0.12/bevy/ecs/component/trait.Component.html
 [`Container`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/struct.Container.html
 [`cuicui_chirp`]: https://lib.rs/crates/cuicui_chirp
 [`cuicui_dsl`]: https://lib.rs/crates/cuicui_dsl

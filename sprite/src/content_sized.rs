@@ -21,12 +21,12 @@
 //! Also, sizes do not take into account the `Transform` size. I'm not sure how
 //! wishable as a feature this is, so please open an issue if you want it.
 use bevy::ecs::prelude::*;
-use bevy::ecs::{query::QueryItem, schedule::SystemSetConfig, system::SystemParam};
+use bevy::ecs::{query::QueryItem, schedule::SystemSetConfigs, system::SystemParam};
 use bevy::math::Vec3Swizzles;
 use bevy::prelude::{Assets, Handle, Image, Mesh, Vec2};
 use bevy::sprite::Mesh2dHandle;
 #[cfg(feature = "sprite_text")]
-use bevy::text::{Font, Text, Text2dBounds, TextPipeline};
+use bevy::text::{Font, Text, Text2dBounds};
 use cuicui_layout::content_sized::{
     ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
 };
@@ -51,7 +51,7 @@ impl ComputeContentParam for SpriteContentSize<'static> {
     #[cfg(not(feature = "sprite_text"))]
     type Components = AnyOf<(&'static Handle<Image>, &'static Mesh2dHandle)>;
 
-    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig {
+    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfigs {
         use bevy::ecs::schedule::common_conditions as cond;
 
         #[allow(clippy::needless_pass_by_value)] // `Query` required as a run condition
@@ -79,19 +79,15 @@ type OptSize = Size<Option<f32>>;
 impl SpriteContentSize<'_> {
     #[cfg(feature = "sprite_text")]
     fn compute_text_size(&self, text: &Text, set_size: OptSize) -> Option<Size<f32>> {
+        use bevy::text::TextMeasureInfo;
+
         let inf = f32::INFINITY;
         let bounds = Vec2::new(
             set_size.width.unwrap_or(inf),
             set_size.height.unwrap_or(inf),
         );
-        let measure = TextPipeline::default().create_text_measure(
-            &self.fonts,
-            &text.sections,
-            // Seems like this requires an epsilon, otherwise text wraps poorly.
-            1.01,
-            text.alignment,
-            text.linebreak_behavior,
-        );
+        // Seems like this requires an epsilon, otherwise text wraps poorly.
+        let measure = TextMeasureInfo::from_text(text, &self.fonts, 1.01);
         Some(measure.ok()?.compute_size(bounds).into())
     }
     // TODO(perf): re-use AABB if present on entity
@@ -105,7 +101,7 @@ impl SpriteContentSize<'_> {
     // TODO(bug): Account for `Sprite::custom_size`, and all sprite fields generally.
     fn compute_image_size(&self, image: &Handle<Image>, set_size: OptSize) -> Option<Size<f32>> {
         let image = self.images.get(image)?;
-        let size = image.size();
+        let size = image.size().as_vec2();
         let size = match (set_size.width, set_size.height) {
             (None, None) => size,
             (Some(width), None) => Vec2::new(width, width * size.y / size.x),

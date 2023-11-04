@@ -32,13 +32,16 @@ pub trait LoadAsset: Sized {
 #[cfg(feature = "load_image")]
 impl LoadAsset for Image {
     fn load(path: &Path, bytes: &[u8], _: &LoadContext) -> Result<Self> {
+        use bevy::render::texture::ImageSampler::Default;
         // use the file extension for the image type
         let ext = path.extension().unwrap().to_str().unwrap();
 
         let image_type = ImageType::Extension(ext);
         let formats = CompressedImageFormats::empty();
 
-        Ok(Image::from_buffer(bytes, image_type, formats, true)?)
+        Ok(Image::from_buffer(
+            bytes, image_type, formats, true, Default,
+        )?)
     }
 }
 #[cfg(feature = "load_font")]

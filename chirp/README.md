@@ -426,5 +426,5 @@ different niches.
 [`parse_dsl_impl::type_parsers`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/parse_dsl_impl/fn.type_parsers.html
 [`ParseDsl`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/parse_dsl/trait.ParseDsl.html
 [`ReflectDsl`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/reflect/struct.ReflectDsl.html
-[`Reflect`]: https://docs.rs/bevy/0.11/bevy/reflect/trait.Reflect.html
+[`Reflect`]: https://docs.rs/bevy/0.12/bevy/reflect/trait.Reflect.html
 [`WorldHandles`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/loader/struct.WorldHandles.html

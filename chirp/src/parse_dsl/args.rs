@@ -11,12 +11,12 @@
 // use inline(always) on functions that are very small, it won't add significative
 // compile overhead in anycase, but may help the optimizer elide some code.
 
-use std::{any, borrow::Cow, convert::Infallible, fs, io, marker::PhantomData, str, str::FromStr};
+use std::{any, borrow::Cow, convert::Infallible, io, marker::PhantomData, str, str::FromStr};
 
-use bevy::asset::{Asset, FileAssetIo, Handle, LoadContext, LoadedAsset};
+use bevy::asset::{Asset, Handle, LoadContext};
 use bevy::reflect::erased_serde::__private::serde::de::DeserializeSeed;
 use bevy::reflect::serde::TypedReflectDeserializer;
-use bevy::reflect::{FromReflect, Reflect, TypeRegistryInternal as TypeRegistry};
+use bevy::reflect::{FromReflect, Reflect, TypeRegistry};
 use thiserror::Error;
 
 use super::escape_literal;
@@ -164,18 +164,11 @@ pub fn to_handle<T: Asset + LoadAsset>(
     load_context: Option<&mut LoadContext>,
     input: &str,
 ) -> Result<Handle<T>, HandleDslDeserError<T>> {
-    use HandleDslDeserError::{BadLoad, UnsupportedIo};
-
     let Some(ctx) = load_context else {
         return Err(HandleDslDeserError::<T>::NoLoadContext);
     };
-    let file_io: &FileAssetIo = ctx.asset_io().downcast_ref().ok_or(UnsupportedIo)?;
-    let input = interpret_str(input);
-    let mut file_path = file_io.root_path().clone();
-    file_path.push(input.as_ref());
-    let bytes = fs::read(&file_path)?;
-    let asset = T::load(&file_path, &bytes, ctx).map_err(BadLoad)?;
-    Ok(ctx.set_labeled_asset(input.as_ref(), LoadedAsset::new(asset)))
+    let input = input.to_owned();
+    Ok(ctx.load(input))
 }
 
 /// Returns the input as a `&str`, removing quotes applying backslash escapes.

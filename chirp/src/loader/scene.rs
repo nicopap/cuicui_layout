@@ -4,10 +4,11 @@
 use std::any;
 
 use bevy::ecs::prelude::*;
-use bevy::ecs::{entity::EntityMap, query::QuerySingleError, reflect::ReflectMapEntities};
+use bevy::ecs::{query::QuerySingleError, reflect::ReflectMapEntities};
 use bevy::log::{info, trace, warn};
-use bevy::reflect::TypeRegistryInternal as TypeRegistry;
+use bevy::reflect::TypeRegistry;
 use bevy::scene::Scene;
+use bevy::utils::HashMap;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -26,12 +27,12 @@ pub enum Error {
 #[derive(Debug, Component, Default)]
 #[component(storage = "SparseSet")]
 pub(super) struct ChirpInstance {
-    pub(super) map: EntityMap,
+    pub(super) map: HashMap<Entity, Entity>,
 }
 impl ChirpInstance {
     pub(super) fn despawn_scene(&self, root: Entity, cmds: &mut Commands<'_, '_>) {
-        for e in self.map.values().filter(|e| *e != root) {
-            cmds.entity(e).despawn();
+        for e in self.map.values().filter(|e| **e != root) {
+            cmds.entity(*e).despawn();
         }
     }
 }
@@ -65,7 +66,7 @@ pub(super) fn insert_on<D>(
     let source = &source_scene.world;
     let get_info = |id| source.components().get_info(id);
     let dsl = any::type_name::<D>();
-    let mut entity_map = EntityMap::default();
+    let mut entity_map = HashMap::default();
     entity_map.insert(source_root, target_root);
 
     trace!("Applying scene to target world");
@@ -85,7 +86,7 @@ pub(super) fn insert_on<D>(
                 let unregistered = || Error::UnregisteredType(info.name().into(), dsl);
                 let entry = info
                     .type_id()
-                    .map_or_else(|| reg.get_with_name(info.name()), |id| reg.get(id))
+                    .map_or_else(|| reg.get_with_type_path(info.name()), |id| reg.get(id))
                     .ok_or_else(unregistered)?;
 
                 let reflect_component =

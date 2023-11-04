@@ -25,7 +25,7 @@
 //! # fn setup(mut cmds: Commands, serv: Res<AssetServer>) {
 //! cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
 //!
-//! let title_card = serv.load::<Image, _>("logo.png");
+//! let title_card = serv.load::<Image>("logo.png");
 //! let menu_buttons = [ "CONTINUE", "NEW GAME" ];
 //! let bg = serv.load("background.png");
 //! let board = serv.load("board.png");

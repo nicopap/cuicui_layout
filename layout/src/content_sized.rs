@@ -16,7 +16,7 @@ use std::{any::type_name, convert::Infallible, marker::PhantomData};
 use bevy::app::{App, Update};
 use bevy::ecs::prelude::*;
 use bevy::ecs::query::{ROQueryItem, ReadOnlyWorldQuery};
-use bevy::ecs::schedule::SystemSetConfig;
+use bevy::ecs::schedule::SystemSetConfigs;
 use bevy::ecs::system::{assert_is_system, StaticSystemParam, SystemParam};
 use bevy::log::{debug, error, trace};
 use bevy::prelude::{Name, Parent};
@@ -90,8 +90,8 @@ impl AppContentSizeExt for App {
                 .in_set(ContentSizedComputeSystemSet)
                 .in_set(set),
         );
-        self.configure_set(Update, S::condition(set));
-        self.configure_set(Update, ComputeLayout.after(set));
+        self.configure_sets(Update, S::condition(set));
+        self.configure_sets(Update, ComputeLayout.after(set));
         self
     }
 }
@@ -114,7 +114,7 @@ where
     /// Note that you should consider adding `.or_else(require_layout_recompute)`
     /// to your condition, as update to node size might influence computed-size
     /// axis size.
-    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig;
+    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfigs;
 }
 
 /// A [`SystemParam`] to compute the size of content-sized layout [`Node`]s.

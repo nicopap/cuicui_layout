@@ -1,8 +1,8 @@
 use bevy::asset::{AssetEvent, Assets, Handle};
 use bevy::ecs::{prelude::*, reflect::ReflectComponent, system::SystemState};
 use bevy::log::{error, trace};
-use bevy::prelude::Children;
-use bevy::reflect::{Reflect, TypePath, TypeUuid};
+use bevy::prelude::{Asset, Children};
+use bevy::reflect::{Reflect, TypePath};
 use bevy::scene::Scene;
 use thiserror::Error;
 
@@ -46,9 +46,11 @@ pub enum ChirpState {
 ///
 /// Modify this component to control the scene state. It can be used to reload
 /// the scene or despawn the scene.
-#[derive(Debug, TypeUuid, TypePath)]
-#[uuid = "b954f251-c38a-4ede-a7dd-cbf9856c84c1"]
-pub enum Chirp {
+#[derive(Debug, TypePath, Asset)]
+pub struct Chirp(pub(crate) Chirp_);
+
+#[derive(Debug, TypePath)]
+pub enum Chirp_ {
     /// The chirp file loaded successfully and holds the given [`Scene`].
     Loaded(Entity, Handle<Scene>),
     /// The chirp file failed to load with the given [`anyhow::Error`].
@@ -56,6 +58,7 @@ pub enum Chirp {
     /// Note: this exists because this enables us to use hot reloading even
     /// when loading the file failed.
     Error(interpret::Errors),
+    LoadError,
 }
 
 #[allow(clippy::needless_pass_by_value)] // false positive, bevy systems
@@ -63,14 +66,16 @@ pub(super) fn update_asset_changed(
     mut asset_events: EventReader<AssetEvent<Chirp>>,
     mut chirp_instances: Query<(&mut ChirpState, &Handle<Chirp>), With<ChirpInstance>>,
 ) {
-    use AssetEvent::{Created, Modified, Removed};
+    use AssetEvent::{Added, LoadedWithDependencies, Modified, Removed};
     #[allow(clippy::explicit_iter_loop)]
-    for event in asset_events.iter() {
+    for event in asset_events.read() {
         for (mut state, instance_handle) in &mut chirp_instances {
+            let instance_id = instance_handle.id();
             match event {
-                Modified { handle } if handle == instance_handle => *state = ChirpState::MustReload,
-                Removed { handle } if handle == instance_handle => *state = ChirpState::MustDelete,
-                Created { .. } | Modified { .. } | Removed { .. } => {}
+                Modified { id } if id == &instance_id => *state = ChirpState::MustReload,
+                Removed { id } if id == &instance_id => *state = ChirpState::MustDelete,
+                Added { .. } | Modified { .. } | Removed { .. } | LoadedWithDependencies { .. } => {
+                }
             }
         }
     }
@@ -97,7 +102,7 @@ pub(super) fn spawn_chirps<D>(
             continue;
         };
         world.entity_mut(target).insert(instance);
-        change_scenes(world, |s| s.set(scene_handle, scene));
+        change_scenes(world, |s| s.insert(scene_handle, scene));
     }
 }
 fn change_scenes<T>(world: &mut World, f: impl FnOnce(&mut Assets<Scene>) -> T) -> T {
@@ -134,7 +139,7 @@ fn mark_loaded(
 ) -> Vec<SpawnRequest> {
     let iter = to_spawn.iter_mut();
     let iter = iter.filter_map(|(target, mut state, handle)| {
-        let Some(&Chirp::Loaded(source, ref scene)) = chirps.get(handle) else {
+        let Some(&Chirp(Chirp_::Loaded(source, ref scene))) = chirps.get(handle) else {
             return None;
         };
         matches!(*state, ChirpState::Loading).then(|| {

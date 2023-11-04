@@ -69,8 +69,8 @@ pub fn require_layout_recompute(
             || matches!(q.2, Some(r) if r.last_changed().is_newer_than(tick, this_tick))
             || matches!(q.3, Some(r) if r.last_changed().is_newer_than(tick, this_tick))
     });
-    let mut children_removed = || children_removed.iter().any(|e| nodes.contains(e));
-    let mut parent_removed = || parent_removed.iter().any(|e| nodes.contains(e));
+    let mut children_removed = || children_removed.read().any(|e| nodes.contains(e));
+    let mut parent_removed = || parent_removed.read().any(|e| nodes.contains(e));
 
     anything_changed || children_removed() || parent_removed()
 }

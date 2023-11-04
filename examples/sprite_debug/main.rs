@@ -4,10 +4,7 @@
 //! The goal is to test `cuicui_layout` in non-trival situations.
 #![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
 
-use std::time::Duration;
-
 use bevy::{
-    asset::ChangeWatcher,
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology, view::RenderLayers},
     sprite::MaterialMesh2dBundle,
@@ -35,10 +32,7 @@ fn color_from_entity(entity: Entity) -> Color {
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(AssetPlugin {
-                asset_folder: "../../assets".to_owned(),
-                watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-            }),
+            DefaultPlugins.set(AssetPlugin { file_path: "../../assets".to_owned(), ..default() }),
             cuicui_layout_bevy_sprite::Plugin,
             // bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
         ))

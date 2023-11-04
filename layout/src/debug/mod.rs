@@ -205,7 +205,7 @@ fn outline_nodes(
     };
     for (entity, node, child, vis) in outline.nodes.iter_many(to_iter) {
         let show_hidden = outline.options.show_hidden;
-        let is_visible = ComputedVisibility::is_visible;
+        let is_visible = |&v| ViewVisibility::get(v);
         if !(show_hidden || vis.is_some_and(is_visible)) {
             continue;
         }
@@ -229,7 +229,7 @@ type OutlineParamQuery = (
     Entity,
     &'static Node,
     &'static LayoutRect,
-    Option<&'static ComputedVisibility>,
+    Option<&'static ViewVisibility>,
 );
 #[derive(SystemParam)]
 struct OutlineParam<'w, 's> {

@@ -176,6 +176,7 @@ where
     F: Format,
 {
     /// This is just so the error type is easier to convert in the `ParseDsl::method` impl.
+    #[allow(deprecated)]
     fn typed_method(&mut self, ctx: &MethodCtx) -> Result<(), ReflectDslError<T>> {
         use ReflectDslError::{BadDeser, BadField};
         // unwrap: Same logic as in `DslBundle::insert`

@@ -1,7 +1,5 @@
 //! Demonstates how to use templates.
-use std::time::Duration;
-
-use bevy::{asset::ChangeWatcher, prelude::*};
+use bevy::prelude::*;
 use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 use cuicui_layout_bevy_ui::UiDsl;
@@ -10,10 +8,7 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins
-                .set(AssetPlugin {
-                    asset_folder: "../../assets".to_owned(),
-                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                })
+                .set(AssetPlugin { file_path: "../../assets".to_owned(), ..default() })
                 .set(bevy::log::LogPlugin {
                     level: bevy::log::Level::INFO,
                     filter: "\
@@ -29,7 +24,7 @@ fn main() {
                 }),
             cuicui_chirp::loader::Plugin::new::<UiDsl>(),
             cuicui_layout_bevy_ui::Plugin,
-            bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
+            // bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
         .run();

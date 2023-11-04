@@ -2,8 +2,6 @@
 //! combination with `bevy_ui` and `cuicui_chirp`.
 #![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
 
-use std::time::Duration;
-
 use bevy::prelude::*;
 use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
@@ -20,16 +18,12 @@ impl PluginGroup for DefaultPlugins {
 }
 
 fn main() {
-    let asset_folder = "../../assets".to_owned();
+    let file_path = "../../assets".to_owned();
 
     // ANCHOR: app
     App::new()
         .add_plugins((
-            DefaultPlugins.set({
-                let delay = Duration::from_millis(200);
-                let watch_for_changes = bevy::asset::ChangeWatcher::with_delay(delay);
-                AssetPlugin { asset_folder, watch_for_changes }
-            }),
+            DefaultPlugins.set(AssetPlugin { file_path, ..default() }),
             cuicui_layout_bevy_ui::Plugin,
             // You still need to add manually the asset loader for UiDsl!
             cuicui_chirp::loader::Plugin::new::<UiDsl>(),

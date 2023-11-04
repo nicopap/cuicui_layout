@@ -14,11 +14,11 @@ struct DefaultPlugins;
 impl PluginGroup for DefaultPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
         let primary_window = Some(Window { resolution: (640., 360.).into(), ..default() });
-        let asset_folder = "../../assets".to_owned();
+        let file_path = "../../assets".to_owned();
         bevy::prelude::DefaultPlugins
             .set(WindowPlugin { primary_window, ..default() })
-            .set(AssetPlugin { asset_folder, ..default() })
-            .add(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
+            .set(AssetPlugin { file_path, ..default() })
+        // .add(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
     }
 }
 

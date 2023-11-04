@@ -30,7 +30,7 @@ enumset.workspace = true
 thiserror.workspace = true
 cuicui_chirp = { version = "0.10.2", path = "../chirp", optional = true, default-features = false, features = ["macros"]}
 cuicui_dsl = { version = "0.10.2", path = "../dsl", optional = true }
-bevy = { version = "0.11", default-features = false }
+bevy = { version = "0.12", default-features = false }
 
 [package.metadata.docs.rs]
 features = ["debug", "debug_bevy_ui"]
@@ -44,7 +44,7 @@ pre-release-replacements = [
   {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../examples/simple_menu/README.md"},
   {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../examples/chirp_menu/README.md"},
   {search="cuicui_layout/[0-9.]+/",replace="cuicui_layout/{{version}}/",file="../examples/custom_dsl/README.md"},
-  {search="\\| 0.11 \\| [0-9.]* \\|",replace="| 0.11 | {{version}} |",file="../README.md"},
-  {search="\\| 0.11 \\| [0-9.]* \\|",replace="| 0.11 | {{version}} |",file="../the_book/introduction.md"},
+  {search="\\| 0.12 \\| [0-9.]* \\|",replace="| 0.12 | {{version}} |",file="../README.md"},
+  {search="\\| 0.12 \\| [0-9.]* \\|",replace="| 0.12 | {{version}} |",file="../the_book/introduction.md"},
   {search="cuicui_layout = .*",replace="cuicui_layout = \"{{version}}\"",file="../the_book/usage.md"},
 ]

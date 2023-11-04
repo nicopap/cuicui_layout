@@ -109,7 +109,7 @@ pub struct ParseColorError(String);
 
 #[cfg(feature = "chirp")]
 fn parse_color(
-    _: &bevy::reflect::TypeRegistryInternal,
+    _: &bevy::reflect::TypeRegistry,
     _: Option<&mut bevy::asset::LoadContext>,
     input: &str,
 ) -> Result<Color, ParseColorError> {

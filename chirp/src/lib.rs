@@ -44,7 +44,7 @@ macro_rules! log_miette_error {
 
 use bevy::asset::LoadContext;
 use bevy::ecs::{prelude::*, system::SystemState};
-use bevy::reflect::TypeRegistryInternal as TypeRegistry;
+use bevy::reflect::TypeRegistry;
 
 use crate::interpret::Interpreter;
 

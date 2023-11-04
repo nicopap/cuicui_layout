@@ -3,10 +3,11 @@
 //!
 //! This relies on the [`bevy::ui::Node`] component.
 use bevy::asset::Assets;
-use bevy::ecs::{prelude::*, schedule::SystemSetConfig, system::SystemParam};
+use bevy::ecs::schedule::SystemSetConfigs;
+use bevy::ecs::{prelude::*, system::SystemParam};
 use bevy::log::trace;
 use bevy::prelude::Vec2;
-use bevy::text::{Font, Text, TextPipeline};
+use bevy::text::{Font, Text, TextMeasureInfo};
 use bevy::ui::widget::UiImageSize;
 use cuicui_layout::content_sized::{
     ComputeContentParam, ComputeContentSize, ContentSizedComputeSystem,
@@ -20,7 +21,7 @@ pub(crate) struct UiContentSize<'w> {
 impl ComputeContentParam for UiContentSize<'static> {
     type Components = AnyOf<(&'static Text, &'static UiImageSize)>;
 
-    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfig {
+    fn condition(label: ContentSizedComputeSystem<Self>) -> SystemSetConfigs {
         use bevy::ecs::schedule::common_conditions as cond;
 
         let cond = cond::resource_changed::<Assets<Font>>()
@@ -36,14 +37,8 @@ impl UiContentSize<'_> {
     fn bounds(&self, text: &Text, bounds: Vec2) -> Vec2 {
         trace!("Recomputing text sizes");
 
-        let measure = TextPipeline::default().create_text_measure(
-            &self.fonts,
-            &text.sections,
-            // Seems like this requires an epsilon, otherwise text wraps poorly.
-            1.01,
-            text.alignment,
-            text.linebreak_behavior,
-        );
+        // Seems like this requires an epsilon, otherwise text wraps poorly.
+        let measure = TextMeasureInfo::from_text(text, &self.fonts, 1.01);
         measure.map_or(Vec2::ZERO, |m| m.compute_size(bounds))
     }
 }
