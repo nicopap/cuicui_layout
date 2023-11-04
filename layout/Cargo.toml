@@ -4,7 +4,7 @@ description = "A layout algorithm for bevy and made to be understood by humans"
 categories = ["game-development", "gui"]
 keywords = ["bevy", "layout", "ui"]
 readme = "README.md"
-version = "0.10.2"
+version = "0.11.0"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
@@ -28,8 +28,8 @@ anyhow.workspace = true
 bevy_mod_sysfail.workspace = true
 enumset.workspace = true
 thiserror.workspace = true
-cuicui_chirp = { version = "0.10.2", path = "../chirp", optional = true, default-features = false, features = ["macros"]}
-cuicui_dsl = { version = "0.10.2", path = "../dsl", optional = true }
+cuicui_chirp = { version = "0.11.0", path = "../chirp", optional = true, default-features = false, features = ["macros"]}
+cuicui_dsl = { version = "0.11.0", path = "../dsl", optional = true }
 bevy = { version = "0.12", default-features = false }
 
 [package.metadata.docs.rs]

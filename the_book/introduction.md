@@ -18,7 +18,7 @@ to bevy's. However, the release cadence is independent from bevy's.
 
 | bevy | latest supporting version |
 |------|-------|
-| 0.12 | 0.10.2 |
+| 0.12 | 0.11.0 |
 | 0.11 | 0.10.2 |
 | 0.10 | 0.3.0 |
 

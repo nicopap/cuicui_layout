@@ -162,22 +162,22 @@ and whether they really do anything, so I won't adventure an asnwer.
 <br>**A**: `cuicui_layout` is currently not capable of managing a grid of nodes.
 This might be added in the future.
 
-[`Alignment`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/enum.Alignment.html
+[`Alignment`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Alignment.html
 [`bevy-inspector-egui`]: https://docs.rs/bevy-inspector-egui/latest/bevy_inspector_egui/index.html
 [`Children`]: https://docs.rs/bevy/0.12/bevy/hierarchy/struct.Children.html
 [`Component`]: https://docs.rs/bevy/0.12/bevy/ecs/component/trait.Component.html
-[`Container`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/struct.Container.html
+[`Container`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.Container.html
 [`cuicui_chirp`]: https://lib.rs/crates/cuicui_chirp
 [`cuicui_dsl`]: https://lib.rs/crates/cuicui_dsl
-[`Distribution`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/enum.Distribution.html
-[`DslBundle`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/trait.DslBundle.html
-[`dsl!`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/macro.dsl.html
-[`Flow`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/enum.Flow.html
-[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/dsl/struct.LayoutDsl.html
-[`LayoutRootCamera`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/struct.LayoutRootCamera.html
-[`Node`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/enum.Node.html
-[`ParseDsl`]: https://docs.rs/cuicui_chirp/0.10.2/cuicui_chirp/parse/trait.ParseDsl.html
-[`Root`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/struct.Root.html
-[`Rule`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/enum.Rule.html
-[`ScreenRoot`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/struct.ScreenRoot.html
-[`content_sized`]: https://docs.rs/cuicui_layout/0.10.2/cuicui_layout/content_sized/index.html
+[`Distribution`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Distribution.html
+[`DslBundle`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/trait.DslBundle.html
+[`dsl!`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/macro.dsl.html
+[`Flow`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Flow.html
+[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html
+[`LayoutRootCamera`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.LayoutRootCamera.html
+[`Node`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Node.html
+[`ParseDsl`]: https://docs.rs/cuicui_chirp/0.11.0/cuicui_chirp/parse/trait.ParseDsl.html
+[`Root`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.Root.html
+[`Rule`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Rule.html
+[`ScreenRoot`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.ScreenRoot.html
+[`content_sized`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/content_sized/index.html
