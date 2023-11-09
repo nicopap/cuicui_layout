@@ -1,4 +1,4 @@
-use winnow::combinator::{delimited, opt, separated0};
+use winnow::combinator::{delimited, opt, separated};
 use winnow::Parser;
 
 use super::{tokens::many_tts, *};
@@ -7,7 +7,7 @@ use crate::parser::stream::tokens;
 fn split_tt(str_input: &'static str) -> Vec<&'static str> {
     let input = Input::new(str_input.as_bytes(), ());
     let (lparen, rparen, comma) = (tokens::Lparen, tokens::Rparen, tokens::Comma);
-    let tts = separated0(many_tts::<true>, comma);
+    let tts = separated(.., many_tts::<true>, comma);
     let parsed: Vec<(u32, u32)> = delimited(lparen, tts, (opt(comma), rparen))
         .parse(input)
         .unwrap();

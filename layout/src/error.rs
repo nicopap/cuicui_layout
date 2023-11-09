@@ -217,10 +217,6 @@ pub enum ErrorId {
 }
 
 impl FailureMode for ComputeLayoutError {
-    fn log_level(&self) -> bevy_mod_sysfail::LogLevel {
-        bevy_mod_sysfail::LogLevel::Error
-    }
-
     type ID = ErrorId;
 
     fn identify(&self) -> Self::ID {
@@ -232,8 +228,5 @@ impl FailureMode for ComputeLayoutError {
             Why::InvalidRoot { this, .. } => ErrorId::InvalidRoot(this.clone()),
             Why::TooMuchMargin { this, .. } => ErrorId::TooMuchMargin(this.clone()),
         }
-    }
-    fn display(&self) -> Option<String> {
-        Some(self.to_string())
     }
 }
