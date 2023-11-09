@@ -20,7 +20,6 @@ use bevy::reflect::{FromReflect, Reflect, TypeRegistry};
 use thiserror::Error;
 
 use super::escape_literal;
-use crate::load_asset::LoadAsset;
 use crate::parser;
 
 fn tyname<T>() -> &'static str {
@@ -159,7 +158,7 @@ where
 /// # Errors
 /// See [`HandleDslDeserError`] for possible errors.
 #[inline(always)]
-pub fn to_handle<T: Asset + LoadAsset>(
+pub fn to_handle<T: Asset>(
     _: &TypeRegistry,
     load_context: Option<&mut LoadContext>,
     input: &str,

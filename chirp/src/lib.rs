@@ -48,12 +48,10 @@ pub use anyhow;
 #[cfg(feature = "macros")]
 pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
-pub use load_asset::LoadAsset;
 pub use loader::{Chirp, ChirpBundle, ChirpState, WorldHandles};
 pub use parse_dsl::{MethodCtx, ParseDsl};
 pub use reflect::ReflectDsl;
 
-mod load_asset;
 mod parser;
 
 pub mod interpret;
