@@ -401,8 +401,8 @@ implementation, as it's pretty much a copy/paste of the tabs switching code.
 [`DslBundle`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/trait.DslBundle.html
 [highlight.rs]: https://github.com/nicopap/cuicui_layout/blob/main/examples/cuicui_examples/src/highlight.rs
 [`LayoutDsl`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html
-[`NavigationDsl`]: https://docs.rs/bevy-ui-navigation/0.32.0/bevy_ui_navigation/index.html
-[`On`]: https://docs.rs/bevy_mod_picking/0.15.0/bevy_mod_picking/prelude/struct.On.html
+[`NavigationDsl`]: https://docs.rs/bevy-ui-navigation/0.33.0/bevy_ui_navigation/index.html
+[`On`]: https://docs.rs/bevy_mod_picking/0.17.0/bevy_mod_picking/prelude/struct.On.html
 [`ParseDsl`]: https://docs.rs/cuicui_chirp/0.11.0/cuicui_chirp/parse_dsl/trait.ParseDsl.html
 [`parse_dsl_impl`]: https://docs.rs/cuicui_chirp/0.11.0/cuicui_chirp/parse_dsl_impl/index.html
 [`Reflect`]: https://docs.rs/bevy/0.12/bevy/reflect/trait.Reflect.html

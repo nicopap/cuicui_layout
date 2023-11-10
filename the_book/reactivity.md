@@ -22,10 +22,10 @@ and [`bevy_mod_picking`] for this example:
 
 ```toml
 # Enable "frame pacing", a way to reduce input latency
-bevy_framepace = "0.13.3"
+bevy_framepace = "0.14"
 
 # Add mouse interaction
-bevy_mod_picking = { version = "0.15.0", default-features = false, features = [
+bevy_mod_picking = { version = "0.17.0", default-features = false, features = [
     "backend_bevy_ui",
 ] }
 ```
