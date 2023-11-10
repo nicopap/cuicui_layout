@@ -34,7 +34,6 @@ pub trait Switchable: Component + GetIndex + Reflect + GetTypeRegistration {
     type Marker: Component + Reflect + GetTypeRegistration + Default;
 }
 
-#[allow(clippy::explicit_iter_loop)]
 fn switch_tab<T: Switchable>(
     mut tab_requests: EventReader<T::Event>,
     mut vis: Query<&mut Visibility>,
@@ -43,7 +42,7 @@ fn switch_tab<T: Switchable>(
     // ANCHOR: system
     use Visibility::{Hidden, Inherited};
 
-    for req in tab_requests.iter() {
+    for req in tab_requests.read() {
         let Ok(menu_children) = tab_menu.get_single() else {
             continue;
         };

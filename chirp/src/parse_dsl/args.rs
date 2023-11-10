@@ -159,15 +159,18 @@ where
 /// See [`HandleDslDeserError`] for possible errors.
 #[inline(always)]
 pub fn to_handle<T: Asset>(
-    _: &TypeRegistry,
-    load_context: Option<&mut LoadContext>,
+    reg: &TypeRegistry,
+    mut load_context: Option<&mut LoadContext>,
     input: &str,
 ) -> Result<Handle<T>, HandleDslDeserError<T>> {
+    let input = match quoted(reg, load_context.as_deref_mut(), input) {
+        Ok(input) => input,
+        Err(_infallible) => unreachable!(),
+    };
     let Some(ctx) = load_context else {
         return Err(HandleDslDeserError::<T>::NoLoadContext);
     };
-    let input = input.to_owned();
-    Ok(ctx.load(input))
+    Ok(ctx.load(String::from(input)))
 }
 
 /// Returns the input as a `&str`, removing quotes applying backslash escapes.

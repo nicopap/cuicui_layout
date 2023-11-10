@@ -2,17 +2,23 @@
 //! combination with `bevy_ui` and `cuicui_chirp`.
 #![allow(clippy::cast_precision_loss, clippy::wildcard_imports)]
 
-use bevy::prelude::*;
+use bevy::{log::LogPlugin, prelude::*};
 use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 use cuicui_layout_bevy_ui::UiDsl;
 
 struct DefaultPlugins;
 
+fn bevy_log_plugin() -> LogPlugin {
+    cuicui_examples::log_plugin(cfg!(feature = "advanced_logging"))
+}
+
 impl PluginGroup for DefaultPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
         let primary_window = Some(Window { resolution: (640., 360.).into(), ..default() });
-        bevy::prelude::DefaultPlugins.set(WindowPlugin { primary_window, ..default() })
+        bevy::prelude::DefaultPlugins
+            .set(WindowPlugin { primary_window, ..default() })
+            .set(bevy_log_plugin())
         // .add(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
     }
 }

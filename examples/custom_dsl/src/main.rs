@@ -5,8 +5,6 @@
     clippy::needless_pass_by_value
 )]
 
-use std::time::Duration;
-
 use bevy::log::LogPlugin;
 use bevy::prelude::*;
 use bevy_mod_picking::prelude::{Click, On, Pointer};
@@ -38,15 +36,11 @@ impl PluginGroup for DefaultPlugins {
 }
 
 fn main() {
-    let asset_folder = "../../assets".to_owned();
+    let file_path = "../../assets".to_owned();
 
     App::new()
         .add_plugins((
-            DefaultPlugins.set({
-                let delay = Duration::from_millis(200);
-                let watch_for_changes = bevy::asset::ChangeWatcher::with_delay(delay);
-                AssetPlugin { asset_folder, watch_for_changes }
-            }),
+            DefaultPlugins.set(AssetPlugin { file_path, ..default() }),
             cuicui_layout_bevy_ui::Plugin,
             // ANCHOR: add_plugin
             cuicui_chirp::loader::Plugin::new::<BetterFactorioDsl>(),

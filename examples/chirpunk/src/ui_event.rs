@@ -155,7 +155,6 @@ fn clear_unused_input(
 #[reflect(Component)]
 pub struct QuitGame;
 
-#[allow(clippy::explicit_iter_loop)] // bad lint: https://github.com/bevyengine/bevy/pull/9583
 fn quit_game_button(
     mut nav_events: EventReader<NavEvent>,
     quit_buttons: Query<(), With<QuitGame>>,
@@ -168,7 +167,6 @@ fn quit_game_button(
         }
     }
 }
-#[allow(clippy::explicit_iter_loop)] // bad lint: https://github.com/bevyengine/bevy/pull/9583
 fn switch_swatch(
     mut nav_events: EventReader<NavEvent>,
     mut switch_tab: EventWriter<SwitchTab>,
@@ -176,7 +174,7 @@ fn switch_swatch(
     switch_root_buttons: Query<&RootButton>,
     switch_tab_buttons: Query<&TabButton>,
 ) {
-    for event in nav_events.iter() {
+    for event in nav_events.read() {
         let NavEvent::FocusChanged { to, .. } = event else {
             continue;
         };

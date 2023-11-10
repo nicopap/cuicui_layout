@@ -1,4 +1,4 @@
-use bevy::{prelude::*, reflect::TypeRegistryInternal as TypeRegistry};
+use bevy::{prelude::*, reflect::TypeRegistry};
 use cuicui_chirp::{
     anyhow::{Context, Result},
     parse_dsl_impl,
@@ -14,12 +14,11 @@ switchable_impl! {
     GraphButton[Graphs, SwitchGraph],
 }
 
-#[allow(clippy::explicit_iter_loop)]
 fn switch_color<T: Switchable>(
     mut tab_requests: EventReader<T::Event>,
     mut tab_buttons: Query<(&mut BackgroundColor, &T)>,
 ) {
-    for req in tab_requests.iter() {
+    for req in tab_requests.read() {
         for (mut bg, button) in &mut tab_buttons {
             let (highlight, shade) = (Color::rgb_u8(222, 184, 135), Color::rgb_u8(107, 77, 34));
             bg.0 = if button.index() == req.index() { highlight } else { shade };
@@ -31,7 +30,8 @@ struct Marker(Box<dyn FnOnce(&mut EntityCommands)>);
 impl Marker {
     fn reflect_from_world(builder: ReflectComponent) -> Self {
         Self(Box::new(move |cmds| {
-            cmds.add(move |id, world: &mut World| {
+            cmds.add(move |entity: EntityWorldMut| {
+                let (id, world) = (entity.id(), entity.into_world_mut());
                 let component = builder.from_world(world);
                 builder.insert(&mut world.entity_mut(id), &*component);
             });
@@ -54,7 +54,7 @@ fn parse_marker<T>(reg: &TypeRegistry, _: T, input: &str) -> Result<Marker> {
     let not_reg = || format!("{input} not registered");
     let not_comp = || format!("{input}'s ReflectComponent is not registered.");
 
-    let type_id = reg.get_with_short_name(input);
+    let type_id = reg.get_with_short_type_path(input);
     let type_id = type_id.with_context(not_reg)?.type_id();
 
     let builder = reg.get_type_data::<ReflectComponent>(type_id);

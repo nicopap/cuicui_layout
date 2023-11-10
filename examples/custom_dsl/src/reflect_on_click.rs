@@ -1,4 +1,5 @@
-use bevy::prelude::{info, Component, EventWriter, Reflect, ReflectComponent};
+use bevy::log::info;
+use bevy::prelude::{Component, EventWriter, Reflect, ReflectComponent};
 use bevy_mod_picking::prelude::{Click, On, Pointer};
 
 use crate::dsl::{SwitchGraph, SwitchTab};

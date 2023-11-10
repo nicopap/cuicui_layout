@@ -1,3 +1,5 @@
+use std::mem;
+
 use bevy::asset::{AssetEvent, Assets, Handle};
 use bevy::ecs::{prelude::*, reflect::ReflectComponent, system::SystemState};
 use bevy::log::{error, trace};
@@ -67,7 +69,6 @@ pub(super) fn update_asset_changed(
     mut chirp_instances: Query<(&mut ChirpState, &Handle<Chirp>), With<ChirpInstance>>,
 ) {
     use AssetEvent::{Added, LoadedWithDependencies, Modified, Removed};
-    #[allow(clippy::explicit_iter_loop)]
     for event in asset_events.read() {
         for (mut state, instance_handle) in &mut chirp_instances {
             let instance_id = instance_handle.id();
@@ -97,20 +98,35 @@ pub(super) fn spawn_chirps<D>(
     to_load.extend(mark_loaded(mark_state.get_mut(world)));
 
     for SpawnRequest { target, source, scene_handle } in to_load.drain(..) {
-        let mut scene = change_scenes(world, |s| s.remove(&scene_handle)).unwrap();
-        let Some(instance) = spawn_scene::<D>(&mut scene, world, source, target) else {
+        // A better impl would use `assets.remove(handle)` followed by `assets.insert` but currently
+        // Assets::remove is broken, see: https://github.com/bevyengine/bevy/issues/10444
+        let scene = change_scenes(world, |s| {
+            Some(mem::take(&mut s.get_mut(&scene_handle)?.world))
+        });
+        let mut own_scene = Scene::new(scene.unwrap());
+
+        let Some(instance) = spawn_scene::<D>(&mut own_scene, world, source, target) else {
             continue;
         };
+        change_scenes(world, |s| {
+            if let Some(scene) = s.get_mut(&scene_handle) {
+                scene.world = own_scene.world;
+            }
+        });
+
         world.entity_mut(target).insert(instance);
-        change_scenes(world, |s| s.insert(scene_handle, scene));
     }
 }
+
 fn change_scenes<T>(world: &mut World, f: impl FnOnce(&mut Assets<Scene>) -> T) -> T {
-    // SAFETY: we only call this function with a `Handle<Scene>` we got from same world
+    // SAFETY: we only call this function with a `Handle<Scene>` we got from same world.
+    // Meaning there was a `Assets<Scene>`.
     let mut scenes = unsafe { world.get_resource_mut::<Assets<Scene>>().unwrap_unchecked() };
+
     // Bypass: we are NOT modifying the scene, we will be re-adding it in `reinsert_scene`
     f(scenes.bypass_change_detection())
 }
+
 fn spawn_scene<D>(
     scene: &mut Scene,
     target: &mut World,
