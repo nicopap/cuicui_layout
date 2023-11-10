@@ -266,7 +266,7 @@ different features than `cuicui_dsl`. Here is a feature matrix:
 |`code` blocks with in-line rust code|   ✅   |    |
 |`code` calling registered functions |        | ✅ |
 |`fn` templates                      |rust[^1]| ✅ |
-|import from other files             |rust[^2]|    |
+|import from other files             |rust[^2]| ✅ |
 |hot-reloading                       |        | ✅ |
 |reflection-based methods            |        | ✅ |
 |special syntax for colors, rules    |        | ✅ |
