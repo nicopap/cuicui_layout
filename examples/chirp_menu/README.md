@@ -10,7 +10,7 @@ as a dependency first:
 # previous dependencies
 # ...
 # New dependency:
-cuicui_chirp = "0.11.0"
+cuicui_chirp = "0.12.0"
 ```
 
 The app setup requires adding `cuicui_chirp::loader::Plugin::new::<UiDsl>()`,
@@ -245,15 +245,15 @@ And that's pretty much it when it comes to `cuicui_chirp`. Next, we will
 add a bit of interactivity.
 
 
-[`Rule`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Rule.html
-[`Children`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Rule.html#variant.Children
-[`Parent`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Rule.html#variant.Parent
-[`Fixed`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Rule.html#variant.Fixed
-[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html
-[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.11.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
+[`Rule`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/enum.Rule.html
+[`Children`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/enum.Rule.html#variant.Children
+[`Parent`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/enum.Rule.html#variant.Parent
+[`Fixed`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/enum.Rule.html#variant.Fixed
+[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html
+[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.12.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
 [dsl-chapter]: ../simple_menu
-[parameter-substitution-rules]: https://docs.rs/cuicui_chirp/0.11.0/cuicui_chirp/index.html#parameter-substitution
-[dsl-functions]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/index.html#functions
-[`child`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/fn.child.html
-[`pct`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/fn.pct.html
-[`px`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/fn.px.html
+[parameter-substitution-rules]: https://docs.rs/cuicui_chirp/0.12.0/cuicui_chirp/index.html#parameter-substitution
+[dsl-functions]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/index.html#functions
+[`child`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/fn.child.html
+[`pct`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/fn.pct.html
+[`px`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/fn.px.html

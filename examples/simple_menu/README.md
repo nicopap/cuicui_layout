@@ -393,19 +393,19 @@ container, the main axis is the `x` axis. For a `column` container, it is the
 [^2]: The "Inner size" is the size of a node deduced its margins on a given axis.
 It's the effective size children can occupy, so we use that for percentage.
 
-[`LayoutRootCamera`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.LayoutRootCamera.html
-[`ScreenRoot`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.ScreenRoot.html
-[`Rule`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.Rule.html
-[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html
-[`LayoutDsl::screen_root`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.screen_root
-[`main_margin`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.main_margin
-[`cross_margin`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.cross_margin
-[`width`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.width
-[`height`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.height
-[`rules`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.rules
-[`distrib_start`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.distrib_start
-[`row`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.row
-[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.11.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
-[`UiDsl::image`]: https://docs.rs/cuicui_layout_bevy_ui/0.11.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html#method.image
-[`UiDsl::text`]: https://docs.rs/cuicui_layout_bevy_ui/0.11.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html#method.text
-[simple-example]: https://github.com/nicopap/cuicui_layout/blob/cuicui_layout_bevy_ui-v0.10.0/examples/simple_menu/main.rs
+[`LayoutRootCamera`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/struct.LayoutRootCamera.html
+[`ScreenRoot`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/struct.ScreenRoot.html
+[`Rule`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/struct.Rule.html
+[`LayoutDsl`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html
+[`LayoutDsl::screen_root`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.screen_root
+[`main_margin`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.main_margin
+[`cross_margin`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.cross_margin
+[`width`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.width
+[`height`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.height
+[`rules`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.rules
+[`distrib_start`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.distrib_start
+[`row`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/dsl/struct.LayoutDsl.html#method.row
+[`UiDsl`]: https://docs.rs/cuicui_layout_bevy_ui/0.12.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html
+[`UiDsl::image`]: https://docs.rs/cuicui_layout_bevy_ui/0.12.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html#method.image
+[`UiDsl::text`]: https://docs.rs/cuicui_layout_bevy_ui/0.12.0/cuicui_layout_bevy_ui/dsl/struct.UiDsl.html#method.text
+[simple-example]: https://github.com/nicopap/cuicui_layout/blob/cuicui_layout_bevy_ui-v0.12.0/examples/simple_menu/main.rs

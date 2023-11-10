@@ -75,12 +75,12 @@ If you are using `cuicui_layout_bevy_ui`, this should be automatically set to
 `true` for you.
 
 
-[`Container`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/struct.Container.html
-[`Node`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Node.html
-[`Options`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/debug/struct.Options.html
-[`Options.input_map`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/debug/struct.Options.html#structfield.input_map
-[`Options.screen_space`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/debug/struct.Options.html#structfield.screen_space
-[`Options.show_hidden`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/debug/struct.Options.html#structfield.show_hidden
+[`Container`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/struct.Container.html
+[`Node`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/enum.Node.html
+[`Options`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/debug/struct.Options.html
+[`Options.input_map`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/debug/struct.Options.html#structfield.input_map
+[`Options.screen_space`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/debug/struct.Options.html#structfield.screen_space
+[`Options.show_hidden`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/debug/struct.Options.html#structfield.show_hidden
 [`RenderLayers`]: https://docs.rs/bevy/0.12/bevy/render/view/struct.RenderLayers.html
 [`Resource`]: https://docs.rs/bevy/0.12/bevy/ecs/prelude/trait.Resource.html
-[`Rule`]: https://docs.rs/cuicui_layout/0.11.0/cuicui_layout/enum.Rule.html
+[`Rule`]: https://docs.rs/cuicui_layout/0.12.0/cuicui_layout/enum.Rule.html

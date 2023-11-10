@@ -6,9 +6,9 @@ For illustration, we assume that we went with `cuicui_layout_bevy_ui`.
 
 ```toml
 [dependencies]
-cuicui_layout_bevy_ui = "0.11.0"
-cuicui_layout = "0.11.0"
-cuicui_dsl = "0.11.0"
+cuicui_layout_bevy_ui = "0.12.0"
+cuicui_layout = "0.12.0"
+cuicui_dsl = "0.12.0"
 ```
 
 ## Using the cuicui crates
