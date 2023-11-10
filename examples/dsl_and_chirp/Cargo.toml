@@ -8,9 +8,9 @@ publish = false
 
 [dependencies]
 pretty_assertions.workspace = true
-cuicui_chirp.workspace = true
+cuicui_chirp = { workspace = true, default-features = true }
 cuicui_dsl.workspace = true
-bevy = "0.12"
+bevy.workspace = true
 
 [package.metadata.release]
 release = false

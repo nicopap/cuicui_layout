@@ -15,7 +15,7 @@ default = []
 test_and_doc = ["bevy/bevy_render", "bevy/bevy_asset"]
 
 [dependencies]
-bevy = { version = "0.12", default-features = false }
+bevy.workspace = true
 
 [package.metadata.release]
 pre-release-replacements = [

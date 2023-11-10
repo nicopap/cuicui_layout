@@ -26,6 +26,7 @@ repository = "https://github.com/nicopap/cuicui_layout"
 [workspace.dependencies]
 anyhow = "1.0.72"
 bevy_mod_sysfail = "5"
+bevy = { version = "0.12.0", default-features = false }
 # TODO make this optional as well
 css-color = "0.2.5"
 # TODO make this optional, only used in debug module of cuicui_layout
@@ -44,11 +45,12 @@ thiserror = "1.0.44"
 tracing = { version = "0.1.37", features = ["release_max_level_warn"] }
 winnow = "0.5.15"
 
-cuicui_dsl = { version = "0.11.0", path = "./dsl" }
-cuicui_chirp = { version = "0.11.0", path = "./chirp" }
+cuicui_dsl = { version = "0.11.0", path = "./dsl", default-features = false }
+cuicui_chirp = { version = "0.11.0", path = "./chirp", default-features = false }
+cuicui_chirp_macros = { version = "0.11.0", path = "./chirp_macros" }
 cuicui_layout = { version = "0.11.0", path = "./layout", default-features = false }
 cuicui_layout_bevy_sprite = { version = "0.11.0", path = "./sprite", default-features = false }
-cuicui_layout_bevy_ui = { version = "0.11.0", path = "./ui" }
+cuicui_layout_bevy_ui = { version = "0.11.0", path = "./ui", default-features = false }
 cuicui = { version = "0.8.0", path = "./cuicui" }
 
 # For examples only

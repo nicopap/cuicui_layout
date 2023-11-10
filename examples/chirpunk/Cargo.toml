@@ -23,11 +23,11 @@ cuicui_examples = { path = "../cuicui_examples" }
 log.workspace = true
 rust-hsluv.workspace = true
 tracing.workspace = true
-cuicui_chirp.workspace = true
+cuicui_chirp = { workspace = true, default-features = true }
 cuicui_dsl.workspace = true
 cuicui_layout_bevy_ui.workspace = true
 cuicui_layout.workspace = true
-bevy = { version = "0.12", features = ["jpeg", "default_font"] }
+bevy = { workspace = true, default-features = true, features = ["jpeg", "default_font"] }
 
 [package.metadata.release]
 release = false

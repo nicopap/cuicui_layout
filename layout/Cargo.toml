@@ -28,9 +28,9 @@ anyhow.workspace = true
 bevy_mod_sysfail.workspace = true
 enumset.workspace = true
 thiserror.workspace = true
-cuicui_chirp = { version = "0.11.0", path = "../chirp", optional = true, default-features = false, features = ["macros"]}
-cuicui_dsl = { version = "0.11.0", path = "../dsl", optional = true }
-bevy = { version = "0.12", default-features = false }
+cuicui_chirp = { workspace = true, optional = true, features = ["macros"]}
+cuicui_dsl = { workspace = true, optional = true }
+bevy.workspace = true
 
 [package.metadata.docs.rs]
 features = ["debug", "debug_bevy_ui"]

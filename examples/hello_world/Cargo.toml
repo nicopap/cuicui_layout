@@ -14,7 +14,7 @@ path = "main.rs"
 cuicui_dsl.workspace = true
 cuicui_layout_bevy_ui.workspace = true
 cuicui_layout.workspace = true
-bevy = { version = "0.12", features = ["png", "jpeg", "x11", "bevy_asset", "bevy_ui", "default_font"] }
+bevy = { workspace = true, features = ["png", "jpeg", "x11", "bevy_asset", "bevy_ui", "default_font"] }
 
 [package.metadata.release]
 release = false
