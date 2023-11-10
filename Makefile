@@ -31,10 +31,12 @@ check:
 	cargo clippy --workspace --all-features $(CLIPPY_ARGS)
 
 run:
+	# cargo run --bin custom_dsl --features advanced_logging
+	RUST_BACKTRACE=1 cargo run --bin custom_dsl --features advanced_logging
 	# cargo test -p cuicui_chirp grammar --features 'test_and_doc' # with_method # trace_parser'
 	# cargo test -p dsl_and_chirp  --features 'cuicui_chirp/test_and_doc cuicui_chirp/trace_parser'
 	# cargo test -p cuicui_dsl  --features test_and_doc
-	RUST_BACKTRACE=0 cargo run --bin chirpunk --features 'cuicui_layout/debug advanced_logging'
+	# RUST_BACKTRACE=0 cargo run --bin chirpunk --features 'cuicui_layout/debug advanced_logging'
 	# cd examples/sprite_debug && RUSTC_BOOTSTRAP=1 cargo rustc -p sprite_debug -- -Zunpretty=expanded
 	# cd examples/bevypunk && RUSTC_BOOTSTRAP=1 cargo rustc -p bevypunk -- -Z macro-backtrace
 

@@ -1,3 +1,17 @@
+# 0.12
+
+- `cuicui_layout_bevy_{ui,sprite}`: When enabling `chirp` feature,
+  also enable the `reflect` feature.
+  Since `chirp` files always require `Reflect` components,
+  you would always need to enable `reflect` when using `chirp`,
+  so now we enable it for you
+- **BREAKING**: Remove `Entity` return value of `DslBundle::insert`.
+  It was unused and misleading, it's better to remove it.
+- **Fix**: `Handle`s loaded in `.chirp` files would have quotes in their path
+  names. We now unquote the file paths, like we did before 0.11
+- **Fix**: Panic when loading chirp files. See <https://github.com/bevyengine/bevy/issues/10444>
+- **BREAKING**: Remove the `LoadAsset` trait. It was unused, so we remove it.
+
 # 0.11
 
 - **BREAKING**: Update to bevy 0.12
