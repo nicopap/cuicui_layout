@@ -9,7 +9,7 @@ use bevy::scene::Scene;
 use thiserror::Error;
 
 use super::scene::{self, ChirpInstance};
-use crate::interpret;
+use crate::{interpret, TemplateLibrary};
 
 #[allow(missing_docs)] // allow: described by error message.
 #[derive(Debug, Error)]
@@ -54,7 +54,10 @@ pub struct Chirp(pub(crate) Chirp_);
 #[derive(Debug, TypePath)]
 pub enum Chirp_ {
     /// The chirp file loaded successfully and holds the given [`Scene`].
-    Loaded(Entity, Handle<Scene>),
+    Loaded(Entity, Handle<Scene>), // `Entity` is the root in the `Scene`.
+    /// The chirp file is a template library, it doesn't have a `Scene`, it
+    /// is used as a dependency for other [`Chirp`] files.
+    TemplateLibrary(TemplateLibrary),
     /// The chirp file failed to load with the given [`anyhow::Error`].
     ///
     /// Note: this exists because this enables us to use hot reloading even

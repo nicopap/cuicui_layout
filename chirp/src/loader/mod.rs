@@ -42,11 +42,11 @@ use bevy::transform::TransformSystem;
 use bevy::utils::get_short_name;
 use thiserror::Error;
 
-use crate::{Handles, ParseDsl};
+use crate::{interpret_chirp, Handles, InterpretResult, ParseDsl};
 
+use spawn::Chirp_;
 pub use spawn::{Chirp, ChirpState};
 
-mod internal;
 mod scene;
 pub(super) mod spawn;
 
@@ -144,7 +144,7 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
         &'a self,
         reader: &'a mut bevy::asset::io::Reader,
         _: &'a Self::Settings,
-        load_context: &'a mut LoadContext,
+        ctx: &'a mut LoadContext,
     ) -> bevy::utils::BoxedFuture<'a, Result<Self::Asset, std::io::Error>> {
         Box::pin(async move {
             let mut bytes = Vec::new();
@@ -155,9 +155,21 @@ impl<D: ParseDsl + 'static> AssetLoader for ChirpLoader<D> {
                 error!("Can't read handles in ChirpLoader<{name}>");
                 return Ok(Chirp(spawn::Chirp_::LoadError));
             };
-            let chirp = internal::Loader::<D>::new(load_context, &registry, &handles).load(&bytes);
+            let (handles, reg) = (&*handles, &*registry);
+            let chirp = match interpret_chirp::<D>(handles, Some(ctx), reg, &bytes) {
+                InterpretResult::TemplateLibrary(template_library) => {
+                    Chirp_::TemplateLibrary(template_library)
+                }
+                InterpretResult::Ok((root, scene)) => {
+                    Chirp_::Loaded(root, ctx.add_labeled_asset("Scene".to_owned(), scene))
+                }
+                InterpretResult::Err(errors) => {
+                    log_miette_error!(&errors);
+                    Chirp_::Error(errors)
+                }
+            };
             drop(registry);
-            let path = load_context.path().to_string_lossy();
+            let path = ctx.path().to_string_lossy();
             info!("Complete loading of chirp: {path}");
             Ok(Chirp(chirp))
         })

@@ -20,3 +20,9 @@ Interpreting is now split in two:
 This allows the asset loader to asynchronously load the imported assets, while
 not having to care about async in the interpreter (which would be absolute
 hell to handle)
+
+# Implementation
+
+Let's consider implementation. When parsing, we mark exported templates by adding
+their offset in the block buffer to a `pub_templates` field in the `Ast`.
+Now to make use of it.

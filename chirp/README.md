@@ -389,6 +389,54 @@ their type.
 
 See [`parse_dsl_impl::type_parsers`] for details.
 
+## Formal specification
+
+### Grammar
+
+```ungrammar
+TokenTree
+   = 'ident'
+   | '(' (TokenTree)* ')'
+   | '[' (TokenTree)* ']'
+   | '{' (TokenTree)* '}'
+   | StringLit
+
+Method = 'ident' ('(' (TokenTree)* ')')?
+
+Statement
+   = 'code'      '(' 'ident' ')'
+   | 'Entity'    StatementTail
+   | 'ident' '!' '(' (TokenTree (',' TokenTree)*)? ')' (StatementTail)?
+   | 'ident'     StatementTail
+   | StringLit   StatementTail
+
+StatementTail
+   = '(' (Method)* ')' ('{' (Statement)* '}')?
+   | '{' (Statement)* '}'
+
+Path = 'ident' | StringLit
+ImportItem = '(' 'ident' as 'ident' ')' | 'ident'
+Import = 'use' Path ((ImportItem)*)
+Fn = ('pub')? 'fn' 'ident' '(' ('ident' (',' 'ident')*)? ')' '{' Statement '}'
+ChirpFile = (Import)* (Fn)* Statement
+```
+
+* Notice how `StatementTail` is **never empty**. This ensures that syntax errors
+  such as `My Entity Name()` are detected and reported correctly.
+* `'ident'` is any series of character that is not a whitespace or delimiter such
+  as `[]{}()"'!,`, so this includes surprising stuff such as `+-_` and `234`.
+* `StringLit` works similarly to a rust string literal.
+* `TokenTree` aims to work like a [rust `TokenTree`], may accept more than what
+  the rust grammar accepts (within acceptable limits) for performance reason.
+  The inside of the parenthesis is passed as-is to `ParseDsl::method`.
+
+### Comments
+
+Currently, only `//` line comments are supported.
+
+[rust `TokenTree`]: https://doc.rust-lang.org/reference/macros.html#macro-invocation
+
+
 ## Tooling
 
 Tooling for the `chirp` file format is available at <https://github.com/nicopap/cuicui_chirp_tooling>

@@ -2,8 +2,8 @@
 
 use stream::TokenType;
 
-pub use ast::{Ast, FnIndex};
-pub(crate) use grammar::chirp_file;
+pub use ast::{Ast, FnIndex, TemplateLibrary};
+pub(crate) use grammar::{chirp_file, ParseResult};
 pub use interpret::{ChirpFile, Interpreter, Name, Span};
 pub use scope::Arguments;
 pub use stream::{Input, StateCheckpoint};

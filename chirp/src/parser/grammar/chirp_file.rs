@@ -1,4 +1,4 @@
-use winnow::combinator::{alt, preceded};
+use winnow::combinator::{alt, opt, preceded};
 use winnow::error::ErrMode::{Backtrack, Cut};
 use winnow::token::any;
 use winnow::Parser;
@@ -6,7 +6,9 @@ use winnow::Parser;
 use super::generic::{Delimited, Many, SepList, Terminated};
 use super::tokens::{ident, many_tts};
 use super::{AddNodes, BlockResult};
-use crate::parser::ast::{self, CodeHeader, FnHeader, SpawnHeader, StKind, TemplateHeader};
+use crate::parser::ast::{
+    self, CodeHeader, FnHeader, SpawnHeader, StKind, TemplateHeader, TemplateLibrary,
+};
 use crate::parser::ast::{ArgumentHeader, IdentOffset, ImportHeader, ImportItemHeader};
 use crate::parser::ast::{Ast, AstBuilder, ChirpFileHeader, MethodHeader, WriteHeader};
 use crate::parser::stream::{tokens as t, Input, Token};
@@ -97,8 +99,9 @@ impl AddNodes for IdentOffset {
 struct Fn;
 impl AddNodes for Fn {
     fn add_node(input: &mut Input, builder: &mut AstBuilder) -> BlockResult {
+        let is_pub = opt(t::Pub).parse_next(input)?.is_some();
         t::Fn.parse_next(input)?;
-        let header = builder.reserve_header();
+        let header = builder.reserve_pub_header(is_pub);
 
         let name = ident(input)?;
         let parameter_len = Paren::<Sep<IdentOffset>>::add_node(input, builder)?;
@@ -204,15 +207,34 @@ impl AddNodes for ChirpFile {
     }
 }
 
-pub fn chirp_file(mut input: Input) -> Result<Ast, (Error, (u32, u32))> {
+pub enum ParseResult {
+    Ast(Ast),
+    TemplateLibrary(TemplateLibrary),
+    Err(Error, (u32, u32)),
+}
+impl ParseResult {
+    #[cfg(test)]
+    #[track_caller]
+    pub(crate) fn unwrap(self) -> Ast {
+        match self {
+            ParseResult::Ast(ast) => ast,
+            _ => panic!("Called `unwrap` on a non-Ast ParseResult"),
+        }
+    }
+}
+
+pub fn chirp_file(mut input: Input) -> ParseResult {
     let mut ast_builder = AstBuilder::new();
     let result = ChirpFile::add_node(&mut input, &mut ast_builder);
     let offset = input.current_offset();
 
     match result {
-        Ok(_) if input.is_empty() => Ok(ast_builder.build()),
-        Ok(_) => Err((Error::TrailingText, (offset, offset))),
-        Err(Cut(err) | Backtrack(err)) => Err((err, (offset, offset))),
+        Ok(_) if input.is_empty() => match ast_builder.build() {
+            Ok(ast) => ParseResult::Ast(ast),
+            Err(template_library) => ParseResult::TemplateLibrary(template_library),
+        },
+        Ok(_) => ParseResult::Err(Error::TrailingText, (offset, offset)),
+        Err(Cut(err) | Backtrack(err)) => ParseResult::Err(err, (offset, offset)),
         _ => unreachable!(),
     }
 }

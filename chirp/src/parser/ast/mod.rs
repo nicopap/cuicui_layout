@@ -70,6 +70,8 @@
 //!   with the counted nodes.
 //! - Write to the reserved header with [`AstBuilder::write`].
 
+use std::fmt;
+
 pub(super) use build::{AstBuilder, WriteHeader};
 pub use ident::*;
 pub(super) use list::List;
@@ -89,10 +91,27 @@ pub(super) type Statements<'a> = List<'a, node::Statement<'a>>;
 pub(super) type Arguments<'a> = List<'a, node::Argument<'a>>;
 pub(super) type IdentOffsets<'a> = List<'a, node::IdentOffset>;
 
-pub struct Ast(Box<[header::Block]>);
+/// A file containing `pub` templates, meant to be used by other chirp files.
+#[derive(Debug)]
+pub struct TemplateLibrary(Ast);
+
+pub struct Ast {
+    buffer: Box<[header::Block]>,
+    pub_templates: Vec<usize>,
+}
 impl Ast {
     pub fn as_ref(&self) -> AstRef {
-        AstRef(&self.0)
+        AstRef(&self.buffer)
+    }
+}
+
+// TODO: debug impl that prints node hierarchy
+impl fmt::Debug for Ast {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Ast")
+            .field("buffer", &format!("[u32; {}]", self.buffer.len()))
+            .field("pub_templates", &self.pub_templates)
+            .finish()
     }
 }
 

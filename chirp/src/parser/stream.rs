@@ -68,6 +68,7 @@ pub enum TokenType {
     As,
     Use,
     Fn,
+    Pub,
     None,
 }
 impl From<Option<Token<'_>>> for TokenType {
@@ -106,6 +107,7 @@ impl fmt::Display for TokenType {
             Self::Fn => "'fn'",
             Self::Use => "'use'",
             Self::As => "'as'",
+            Self::Pub => "'pub'",
             Self::String => "\"a string literal\"",
             Self::None => "nothing, the end of file",
         };
@@ -191,7 +193,13 @@ pub mod tokens {
     use winnow::{error::ErrMode::Backtrack, PResult};
 
     grammar![Equal, Lparen, Rparen, Lcurly, Rcurly, Lbracket, Rbracket, Comma];
-    grammar_identifiers![b"as" as As, b"use" as Use, b"fn" as Fn, b"code" as Code];
+    grammar_identifiers![
+        b"as" as As,
+        b"use" as Use,
+        b"fn" as Fn,
+        b"code" as Code,
+        b"pub" as Pub
+    ];
 }
 
 pub struct TokenIter<'i, S> {

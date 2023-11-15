@@ -37,7 +37,7 @@ use super::ast::AstBuilder;
 use super::stream::Input;
 use super::Error;
 
-pub use chirp_file::chirp_file;
+pub use chirp_file::{chirp_file, ParseResult};
 
 mod chirp_file;
 mod generic;
