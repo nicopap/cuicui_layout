@@ -33,6 +33,8 @@ pub enum Error {
     BadMethod(TokenType),
     #[error("The chirp file is invalid: got additional text after the root statement")]
     TrailingText,
+    #[error("Expected a file name (either ident or string literal). Instead got {0}")]
+    FileName(TokenType),
 }
 impl Error {
     pub(crate) const fn help(self) -> &'static str {
@@ -83,6 +85,9 @@ impl Error {
                 "Chirp files define a single entity. This means that there can \
                 only be a single root statement. Try wrapping your statements \
                 inside a single root statement."
+            }
+            Self::FileName(_) => {
+                "Use statements are followed by the file from which to import the templates"
             }
         }
     }

@@ -1,4 +1,4 @@
-use winnow::combinator::{opt, preceded};
+use winnow::combinator::{alt, preceded};
 use winnow::error::ErrMode::{Backtrack, Cut};
 use winnow::token::any;
 use winnow::Parser;
@@ -6,9 +6,9 @@ use winnow::Parser;
 use super::generic::{Delimited, Many, SepList, Terminated};
 use super::tokens::{ident, many_tts};
 use super::{AddNodes, BlockResult};
-use crate::parser::ast::{self, Ast, AstBuilder, ChirpFileHeader, MethodHeader, WriteHeader};
-use crate::parser::ast::{ArgumentHeader, IdentOffset, ImportHeader};
-use crate::parser::ast::{CodeHeader, FnHeader, SpawnHeader, StKind, TemplateHeader};
+use crate::parser::ast::{self, CodeHeader, FnHeader, SpawnHeader, StKind, TemplateHeader};
+use crate::parser::ast::{ArgumentHeader, IdentOffset, ImportHeader, ImportItemHeader};
+use crate::parser::ast::{Ast, AstBuilder, ChirpFileHeader, MethodHeader, WriteHeader};
 use crate::parser::stream::{tokens as t, Input, Token};
 use crate::parser::Error;
 
@@ -42,15 +42,39 @@ macro_rules! token {
     (@ '=') => { Token::Equal };
 }
 
+struct ImportItem;
+impl AddNodes for ImportItem {
+    fn add_node(input: &mut Input, builder: &mut AstBuilder) -> BlockResult {
+        let import = |input: &mut Input| {
+            alt((
+                tokens!('('(ident, preceded(t::As, ident).map(Some)), ')'),
+                ident.map(|i| (i, None)),
+            ))
+            .parse_next(input)
+        };
+        let (name, alias) = import(input)?;
+        builder.write_header(ImportItemHeader { name, alias: alias.into() });
+        Ok(ImportItemHeader::SIZE)
+    }
+}
+
 struct Import;
 impl AddNodes for Import {
     fn add_node(input: &mut Input, builder: &mut AstBuilder) -> BlockResult {
-        let import = |input: &mut Input| {
-            preceded(t::Use, (ident, opt(preceded(t::As, ident)))).parse_next(input)
+        use Token::{Ident, String as TStr};
+
+        t::Use.parse_next(input)?;
+        let header = builder.reserve_header();
+
+        let start = input.next_start();
+        match any.parse_next(input)? {
+            TStr(_) | Ident(_) => {}
+            bad_token => return Err(Cut(Error::FileName(Some(bad_token).into()))),
         };
-        let (name, alias) = import(input)?;
-        builder.write_header(ImportHeader { name, alias: alias.into() });
-        Ok(ImportHeader::SIZE)
+        let item_len = Paren::<Many<ImportItem>>::add_node(input, builder)?;
+        let item_count = item_len / ast::ImportItemHeader::SIZE;
+        builder.write(header, ImportHeader { item_count, name: start.into() });
+        Ok(ImportHeader::SIZE + item_len)
     }
 }
 
@@ -62,7 +86,7 @@ impl AddNodes for Argument {
         Ok(ArgumentHeader::SIZE)
     }
 }
-impl AddNodes for ast::IdentOffset {
+impl AddNodes for IdentOffset {
     fn add_node(input: &mut Input, builder: &mut AstBuilder) -> BlockResult {
         let ident = ident(input)?;
         builder.write_header(ident);
@@ -171,11 +195,10 @@ impl AddNodes for ChirpFile {
         let fn_len = Many::<Fn>::add_node(input, builder)?;
         let root_statement_len = St::add_node(input, builder)?;
 
-        let import_count = import_len / ImportHeader::SIZE;
         let root_statement_offset = ChirpFileHeader::SIZE + import_len + fn_len;
         builder.write(
             header,
-            ChirpFileHeader { import_count, root_statement_offset },
+            ChirpFileHeader { import_len, root_statement_offset },
         );
         Ok(root_statement_offset + root_statement_len)
     }

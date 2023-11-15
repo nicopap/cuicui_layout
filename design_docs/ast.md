@@ -21,8 +21,11 @@ The header is the first block of the node. Each block is a `u32`.
 
 In our current grammar we have the following AST nodes:
 
-- `Use`: An import statement with an **identifier name**
-  and an optional **identifier name** `as` binding
+- `ImportItem`: An individual import in an import statement. It has an **identifier name**
+  as the imported item, and another an optional **identifier name** for the `as` local binding
+  name.
+- `Import`: An import statement. The file we import from is a **name**, it is followed
+  by a list of `ImportItem`.
 - `Fn`: Function with an **identifier name**, N **identifier name** parameters
   and a single inner `Spawn | Template | Code`
 - `Spawn`: A statement with an optional **name**, N methods and N children `Spawn | Template | Code`
@@ -55,14 +58,25 @@ struct OptNameOffset(u32); // Optional version of `NameOffset` where u32::MAX de
 # Node 1: ChirpFile (~ blocks)
 
 ast_header: {
-  import_count: u32,
+  import_len: u32,
   root_statement_offset: u32,
 }
 imports: [Import]
 fn_declarations: [Fn]
 root_statement: Spawn | Template | Code
 
-# Node 2: Import (2 blocks)
+# Node 2: Import (~ blocks)
+
+header: {
+  item_count: u6,
+  name: u26 as OptNameOffset,
+}
+items: [ImportItem]
+
+total_length:
+  1 + header.item_count * size_of::<ImportItem>
+
+# Node 8: ImportItem (2 blocks)
 
 name: IdentOffset
 alias: OptIdentOffset

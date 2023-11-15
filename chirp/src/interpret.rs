@@ -391,8 +391,8 @@ impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a, 'a> for Interpreter<'w
         *root_entity = entity;
     }
 
-    fn import(&mut self, (_name, span): Name<'a>, _alias: Option<Name>) {
-        self.push_error(span, InterpError::Import);
+    fn import(&mut self, _file: Name<'a>, name: Name<'a>, _alias: Option<Name>) {
+        self.push_error(name.1, InterpError::Import);
     }
 
     fn register_fn(&mut self, (name, _): Name<'a>, index: FnIndex<'a>) {

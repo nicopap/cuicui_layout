@@ -24,8 +24,7 @@
 //!    = '(' (Method)* ')' ('{' (Statement)* '}')?
 //!    | '{' (Statement)* '}'
 //!
-//! Path = 'ident' ('/' 'ident')*
-//! Use = 'use' Path ('as' 'ident')?
+//! Use = 'use' Path '/' '{' ImportName( ImportName )* }
 //! Fn = ('pub')? 'fn' 'ident' '(' ('ident' (',' 'ident')*)? ')' '{' Statement '}'
 //! ChirpFile = (Use)* (Fn)* Statement
 //! ```

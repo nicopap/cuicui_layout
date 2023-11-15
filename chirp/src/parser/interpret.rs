@@ -218,10 +218,13 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
         let inp = &self.input;
         let file = self.ast.chirp_file();
         trace!("{} - {file:?}", file.block_index(self.ast));
-        for import in file.imports().iter() {
-            trace!("{} - {import:?}", import.block_index(self.ast));
-            let (name, alias) = (import.name(), import.alias());
-            runner.import(name.read_spanned(inp), alias.read_spanned(inp));
+        for use_statement in file.imports().iter() {
+            let file_name = use_statement.name().read_spanned(inp);
+            for import in use_statement.items().iter() {
+                trace!("{} - {import:?}", import.block_index(self.ast));
+                let (name, alias) = (import.name(), import.alias());
+                runner.import(file_name, name.read_spanned(inp), alias.read_spanned(inp));
+            }
         }
         for fn_declr in file.fn_declrs().iter() {
             trace!("{} - {fn_declr:?}", fn_declr.block_index(self.ast));
@@ -232,7 +235,7 @@ impl<'i, 'a> ChirpFile<'i, 'a> {
     }
 }
 pub trait Interpreter<'i, 'a> {
-    fn import(&mut self, name: Name<'i>, alias: Option<Name<'i>>);
+    fn import(&mut self, file: Name<'i>, name: Name<'i>, alias: Option<Name<'i>>);
     fn register_fn(&mut self, name: Name<'i>, index: FnIndex<'a>);
     fn get_template(&mut self, name: Name<'i>) -> Option<FnIndex<'a>>;
     fn code(&mut self, code: Name<'i>);
@@ -247,7 +250,7 @@ pub trait Interpreter<'i, 'a> {
 }
 impl<'a> Interpreter<'_, 'a> for () {
     fn code(&mut self, _: Name) {}
-    fn import(&mut self, _: Name, _: Option<Name>) {}
+    fn import(&mut self, _: Name, _: Name, _: Option<Name>) {}
     fn register_fn(&mut self, _: Name, _: FnIndex<'a>) {}
     fn get_template(&mut self, _: Name) -> Option<FnIndex<'a>> {
         None

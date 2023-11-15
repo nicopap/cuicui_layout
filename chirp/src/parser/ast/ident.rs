@@ -18,6 +18,12 @@ use super::as_u32;
 use super::node::{Argument, IdentOffset};
 use crate::parser::stream::Input;
 
+/// Offset in an [`Input`] of an import file, may be an identifier or string literal.
+#[derive(Clone, Copy, Debug)]
+pub struct NameOffset {
+    pub(super) start: u32,
+}
+
 /// Offset in an [`Input`] of an entity name, may be an identifier or string literal,
 /// and **is optional**.
 #[derive(Clone, Copy, Debug)]
@@ -27,6 +33,19 @@ pub struct OptNameOffset {
 #[derive(Clone, Debug, Copy)]
 pub struct OptIdentOffset {
     pub(super) start: u32,
+}
+impl NameOffset {
+    pub fn read_spanned<'i>(self, input: &Input<'i>) -> (&'i [u8], (u32, u32)) {
+        // SAFETY:
+        // - We can only create NameOffset in crate::parser
+        // - We only create NameOffset in crate::parser::grammar
+        // - And they are the starting offset of identifiers or string, always
+        let ident = unsafe { input.starting_at(self.start).next_statement_name() };
+        (ident, (self.start, self.start + as_u32(ident.len())))
+    }
+    pub fn read<'i>(self, input: &Input<'i>) -> &'i [u8] {
+        self.read_spanned(input).0
+    }
 }
 impl OptNameOffset {
     pub fn get_with_span<'i>(self, input: &Input<'i>) -> Option<(&'i [u8], (u32, u32))> {
@@ -70,6 +89,7 @@ impl Argument<'_> {
     }
 }
 
+#[rustfmt::skip] impl From<u32> for NameOffset { fn from(start: u32) -> Self { Self { start } } }
 #[rustfmt::skip] impl From<u32> for IdentOffset { fn from(start: u32) -> Self { Self { start } } }
 #[rustfmt::skip] impl From<Option<IdentOffset>> for OptIdentOffset {
     fn from(value: Option<IdentOffset>) -> Self { Self { start: value.map_or(u32::MAX, |i| i.start) } }

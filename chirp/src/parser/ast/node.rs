@@ -14,7 +14,7 @@ use super::header::{Block, HeaderFieldAccess, Idx, Lower, Upper, Usplit};
 #[cfg(not(feature = "more_unsafe"))]
 use super::list::Node;
 use super::list::{List, SimpleNode};
-use super::{as_u32, as_usize, AstRef, OptIdentOffset, OptNameOffset};
+use super::{as_u32, as_usize, AstRef, NameOffset, OptIdentOffset, OptNameOffset};
 
 /// A reference to an untyped node header, keeping track of AST node sizes for runtime
 /// bound checks.
@@ -224,13 +224,10 @@ pub enum StKind {
 }
 
 impl_header![ChirpFile, ChirpFileHeader, 2, {
-    import_count: Idx<0> => u32,
+    import_len: Idx<0> => u32,
     pub(super) root_statement_offset: Idx<1> => u32,
 }];
 impl<'a> ChirpFile<'a> {
-    pub(super) fn import_len(self) -> u32 {
-        self.import_count() * Import::SIZE
-    }
     pub fn imports(self) -> List<'a, Import<'a>> {
         List::new(unsafe { self.0.offset(0, self.import_len()) })
     }
@@ -341,8 +338,22 @@ impl<'a> Template<'a> {
 }
 impl_header![Code, CodeHeader, 1, { pub name: (THeader0, Lower) => IdentOffset }];
 
+type ImportHeader0 = (Idx<0>, Usplit<u32, NameOffset, 26>);
+impl_header![Import, ImportHeader, 1, {
+    item_count: (ImportHeader0, Upper) => u32,
+    pub name: (ImportHeader0, Lower) => NameOffset,
+}];
+impl<'a> Import<'a> {
+    pub(super) fn item_len(self) -> u32 {
+        self.item_count() * ImportItem::SIZE
+    }
+    pub fn items(self) -> List<'a, ImportItem<'a>> {
+        List::new(unsafe { self.0.offset(0, self.item_len()) })
+    }
+}
+
 type IdxT<T, const I: usize> = ((Idx<I>, Usplit<T, (), 0>), Upper);
-impl_header![Import, ImportHeader, 2, {
+impl_header![ImportItem, ImportItemHeader, 2, {
     pub name: IdxT<IdentOffset, 0> => IdentOffset,
     pub alias: IdxT<OptIdentOffset, 1> => OptIdentOffset,
 }];

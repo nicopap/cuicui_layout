@@ -75,8 +75,8 @@ pub use ident::*;
 pub(super) use list::List;
 pub use node::FnIndex;
 pub(super) use node::{Argument, IdentOffset, Spawn, StKind, StType, Statement, Template};
-pub(super) use node::{ArgumentHeader, ChirpFileHeader, FnHeader, ImportHeader, MethodHeader};
-pub(super) use node::{CodeHeader, SpawnHeader, TemplateHeader};
+pub(super) use node::{ArgumentHeader, ChirpFileHeader, FnHeader, ImportItemHeader, MethodHeader};
+pub(super) use node::{CodeHeader, ImportHeader, SpawnHeader, TemplateHeader};
 
 mod build;
 mod header;

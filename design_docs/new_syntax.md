@@ -21,8 +21,9 @@ StatementTail
    = '(' (Method)* ')' ('{' (Statement)* '}')?
    | '{' (Statement)* '}'
 
-Path = 'ident' ('/' 'ident')*
-Use = 'use' Path ('as' 'ident')?
+Path = 'ident' | StringLit
+UseName = '(' 'ident' as 'ident' ')' | 'ident'
+Use = 'use' Path ((UseName)*)
 Fn = ('pub')? 'fn' 'ident' '(' ('ident' (',' 'ident')*)? ')' '{' Statement '}'
 ChirpFile = (Use)* (Fn)* Statement
 ```

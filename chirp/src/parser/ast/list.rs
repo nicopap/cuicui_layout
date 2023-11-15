@@ -10,7 +10,7 @@
 
 use std::marker::PhantomData;
 
-use super::node::{Argument, Code, IdentOffset, Import, StType};
+use super::node::{Argument, Code, IdentOffset, Import, ImportItem, StType};
 use super::node::{ChirpFile, Fn, Method, Spawn, Statement, Template};
 use super::{as_usize, header::Block};
 
@@ -52,6 +52,7 @@ pub(in crate::parser) trait SimpleNode {
 impl_node! {
     ChirpFile: |it| it.root_statement_offset() + it.root_statement().len(),
     Fn:        |it| Self::HEADER_SIZE + it.parameter_len() + it.body().len(),
+    Import:    header |it| Self::HEADER_SIZE + it.item_len(),
     Method:    header |it| Self::HEADER_SIZE + it.argument_len(),
     Template:  header |it| Self::HEADER_SIZE + it.argument_len() + it.methods_len() + it.children_len(),
     Spawn:     header |it| Self::HEADER_SIZE + it.methods_len() + it.children_len(),
@@ -61,7 +62,7 @@ impl_node! {
         StType::Code(_) => Code::SIZE,
     },
 }
-impl_simple_node! {Import: 2, Argument: 2, Code: 1}
+impl_simple_node! {ImportItem: 2, Argument: 2, Code: 1}
 
 #[rustfmt::skip] impl SimpleNode for IdentOffset { const SIZE: u32 = 1; }
 #[rustfmt::skip] impl<'a> Node<'a> for IdentOffset {

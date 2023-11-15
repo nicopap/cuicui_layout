@@ -389,6 +389,10 @@ their type.
 
 See [`parse_dsl_impl::type_parsers`] for details.
 
+## Tooling
+
+Tooling for the `chirp` file format is available at <https://github.com/nicopap/cuicui_chirp_tooling>
+
 ## What is the relationship between `cuicui_dsl` and `cuicui_chirp`?
 
 `cuicui_dsl` is a macro (`dsl!`), while `cuicui_chirp` is a scene file format,
