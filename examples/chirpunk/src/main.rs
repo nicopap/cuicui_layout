@@ -1,10 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![allow(clippy::needless_pass_by_value)]
 
-use std::time::Duration;
-
-use bevy::log::LogPlugin;
-use bevy::{asset::ChangeWatcher, prelude::*};
+use bevy::prelude::*;
 use cuicui_chirp::ChirpBundle;
 use cuicui_layout::LayoutRootCamera;
 
@@ -34,17 +31,14 @@ mod ui_offset;
 
 type BgColor = BackgroundColor;
 
-fn bevy_log_plugin() -> LogPlugin {
+fn bevy_log_plugin() -> bevy::log::LogPlugin {
     cuicui_examples::log_plugin(cfg!(feature = "advanced_logging"))
 }
 
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(bevy_log_plugin()).set(AssetPlugin {
-                watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                ..default()
-            }),
+            DefaultPlugins.set(bevy_log_plugin()),
             (style::Plugin, animate::Plugin, dsl::Plugin),
             (ui_offset::Plugin, ui_event::Plugin),
             cuicui_layout_bevy_ui::Plugin,

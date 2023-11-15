@@ -2,13 +2,7 @@
 resolver = "2"
 exclude = ["assets/", "the_book/"]
 members = [
-  "examples/chirp_menu",
-  "examples/custom_dsl",
-  "examples/dsl_and_chirp",
-  "examples/hello_world",
-  "examples/simple_menu",
-  "examples/sprite_debug",
-  "examples/templates",
+  "examples/*",
   "dsl",
   "chirp",
   "chirp_macros",
@@ -59,7 +53,7 @@ bevy-inspector-egui = "0.21"
 bevy_mod_picking = { version = "0.17.0", default-features = false, features = [
   "backend_bevy_ui",
 ] }
-# bevy-ui-navigation = "0.32.0"
+bevy-ui-navigation = "0.33.1"
 rust-hsluv = "0.1.4"
 
 [workspace.metadata.release]
