@@ -6,6 +6,10 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[features]
+default = []
+advanced_logging = []
+
 [[bin]]
 name = "templates"
 path = "main.rs"
@@ -14,6 +18,7 @@ path = "main.rs"
 # bevy_framepace.workspace = true
 # bevy-inspector-egui.workspace = true
 cuicui_chirp = { workspace = true, default-features = true }
+cuicui_examples = { path = "../cuicui_examples" }
 cuicui_layout_bevy_ui.workspace = true
 cuicui_layout.workspace = true
 bevy = { workspace = true, features = ["png", "jpeg", "x11", "bevy_asset", "bevy_ui", "default_font"] }
