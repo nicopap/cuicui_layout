@@ -1,0 +1,53 @@
+use "imports_defs.chirp" (
+    deep_trailing1
+    (call_nested as call_nested2)
+)
+
+fn deep_trailing0() {
+    deep_trailing1!("Second line", "First line") (column bg(beige) rules(1.1*, 2*) margin(20)) {
+        Trailing0 (text("Third line") bg(blue))
+    }
+}
+fn spacer() {
+	Spacer(height(10px) width(10%) bg(coral))
+}
+fn button($text) {
+    Button(named($text) width(95%) height(200px) bg(purple) row) {
+        ButtonText(text($text))
+    }
+}
+fn nested_template($text) {
+    NestedText(text($text))
+}
+fn call_nested(text) {
+    CallNested(rules(250px, 250px) row bg(brown) margin(10)) {
+        nested_template!(text)(font_size(32) width(50%))
+        CallNested2nd(bg(white))
+    }
+}
+fn call_nested1(zbrs) {
+    Entity {
+        call_nested!(zbrs)
+        call_nested2!(zbrs)
+    }
+}
+fn multiple_arguments(name, $text1, $text2) {
+    Entity(named(name) rules(90%, 125px) bg(darkblue) column margin(10)) {
+        spacer!()
+        MultipleText(text($text1))
+        MultipleText(text($text2))
+        spacer!()
+    }
+}
+Menu(screen_root row bg(darkgrey)) {
+    Menu1(column rules(47%, 95%)) {
+        "TestSpacer"(width(30%) height(100px) bg(aquamarine))
+        spacer!()
+        deep_trailing0!()
+        button!("Hello world")
+    }
+    Menu2(column rules(47%, 95%)) {
+        call_nested1!("Call Nested")
+        multiple_arguments!("Multiple name", "First text line", "Second text line")
+    }
+}
