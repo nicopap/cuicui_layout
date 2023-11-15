@@ -1,0 +1,19 @@
+fn deep_trailing2(line, color) {
+    Trailing2Parent {
+        Trailing2 (text(line) bg(color) width(1*))
+    }
+}
+pub fn deep_trailing1(line2, line1) {
+    deep_trailing2!(line1, red) {
+        Trailing1 (text(line2) bg(green) width(2*))
+    }
+}
+pub fn nested_template($text) {
+    NestedText(text($text))
+}
+pub fn call_nested(text) {
+    CallNested(rules(250px, 250px) row bg(brown) margin(10)) {
+        nested_template!(text)(font_size(32) width(50%))
+        CallNested2nd(bg(white))
+    }
+}

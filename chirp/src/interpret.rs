@@ -17,6 +17,7 @@ use winnow::BStr;
 
 use crate::parse_dsl::{self, MethodCtx, ParseDsl};
 use crate::parser::{self, chirp_file, Arguments, ChirpFile, FnIndex, Input, Name};
+use crate::InterpretResult;
 
 type Span = (u32, u32);
 
@@ -76,6 +77,36 @@ impl InterpError {
         err.downcast_ref().and_then(ReflectError::maybe_offset)
     }
 }
+
+pub(crate) fn interpret<'a, D: ParseDsl>(
+    input_u8: &[u8],
+    builder: &'a mut EntityCommands<'_, '_, 'a>,
+    load_ctx: Option<&'a mut LoadContext>,
+    reg: &'a TypeRegistry,
+    handles: &'a Handles,
+) -> InterpretResult<()> {
+    let input = Input::new(input_u8, ());
+    let ast = match chirp_file(input) {
+        parser::ParseResult::Ast(ast) => ast,
+        parser::ParseResult::TemplateLibrary(template_library) => {
+            return InterpretResult::TemplateLibrary(template_library);
+        }
+        parser::ParseResult::Err(err, span) => {
+            let error = SpannedError::new::<D>(err, span);
+            return InterpretResult::Err(Errors::new(vec![error], input_u8, load_ctx.as_deref()));
+        }
+    };
+    let chirp_file = ChirpFile::new(input, ast.as_ref());
+    let mut interpreter = Interpreter::<D>::new(builder, load_ctx, reg, handles);
+    chirp_file.interpret(&mut interpreter);
+    if interpreter.errors.is_empty() {
+        InterpretResult::Ok(())
+    } else {
+        let ctx = interpreter.load_ctx.as_deref();
+        InterpretResult::Err(Errors::new(interpreter.errors, input_u8, ctx))
+    }
+}
+
 // TODO(feat): print call stack.
 #[derive(Debug, Error, Diagnostic)]
 #[error("{error}")]
@@ -202,7 +233,7 @@ impl Debug for LoadCtx<'_, '_> {
             .finish()
     }
 }
-pub(crate) struct Interpreter<'w, 's, 'a, 'l, D> {
+struct Interpreter<'w, 's, 'a, 'l, D> {
     ctx: LoadCtx<'a, 'a>,
     cmds: &'a mut Commands<'w, 's>,
     parent_chain: SmallVec<[Entity; 2]>,
@@ -227,33 +258,6 @@ impl<'w, 's, 'a, 'l, D> fmt::Debug for Interpreter<'w, 's, 'a, 'l, D> {
     }
 }
 
-impl<'w, 's, 'a, 'l> Interpreter<'w, 's, 'a, 'l, ()> {
-    pub(crate) fn interpret<D: ParseDsl>(
-        input_u8: &[u8],
-        builder: &'a mut EntityCommands<'w, 's, 'a>,
-        load_ctx: Option<&'a mut LoadContext<'l>>,
-        reg: &'a TypeRegistry,
-        handles: &'a Handles,
-    ) -> Result<(), Errors> {
-        let input = Input::new(input_u8, ());
-        let ast = match chirp_file(input) {
-            Ok(v) => v,
-            Err((err, span)) => {
-                let error = SpannedError::new::<D>(err, span);
-                return Err(Errors::new(vec![error], input_u8, load_ctx.as_deref()));
-            }
-        };
-        let chirp_file = ChirpFile::new(input, ast.as_ref());
-        let mut interpreter = Interpreter::<D>::new(builder, load_ctx, reg, handles);
-        chirp_file.interpret(&mut interpreter);
-        if interpreter.errors.is_empty() {
-            Ok(())
-        } else {
-            let ctx = interpreter.load_ctx.as_deref();
-            Err(Errors::new(interpreter.errors, input_u8, ctx))
-        }
-    }
-}
 impl<'w, 's, 'a, 'l, D: ParseDsl> Interpreter<'w, 's, 'a, 'l, D> {
     fn new(
         builder: &'a mut EntityCommands<'w, 's, 'a>,
@@ -391,8 +395,8 @@ impl<'w, 's, 'a, 'l, D: ParseDsl> parser::Interpreter<'a, 'a> for Interpreter<'w
         *root_entity = entity;
     }
 
-    fn import(&mut self, (_name, span): Name<'a>, _alias: Option<Name>) {
-        self.push_error(span, InterpError::Import);
+    fn import(&mut self, _file: Name<'a>, name: Name<'a>, _alias: Option<Name>) {
+        self.push_error(name.1, InterpError::Import);
     }
 
     fn register_fn(&mut self, (name, _): Name<'a>, index: FnIndex<'a>) {

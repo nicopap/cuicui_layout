@@ -38,8 +38,7 @@ macro_rules! log_miette_error {
 use bevy::asset::LoadContext;
 use bevy::ecs::{prelude::*, system::SystemState};
 use bevy::reflect::TypeRegistry;
-
-use crate::interpret::Interpreter;
+use bevy::scene::Scene;
 
 pub use anyhow;
 /// `impl` block macro to implement [`ParseDsl`].
@@ -50,6 +49,7 @@ pub use cuicui_chirp_macros::parse_dsl_impl;
 pub use interpret::{Handles, InterpError};
 pub use loader::{Chirp, ChirpBundle, ChirpState, WorldHandles};
 pub use parse_dsl::{MethodCtx, ParseDsl};
+pub use parser::TemplateLibrary;
 pub use reflect::ReflectDsl;
 
 mod parser;
@@ -85,6 +85,43 @@ pub mod bevy_types {
     pub use bevy::prelude::Entity;
 }
 
+/// Result of the [`ChirpReader::interpret`] method.
+pub enum InterpretResult<T> {
+    /// The provided chirp file is a valid scene file.
+    Ok(T),
+    /// The provided chirp file is a valid template library.
+    TemplateLibrary(TemplateLibrary),
+    /// The provided file is not a valid chirp file, and interpreting caused errors.
+    Err(interpret::Errors),
+}
+impl<T> InterpretResult<T> {
+    fn map<U>(self, f: impl FnOnce(T) -> U) -> InterpretResult<U> {
+        match self {
+            Self::Ok(ok) => InterpretResult::Ok(f(ok)),
+            Self::TemplateLibrary(v) => InterpretResult::TemplateLibrary(v),
+            Self::Err(e) => InterpretResult::Err(e),
+        }
+    }
+    fn is_ok(&self) -> bool {
+        matches!(self, Self::Ok(_))
+    }
+}
+
+/// Interpret `input` as a chirp file.
+#[must_use]
+pub fn interpret_chirp<D: ParseDsl>(
+    handles: &Handles,
+    load_context: Option<&mut LoadContext>,
+    registry: &TypeRegistry,
+    input: &[u8],
+) -> InterpretResult<(Entity, Scene)> {
+    let mut scene = Scene::new(World::new());
+    let mut chirp_reader = ChirpReader::new(&mut scene.world);
+    chirp_reader
+        .interpret::<D>(handles, load_context, registry, input)
+        .map(|entity| (entity, scene))
+}
+
 /// Deserialized `dsl!` object.
 ///
 /// Use [`ChirpReader::new`] to create a `ChirpReader` that will spawn stuff into
@@ -105,13 +142,12 @@ impl<'a> ChirpReader<'a> {
     pub fn new(world: &'a mut World) -> Self {
         Self { world }
     }
-    /// Create a [`ChirpReader`] from arbitrary byte slices.
+    /// Interpret `input` as a chirp file, writting it into [`Self::world`].
     ///
-    /// This directly interprets the input as a chirp file and creates a bevy
-    /// scene.
+    /// The returned `Entity` is the root in `world` of the chirp file.
     ///
     /// # Errors
-    /// If the input is an invalid `chirp` file. If this returns `Err`, then
+    /// If `input` is an invalid `chirp` file. If this returns `Err`, then
     /// [`Self::world`] will be in an invalid partially-applied state.
     ///
     /// Possible errors include:
@@ -129,12 +165,12 @@ impl<'a> ChirpReader<'a> {
         load_context: Option<&mut LoadContext>,
         registry: &TypeRegistry,
         input: &[u8],
-    ) -> Result<Entity, interpret::Errors> {
+    ) -> InterpretResult<Entity> {
         let mut state = SystemState::<Commands>::new(self.world);
         let mut cmds = state.get_mut(self.world);
         let mut cmds = cmds.spawn_empty();
         let id = cmds.id();
-        let result = Interpreter::interpret::<D>(input, &mut cmds, load_context, registry, handles);
+        let result = interpret::interpret::<D>(input, &mut cmds, load_context, registry, handles);
 
         if result.is_ok() {
             state.apply(self.world);
@@ -156,17 +192,10 @@ impl<'a> ChirpReader<'a> {
         registry: &TypeRegistry,
         input: &[u8],
     ) -> bool {
-        let mut state = SystemState::<Commands>::new(self.world);
-        let mut cmds = state.get_mut(self.world);
-        let mut cmds = cmds.spawn_empty();
-        let result = Interpreter::interpret::<D>(input, &mut cmds, load_context, registry, handles);
-
-        if let Err(err) = &result {
+        let result = self.interpret::<D>(handles, load_context, registry, input);
+        if let InterpretResult::Err(err) = &result {
             log_miette_error!(err);
-            false
-        } else {
-            state.apply(self.world);
-            true
         }
+        result.is_ok()
     }
 }

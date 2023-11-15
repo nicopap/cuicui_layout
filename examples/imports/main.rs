@@ -25,5 +25,5 @@ fn main() {
 #[allow(clippy::needless_pass_by_value)]
 fn setup(mut cmds: Commands, assets: Res<AssetServer>) {
     cmds.spawn((Camera2dBundle::default(), LayoutRootCamera));
-    cmds.spawn(ChirpBundle::from(assets.load("templates.chirp")));
+    cmds.spawn(ChirpBundle::from(assets.load("imports.chirp")));
 }

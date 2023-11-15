@@ -140,7 +140,7 @@ impl<'i, 'a> Interpreter<'i, 'a> for TestInterpreter {
         todo!()
     }
 
-    fn import(&mut self, _name: Name<'i>, _alias: Option<Name<'i>>) {
+    fn import(&mut self, _file: Name<'i>, _name: Name<'i>, _alias: Option<Name<'i>>) {
         todo!()
     }
 

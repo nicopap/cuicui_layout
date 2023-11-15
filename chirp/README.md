@@ -133,51 +133,49 @@ template definitions (`fn`), and template calls (`template!()`).
 
 #### Import statements
 
-They are currently not implemented, so please proceed to the next section.
-
-<details><summary><b>Draft design</b></summary>
-
-> **Note**
-> Imports ARE NOT IMPLEMENTED
-
 In `cuicui_chirp` you are not limited to a single file. You can _import_ other
 chirp files.
 
 To do so, use an import statement. Import statements **are the first statements
-in the file**; They start with the `use` keyword, are followed by the source
-path of the file to import and an optional "`as` imported_name", this is the
-name with which the import will be refered in this file.
+in the file**; They start with the `use` keyword, followed by the source
+path of the file to import, and — between parenthesis — the list of templates to
+import.
 
 ```ron
-use different/file
-// ...
+// tree assets/
+// assets/
+// ├── components
+// │   ├── widgets.chirp
+// │   └── icons.chirp
+// └── menus
+//     ├── main.chirp
+//     ├── pause.chirp
+//     └── settings.chirp
+use components/widgets.chirp (button slider)
+
+// You can also rename the templates
+use components/widgets.chirp (
+    (button as widget_button)
+    (slider as widget_slider)
+)
+// Like with entity names, you can quote the path name.
+// This is necessary if your file has spaces or special symbols in the name.
+use "component files/Copy of widget (2).chirp" (button slider)
 ```
 
-You have two ways to use imports:
+Renaming is supported. To rename a template:
 
-1. As **whole file imports**. You can import any file and directly use it as
-   if it was a template without parameters. This is useful if you want to compose
-   several complex menus you write in different files.
-2. As **template collections**. You can import individual templates defined in
-   a file. Just complete the path with a `.template_name`.
+- surround it in parenthesis
+- Add a `as target_name`.
+- For `use foo.chirp ((source as target))` the template named `source` in the
+  file `foo.chirp` will be useable as `target` in the current file.
 
-Similarly to rust, you can combine imports, but only templates from the same file,
-so the following is valid:
-
-```ron
-use different/file.template
-use different/file.{template1, template2}
-// ...
-```
-
-Wild card imports are not supported.
+Wild card imports are not supported, rust-style nested imports are not supported.
 
 #### Publicity
 
 However, to be able to import templates, you need to mark them as `pub` in the
 source template. Just prefix the `fn` with `pub` and that's it.
-
-</details>
 
 #### Template definitions
 
@@ -391,6 +389,58 @@ their type.
 
 See [`parse_dsl_impl::type_parsers`] for details.
 
+## Formal specification
+
+### Grammar
+
+```ungrammar
+TokenTree
+   = 'ident'
+   | '(' (TokenTree)* ')'
+   | '[' (TokenTree)* ']'
+   | '{' (TokenTree)* '}'
+   | StringLit
+
+Method = 'ident' ('(' (TokenTree)* ')')?
+
+Statement
+   = 'code'      '(' 'ident' ')'
+   | 'Entity'    StatementTail
+   | 'ident' '!' '(' (TokenTree (',' TokenTree)*)? ')' (StatementTail)?
+   | 'ident'     StatementTail
+   | StringLit   StatementTail
+
+StatementTail
+   = '(' (Method)* ')' ('{' (Statement)* '}')?
+   | '{' (Statement)* '}'
+
+Path = 'ident' | StringLit
+ImportItem = '(' 'ident' as 'ident' ')' | 'ident'
+Import = 'use' Path ((ImportItem)*)
+Fn = ('pub')? 'fn' 'ident' '(' ('ident' (',' 'ident')*)? ')' '{' Statement '}'
+ChirpFile = (Import)* (Fn)* Statement
+```
+
+* Notice how `StatementTail` is **never empty**. This ensures that syntax errors
+  such as `My Entity Name()` are detected and reported correctly.
+* `'ident'` is any series of character that is not a whitespace or delimiter such
+  as `[]{}()"'!,`, so this includes surprising stuff such as `+-_` and `234`.
+* `StringLit` works similarly to a rust string literal.
+* `TokenTree` aims to work like a [rust `TokenTree`], may accept more than what
+  the rust grammar accepts (within acceptable limits) for performance reason.
+  The inside of the parenthesis is passed as-is to `ParseDsl::method`.
+
+### Comments
+
+Currently, only `//` line comments are supported.
+
+[rust `TokenTree`]: https://doc.rust-lang.org/reference/macros.html#macro-invocation
+
+
+## Tooling
+
+Tooling for the `chirp` file format is available at <https://github.com/nicopap/cuicui_chirp_tooling>
+
 ## What is the relationship between `cuicui_dsl` and `cuicui_chirp`?
 
 `cuicui_dsl` is a macro (`dsl!`), while `cuicui_chirp` is a scene file format,
@@ -403,7 +453,7 @@ different features than `cuicui_dsl`. Here is a feature matrix:
 |`code` blocks with in-line rust code| ✅ |    |
 |`code` calling registered functions |    | ✅ |
 |`fn` templates                      |rust| ✅ |
-|import from other files             |rust|    |
+|import from other files             |rust| ✅ |
 |hot-reloading                       |    | ✅ |
 |reflection-based methods            |    | ✅ |
 |special syntax for colors, rules    |    | ✅ |

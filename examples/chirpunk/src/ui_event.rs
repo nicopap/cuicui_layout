@@ -48,10 +48,10 @@ fn change_input_state(
     mut gp_buttons: EventReader<GamepadButtonChangedEvent>,
     mut gp_axis: EventReader<GamepadButtonChangedEvent>,
 ) {
-    if mouse.iter().next().is_some() {
+    if mouse.read().count() != 0 {
         state.set_if_neq(InputState::Mouse);
     }
-    if gp_buttons.iter().next().is_some() | gp_axis.iter().next().is_some() {
+    if (gp_buttons.read().count() != 0) | (gp_axis.read().count() != 0) {
         state.set_if_neq(InputState::Gamepad);
     }
 }

@@ -52,6 +52,10 @@ mod from_mask32 {
         fn from_mask32<const SPLIT: usize>(start: u32) -> Self { Self { start } }
         fn as_u32(self) -> u32 { self.start }
     }
+    impl FromMask32 for super::super::NameOffset {
+        fn from_mask32<const SPLIT: usize>(start: u32) -> Self { Self { start } }
+        fn as_u32(self) -> u32 { self.start }
+    }
     impl FromMask32 for super::super::node::StKind {
         fn from_mask32<const SPLIT: usize>(bits: u32) -> Self {
             match bits {

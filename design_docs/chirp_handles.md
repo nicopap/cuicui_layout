@@ -7,3 +7,7 @@ Since I can't predict the sensible way of reading the file type, it seems
 perilous.
 
 I'll just have a trait for loading from file :(
+
+## Bevy 0.12 Assets v2
+
+We now can use assets v2 to do this, awesome.

@@ -86,6 +86,10 @@ if you don't care for explanations.
 
 See the [./CHANGELOG.md](./CHANGELOG.md) file.
 
+### Tooling
+
+Tooling for the `chirp` file format is available at <https://github.com/nicopap/cuicui_chirp_tooling>
+
 ### Version matrix
 
 | bevy | latest supporting version |
